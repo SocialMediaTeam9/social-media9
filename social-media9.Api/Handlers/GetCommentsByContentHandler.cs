@@ -1,0 +1,17 @@
+using MediatR;
+
+public class GetCommentsByContentHandler : IRequestHandler<GetCommentsByContentQuery, List<CommentDto>>
+{
+    private readonly ICommentRepository _repository;
+
+    public GetCommentsByContentHandler(ICommentRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<List<CommentDto>> Handle(GetCommentsByContentQuery request, CancellationToken cancellationToken)
+    {
+        var comments = await _repository.GetCommentsByContentAsync(request.ContentId);
+        return comments.Select(c => new CommentDto(c)).ToList();
+    }
+}
