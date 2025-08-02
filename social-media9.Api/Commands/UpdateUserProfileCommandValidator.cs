@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace social_media9.Api
+namespace social_media9.Api.Commands
 {
     public class UpdateUserProfileCommandValidator : AbstractValidator<UpdateUserProfileCommand>
     {

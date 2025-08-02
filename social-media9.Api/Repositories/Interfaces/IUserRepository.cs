@@ -4,7 +4,7 @@ using social_media9.Api.Models;
 using System.Collections.Generic;
 using social_media9.Api.Services;
 
-namespace social_media9.Api.Data
+namespace social_media9.Api.Repositories.Interfaces
 {
     public interface IUserRepository
     {
