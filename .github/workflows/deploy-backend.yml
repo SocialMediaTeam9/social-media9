@@ -14,6 +14,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  IMAGE_NAME: team9-app
+
 jobs:
   build-and-deploy:
     name: Build and Deploy Backend
@@ -38,18 +41,30 @@ jobs:
         with:
           dotnet-version: '9.0'
 
-      - name: Build and Push Docker image to ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
+#      - name: Build and Push Docker image to ECR
+#        id: build-image
+#        env:
+#          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+#          IMAGE_TAG: ${{ github.sha }}
+#        run: |
+#          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f social-media9.Api/Dockerfile ./social-media9.Api
+#
+#          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+#
+#          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
+
+      - name: Build image
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f social-media9.Api/Dockerfile ./social-media9.Api
-          
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
+          docker build -t ${{ env.IMAGE_NAME }}:latest -f social-media9.Api/Dockerfile social-media9.Api/
+
+      - name: Tag image
+        run: |
+          docker tag ${{ env.IMAGE_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
 
       - name: Update ECS Service
         run: |
