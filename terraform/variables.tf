@@ -41,7 +41,7 @@ variable "ecs_cluster_name" {
 variable "domain_name" {
   description = "The root custom domain name for the application."
   type = string
-  default     = "peerspace.online"
+  default     = "www.peerspace.online"
 }
 
 variable "internal_api_port" {

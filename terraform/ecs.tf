@@ -201,7 +201,7 @@ resource "aws_secretsmanager_secret_version" "gts_config_version" {
 
   secret_string = <<-EOT
 
-    domain: "${var.domain_name}"
+    domain: "peerspace.online"
     listen-address: "0.0.0.0:8080"
     database-type: "sqlite"
     database-path: "/data/gts.db"

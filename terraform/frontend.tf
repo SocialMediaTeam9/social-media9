@@ -1,5 +1,5 @@
 data "aws_acm_certificate" "main" {
-  domain   = "www.${var.domain_name}"
+  domain   = var.domain_name
   statuses = ["ISSUED"]
   provider = aws.us_east_1
   most_recent = true
@@ -34,8 +34,9 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   aliases = [
     var.domain_name,
-    "api.${var.domain_name}",
-    "federation.${var.domain_name}"
+    "peerspace.online",
+    "api.peerspace.online",
+    "federation.peerspace.online"
   ]
 
   origin {
