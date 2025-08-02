@@ -1,6 +1,7 @@
 using Amazon.DynamoDBv2;
-using Microsoft.OpenApi.Models;
+using Amazon.DynamoDBv2.Model;
 using Amazon.Extensions.NETCore.Setup;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,23 +10,29 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// MediatR
+// MediatR registration
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
-// AWS SDK
-builder.Services.AddAWSService<IAmazonDynamoDB>();
-
-// Repository
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
-
-builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+// Configure IAmazonDynamoDB based on environment
+if (builder.Environment.IsDevelopment())
 {
-    var config = new AmazonDynamoDBConfig
+    builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
     {
-        ServiceURL = "http://localhost:8000"
-    };
-    return new AmazonDynamoDBClient(config);
-});
+        var config = new AmazonDynamoDBConfig
+        {
+            ServiceURL = "http://localhost:8000"
+        };
+        return new AmazonDynamoDBClient(config);
+    });
+}
+else
+{
+    // Use default AWS credentials & endpoint
+    builder.Services.AddAWSService<IAmazonDynamoDB>();
+}
+
+// Register repository
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 
 var app = builder.Build();
 
