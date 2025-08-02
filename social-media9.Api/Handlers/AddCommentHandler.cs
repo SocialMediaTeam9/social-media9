@@ -17,8 +17,8 @@ public class AddCommentHandler : IRequestHandler<AddCommentCommand, CommentDto>
         var comment = new Comment
         {
             CommentId = Guid.NewGuid().ToString(),
-            ContentId = request.ContentId,
-            UserId = request.UserId,
+            PostId = request.PostId.ToString(),
+            UserId = request.UserId.ToString(),
             Username = request.Username,
             Text = request.Text,
             CreatedAt = DateTime.UtcNow

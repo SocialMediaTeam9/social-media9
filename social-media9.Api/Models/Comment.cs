@@ -7,12 +7,12 @@ namespace social_media9.Api.Models
     public class Comment
     {
         [DynamoDBHashKey] // Partition key
-        public string PostId { get; set; } = string.Empty;
+        public string PostId { get; set; } 
 
         [DynamoDBRangeKey] // Sort key
-        public string CommentId { get; set; } = string.Empty;
+        public string  CommentId { get; set; } = Guid.NewGuid().ToString();
 
-        public string UserId { get; set; } = string.Empty;
+        public string UserId { get; set; } 
         public string Username { get; set; } = string.Empty;
         public string Text { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }

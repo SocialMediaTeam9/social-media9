@@ -3,7 +3,7 @@ namespace social_media9.Api.Models
     public class CommentDto
     {
         public string CommentId { get; set; }
-        public string ContentId { get; set; }
+        public string PostId { get; set; }
         public string UserId { get; set; }
         public string Username { get; set; }
         public string Text { get; set; }
@@ -14,7 +14,7 @@ namespace social_media9.Api.Models
         public CommentDto(Comment comment)
         {
             CommentId = comment.CommentId;
-            ContentId = comment.ContentId;
+            PostId = comment.PostId;
             UserId = comment.UserId;
             Username = comment.Username;
             Text = comment.Text;
