@@ -134,3 +134,5 @@ _NCrunch*
 
 social-media9.Api/appsettings.Development.json
 social-media9.Api/appsettings.json
+
+NuGet.config
