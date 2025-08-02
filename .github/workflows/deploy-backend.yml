@@ -53,4 +53,4 @@ jobs:
 
       - name: Update ECS Service
         run: |
-          - aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER_NAME }} --service ${{ secrets.ECS_SERVICE_APP }} --force-new-deployment --region ${{ secrets.AWS_REGION }} --no-paginate
+          aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER_NAME }} --service ${{ secrets.ECS_SERVICE_APP }} --force-new-deployment --region ${{ secrets.AWS_REGION }} --no-paginate
