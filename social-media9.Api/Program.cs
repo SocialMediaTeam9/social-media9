@@ -41,6 +41,7 @@ builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddHttpClient();
 
 // === MediatR & FluentValidation ===
@@ -132,8 +133,6 @@ else
     builder.Services.AddAWSService<IAmazonDynamoDB>();
 }
 
-// Register repository
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 
 var app = builder.Build();
 
