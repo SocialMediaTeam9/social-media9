@@ -19,17 +19,15 @@ public class PostsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize]
+    // [Authorize]
+    [AllowAnonymous]
     public async Task<IActionResult> CreatePost([FromForm] CreatePostRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-            return Unauthorized();
-
-        var userId = Guid.Parse(userIdClaim.Value);
+        // Allow anonymous: use a test user ID for now
+        var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
         var postId = await _postService.CreatePostAsync(request, userId);
         return Ok(new { PostId = postId });
     }
@@ -62,11 +60,16 @@ public class PostsController : ControllerBase
 
     // POST /api/posts/{postId}/like
     [HttpPost("{postId}/like")]
-    [Authorize]
+    [AllowAnonymous] // Remove or change to [Authorize] if you want to require auth
     public async Task<IActionResult> LikePost(Guid postId)
     {
-        // TODO: Implement like logic
-        return Ok();
+        // For now, use a test user ID
+        var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var result = await _postService.LikePostAsync(postId, userId);
+        if (result)
+            return Ok(new { message = "Post liked." });
+        else
+            return BadRequest(new { message = "Could not like post." });
     }
 
     // GET /api/posts/{postId}/likes

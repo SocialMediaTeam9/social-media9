@@ -34,7 +34,7 @@ public class PostService : IPostService
 
         var post = new Post
         {
-            Id = Guid.NewGuid(),
+            PostId = Guid.NewGuid(),
             Content = request.Content,
             MediaUrl = mediaUrl,
             MediaType = request.MediaType ?? "none",
@@ -43,7 +43,7 @@ public class PostService : IPostService
         };
 
         await _postRepository.AddAsync(post);
-        return post.Id;
+        return post.PostId;
     }
 
     public async Task<IEnumerable<PostDTO>> GetPostsAsync()
@@ -51,7 +51,7 @@ public class PostService : IPostService
         var posts = await _postRepository.GetAllAsync();
         return posts.Select(post => new PostDTO
         {
-            Id = post.Id,
+            PostId = post.PostId,
             Content = post.Content,
             MediaUrl = post.MediaUrl,
             MediaType = post.MediaType,
