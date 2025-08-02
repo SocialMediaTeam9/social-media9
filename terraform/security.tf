@@ -12,9 +12,46 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+resource "aws_iam_policy_attachment" "ecs_task_policy_att" {
+  name       = "${var.ecs_cluster_name}-task-exec-policy-attachment"
+  policy_arn = aws_iam_policy.ecs_task_exec_policy.arn
+  roles = [aws_iam_role.ecs_task_execution_role.name]
+}
+
+# resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
+#   role       = aws_iam_role.ecs_task_execution_role.name
+#   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+# }
+
+resource "aws_iam_policy" "ecs_task_exec_policy" {
+  name = "${var.ecs_cluster_name}-task-exec-policy"
+  description = "Policy for ECS task execution role"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:CreateLogGroup"
+        ],
+        Effect = "Allow",
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role" "app_task_role" {
