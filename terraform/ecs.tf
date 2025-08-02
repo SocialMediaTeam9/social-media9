@@ -129,7 +129,7 @@ resource "aws_ecs_task_definition" "gts_sidecar" {
   container_definitions = jsonencode([{
     name  = "gotosocial"
     # Use the official GTS image
-    image = "gotosocial/gotosocial:latest"
+    image = "superseriousbusiness/gotosocial:latest"
     portMappings = [{ containerPort = 8080 }]
 
     # Configure GTS via environment variables, which reference secrets
