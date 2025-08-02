@@ -5,8 +5,8 @@ namespace social_media9.Api.Data
     public interface ICommentRepository
     {
         Task SaveCommentAsync(Comment comment);
-        Task<List<Comment>> GetCommentsByContentAsync(string contentId);
-        Task<bool> DeleteCommentAsync(string commentId, string contentId);
-        Task<bool> UpdateCommentAsync(string commentId, string newContent);
+        Task<List<Comment>> GetCommentsByContentAsync(Guid postId);
+        Task<bool> DeleteCommentAsync(Guid commentId, Guid postId);
+        Task<bool> UpdateCommentAsync(Guid commentId, string newContent);
     }
 }

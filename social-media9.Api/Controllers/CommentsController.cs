@@ -3,6 +3,7 @@ using MediatR;
 using social_media9.Api.Models;
 using social_media9.Api.Commands;
 
+
 namespace social_media9.Api.Controllers
 {
     [ApiController]
@@ -20,20 +21,20 @@ namespace social_media9.Api.Controllers
         public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
         {
             var result = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetComments), new { contentId = result.ContentId }, result);
+            return CreatedAtAction(nameof(GetComments), new { PostId = result.PostId }, result);
         }
 
-        [HttpGet("{contentId}")]
-        public async Task<IActionResult> GetComments(string contentId)
+        [HttpGet("{postId}")]
+        public async Task<IActionResult> GetComments(Guid postId)
         {
-            var result = await _mediator.Send(new GetCommentsByContentQuery(contentId));
+            var result = await _mediator.Send(new GetCommentsByContentQuery(postId));
             return Ok(result);
         }
 
-        [HttpDelete("{contentId}/{commentId}")]
-        public async Task<IActionResult> DeleteComment(string contentId, string commentId)
+        [HttpDelete("{postId}/{commentId}")]
+        public async Task<IActionResult> DeleteComment(Guid postId, Guid commentId)
         {
-            await _mediator.Send(new DeleteCommentCommand(commentId, contentId));
+            await _mediator.Send(new DeleteCommentCommand(commentId, postId));
             return NoContent();
         }
 
@@ -43,7 +44,7 @@ namespace social_media9.Api.Controllers
             var command = new UpdateCommentCommand
             {
                 CommentId = dto.CommentId,
-                ContentId = dto.ContentId,
+                PostId = dto.PostId,
                 NewContent = dto.NewContent
             };
 

@@ -14,7 +14,7 @@ public class GetCommentsByContentHandler : IRequestHandler<GetCommentsByContentQ
 
     public async Task<List<CommentDto>> Handle(GetCommentsByContentQuery request, CancellationToken cancellationToken)
     {
-        var comments = await _repository.GetCommentsByContentAsync(request.ContentId);
+        var comments = await _repository.GetCommentsByContentAsync(request.PostId);
         return comments.Select(c => new CommentDto(c)).ToList();
     }
 }

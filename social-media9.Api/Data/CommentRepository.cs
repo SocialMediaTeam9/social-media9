@@ -25,31 +25,31 @@ namespace social_media9.Api.Data
             await _context.SaveAsync(comment);
         }
 
-        public async Task<Comment?> GetCommentByIdAsync(string commentId)
+        public async Task<Comment?> GetCommentByIdAsync(Guid commentId)
         {
-            return await _context.LoadAsync<Comment>(commentId);
+            return await _context.LoadAsync<Comment>(commentId.ToString());
         }
 
-        public async Task<bool> DeleteCommentAsync(string commentId, string contentId)
+        public async Task<bool> DeleteCommentAsync(Guid commentId, Guid PostId)
         {
             try
             {
-                await _context.DeleteAsync<Comment>(contentId, commentId);
+                await _context.DeleteAsync<Comment>(PostId.ToString(), commentId.ToString());
                 return true;
             }
             catch (Exception ex)
             {
-                
+
                 return false;
             }
         }
 
-        public async Task<bool> UpdateCommentAsync(string commentId, string newContent)
+        public async Task<bool> UpdateCommentAsync(Guid commentId, string newContent)
         {
             // Scan for comment with given CommentId
             var scanConditions = new List<ScanCondition>
             {
-                new ScanCondition("CommentId", ScanOperator.Equal, commentId)
+                new ScanCondition("CommentId", ScanOperator.Equal, commentId.ToString())
             };
 
             var search = _context.ScanAsync<Comment>(scanConditions);
@@ -66,14 +66,9 @@ namespace social_media9.Api.Data
         }
 
 
-        public async Task<List<Comment>> GetCommentsByContentAsync(string contentId)
+        public async Task<List<Comment>> GetCommentsByContentAsync(Guid postId)
         {
-            var conditions = new List<ScanCondition>
-            {
-                new ScanCondition("ContentId", ScanOperator.Equal, contentId)
-            };
-
-            var search = _context.QueryAsync<Comment>(contentId);
+            var search = _context.QueryAsync<Comment>(postId.ToString());
             var results = await search.GetRemainingAsync();
             return results;
         }
