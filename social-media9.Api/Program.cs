@@ -134,4 +134,9 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
 
 app.MapControllers();
 
+app.MapGet("/health", () =>
+{
+    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+});
+
 app.Run();
