@@ -15,7 +15,7 @@ namespace social_media9.Api.Dtos
 
     public class PostDTO
     {
-        public Guid Id { get; set; }
+        public Guid PostId { get; set; }
         public string Content { get; set; }
         public string? MediaUrl { get; set; }
         public string MediaType { get; set; }

@@ -7,7 +7,7 @@ namespace social_media9.Api.Models
     public class Post
     {
         [DynamoDBHashKey]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid PostId { get; set; } = Guid.NewGuid();
         public string Content { get; set; }
         public string? MediaUrl { get; set; }
         public string MediaType { get; set; }
