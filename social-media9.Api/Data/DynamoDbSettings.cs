@@ -6,5 +6,6 @@ namespace social_media9.Api.Data
         public string ServiceUrl { get; set; } = string.Empty;
         public string UsersTableName { get; set; } = string.Empty;
         public string FollowsTableName { get; set; } = string.Empty;
+        public string CommentsTableName { get; set; } = string.Empty;
     }
 }

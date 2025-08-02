@@ -13,6 +13,6 @@ public class UpdateCommentCommandHandler : IRequestHandler<UpdateCommentCommand,
 
     public async Task<bool> Handle(UpdateCommentCommand request, CancellationToken cancellationToken)
     {
-        return await _repository.UpdateCommentAsync(request.ContentId, request.CommentId, request.NewContent);
+        return await _repository.UpdateCommentAsync(request.CommentId, request.NewContent);
     }
 }

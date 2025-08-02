@@ -6,7 +6,7 @@ namespace social_media9.Api.Data
     {
         Task SaveCommentAsync(Comment comment);
         Task<List<Comment>> GetCommentsByContentAsync(string contentId);
-        Task DeleteCommentAsync(string commentId, string contentId);
-        Task<bool> UpdateCommentAsync(string contentId, string commentId, string newContent);
+        Task<bool> DeleteCommentAsync(string commentId, string contentId);
+        Task<bool> UpdateCommentAsync(string commentId, string newContent);
     }
 }
