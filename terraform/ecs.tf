@@ -153,7 +153,7 @@ resource "aws_ecs_task_definition" "gts_sidecar" {
         { name = "GTS_USER_DOMAIN", value = "peerspace.online" },
         { name = "GTS_PORT", value = "8080" },
         { name = "GTS_DB_TYPE", value = "sqlite" },
-        { name = "GTS_DB_ADDRESS", value = "/data/gts.db" },
+        { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
 
         { name = "GTS_ACCOUNT_PROVIDER_HOOK_ENABLED", value = "true" },
         {
