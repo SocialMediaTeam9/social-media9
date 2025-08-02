@@ -4,13 +4,13 @@ namespace social_media9.Api.Commands
 {
     public class DeleteCommentCommand : IRequest<bool>
     {
-        public string CommentId { get; set; }
-        public string ContentId { get; set; }
+        public Guid CommentId { get; set; }
+        public Guid PostId { get; set; }
 
-        public DeleteCommentCommand(string commentId, string contentId)
+        public DeleteCommentCommand(Guid commentId, Guid postId)
         {
             CommentId = commentId;
-            ContentId = contentId;
+            PostId = postId;
         }
     }
 }

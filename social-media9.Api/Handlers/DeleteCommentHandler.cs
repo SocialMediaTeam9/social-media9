@@ -13,7 +13,7 @@ public class DeleteCommentHandler : IRequestHandler<DeleteCommentCommand, bool>
 
     public async Task<bool> Handle(DeleteCommentCommand request, CancellationToken cancellationToken)
     {
-        await _repository.DeleteCommentAsync(request.CommentId, request.ContentId);
+        await _repository.DeleteCommentAsync(request.CommentId, request.PostId);
         return true;
     }
 }
