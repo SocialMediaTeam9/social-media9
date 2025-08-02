@@ -1,4 +1,6 @@
 using MediatR;
+using social_media9.Api.Data;
+using social_media9.Api.Commands;
 
 public class DeleteCommentHandler : IRequestHandler<DeleteCommentCommand, bool>
 {

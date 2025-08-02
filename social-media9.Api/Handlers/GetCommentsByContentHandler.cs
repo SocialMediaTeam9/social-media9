@@ -1,4 +1,7 @@
 using MediatR;
+using social_media9.Api.Data;
+using social_media9.Api.Models;
+
 
 public class GetCommentsByContentHandler : IRequestHandler<GetCommentsByContentQuery, List<CommentDto>>
 {

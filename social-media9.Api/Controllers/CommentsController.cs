@@ -1,49 +1,54 @@
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
+using social_media9.Api.Models;
+using social_media9.Api.Commands;
 
-[ApiController]
-[Route("api/comments")]
-public class CommentsController : ControllerBase
+namespace social_media9.Api.Controllers
 {
-    private readonly IMediator _mediator;
-
-    public CommentsController(IMediator mediator)
+    [ApiController]
+    [Route("api/comments")]
+    public class CommentsController : ControllerBase
     {
-        _mediator = mediator;
-    }
+        private readonly IMediator _mediator;
 
-    [HttpPost]
-    public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
-    {
-        var result = await _mediator.Send(command);
-        return CreatedAtAction(nameof(GetComments), new { contentId = result.ContentId }, result);
-    }
-
-    [HttpGet("{contentId}")]
-    public async Task<IActionResult> GetComments(string contentId)
-    {
-        var result = await _mediator.Send(new GetCommentsByContentQuery(contentId));
-        return Ok(result);
-    }
-
-    [HttpDelete("{contentId}/{commentId}")]
-    public async Task<IActionResult> DeleteComment(string contentId, string commentId)
-    {
-        await _mediator.Send(new DeleteCommentCommand(commentId, contentId));
-        return NoContent();
-    }
-
-    [HttpPut("update")]
-    public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
-    {
-        var command = new UpdateCommentCommand
+        public CommentsController(IMediator mediator)
         {
-            CommentId = dto.CommentId,
-            ContentId = dto.ContentId,
-            NewContent = dto.NewContent
-        };
+            _mediator = mediator;
+        }
 
-        var result = await _mediator.Send(command);
-        return result ? Ok("Updated") : BadRequest("Update failed");
+        [HttpPost]
+        public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetComments), new { contentId = result.ContentId }, result);
+        }
+
+        [HttpGet("{contentId}")]
+        public async Task<IActionResult> GetComments(string contentId)
+        {
+            var result = await _mediator.Send(new GetCommentsByContentQuery(contentId));
+            return Ok(result);
+        }
+
+        [HttpDelete("{contentId}/{commentId}")]
+        public async Task<IActionResult> DeleteComment(string contentId, string commentId)
+        {
+            await _mediator.Send(new DeleteCommentCommand(commentId, contentId));
+            return NoContent();
+        }
+
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
+        {
+            var command = new UpdateCommentCommand
+            {
+                CommentId = dto.CommentId,
+                ContentId = dto.ContentId,
+                NewContent = dto.NewContent
+            };
+
+            var result = await _mediator.Send(command);
+            return result ? Ok("Updated") : BadRequest("Update failed");
+        }
     }
 }

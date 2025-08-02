@@ -1,4 +1,7 @@
 using MediatR;
+using social_media9.Api.Data;
+using social_media9.Api.Models;
+using social_media9.Api.Commands;
 
 public class AddCommentHandler : IRequestHandler<AddCommentCommand, CommentDto>
 {

@@ -1,6 +1,9 @@
-public class UpdateCommentDto
+namespace social_media9.Api.Models
 {
-    public string CommentId { get; set; } // Composite key: PK or SK
-    public string ContentId { get; set; }
-    public string NewContent { get; set; }
+    public class UpdateCommentDto
+    {
+        public string CommentId { get; set; } 
+        public string ContentId { get; set; }
+        public string NewContent { get; set; }
+    }
 }
