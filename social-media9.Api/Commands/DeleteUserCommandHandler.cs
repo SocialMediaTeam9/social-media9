@@ -1,5 +1,8 @@
 using MediatR;
-using social_media9.Api.Data;
+// using social_media9.Api.Data;
+using social_media9.Api.Dtos;
+using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Models;
 using System; // For ApplicationException
 using System.Threading; // For CancellationToken

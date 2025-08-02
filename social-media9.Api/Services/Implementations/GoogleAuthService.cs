@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using social_media9.Api.Services.Interfaces;
 
 namespace social_media9.Api.Services.Implementations
 {

@@ -25,8 +25,8 @@
       - Microsoft.AspNetCore.Authentication.JwtBearer 9.0.7
       - Microsoft.AspNetCore.OpenApi 9.0.1
     -->
-    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.7" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.13.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
   </ItemGroup>

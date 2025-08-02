@@ -100,7 +100,7 @@ public class PostService : IPostService
             Text = request.Text,
             CreatedAt = DateTime.UtcNow
         };
-        await _postRepository.AddCommentAsync(postId, request, userId, comment);
+        await _postRepository.AddCommentAsync(postId, request, userId);
         return comment.CommentId;
     }
 

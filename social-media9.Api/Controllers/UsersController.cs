@@ -1,6 +1,8 @@
 using MediatR;
 using FluentValidation;
-using social_media9.Api.Data;
+// using social_media9.Api.Data;
+using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using social_media9.Api.Models;
