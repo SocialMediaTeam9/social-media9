@@ -5,7 +5,7 @@ using social_media9.Api.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace social_media9.Api.Data
+namespace social_media9.Api.Repositories.Interfaces
 {
     /// <summary>
     /// Defines the contract for a repository that manages user follow relationships.

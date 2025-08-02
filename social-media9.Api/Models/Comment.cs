@@ -1,3 +1,4 @@
+using System;
 using Amazon.DynamoDBv2.DataModel;
 
 namespace social_media9.Api.Models
@@ -6,7 +7,7 @@ namespace social_media9.Api.Models
     public class Comment
     {
         [DynamoDBHashKey] // Partition key
-        public string ContentId { get; set; } = string.Empty;
+        public string PostId { get; set; } = string.Empty;
 
         [DynamoDBRangeKey] // Sort key
         public string CommentId { get; set; } = string.Empty;
@@ -18,3 +19,4 @@ namespace social_media9.Api.Models
     }
 
 }
+

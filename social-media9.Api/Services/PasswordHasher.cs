@@ -1,5 +1,6 @@
 using social_media9.Api.Services;
 using BCrypt.Net;
+using social_media9.Api.Services.Interfaces;
 
 namespace social_media9.Api.Services
 {

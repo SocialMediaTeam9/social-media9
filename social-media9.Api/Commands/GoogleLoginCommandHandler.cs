@@ -2,8 +2,12 @@ using MediatR;
 using social_media9.Api.Models;
 using social_media9.Api.Data;
 using social_media9.Api.Services;
+using social_media9.Api.Services.Interfaces;
+using social_media9.Api.Dtos;
+using social_media9.Api.Repositories.Interfaces;
+using System;
 
-namespace social_media9.Api
+namespace social_media9.Api.Commands
 {
     public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, AuthResponseDto>
     {
