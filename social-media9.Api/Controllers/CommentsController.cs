@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using social_media9.Api.Models;
 using social_media9.Api.Commands;
+using social_media9.Api.Dtos;
+
 
 
 namespace social_media9.Api.Controllers

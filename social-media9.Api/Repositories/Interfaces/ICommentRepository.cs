@@ -1,6 +1,6 @@
 using social_media9.Api.Models;
 
-namespace social_media9.Api.Data
+namespace social_media9.Api.Repositories.Interfaces
 {
     public interface ICommentRepository
     {

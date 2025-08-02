@@ -1,4 +1,4 @@
-namespace social_media9.Api.Models
+namespace social_media9.Api.Dtos
 {
     public class UpdateCommentDto
     {

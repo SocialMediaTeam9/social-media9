@@ -5,9 +5,10 @@ using social_media9.Api.Data;
 using social_media9.Api.Models;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
+using social_media9.Api.Repositories.Interfaces;
 
 
-namespace social_media9.Api.Data
+namespace social_media9.Api.Repositories.Implementations
 {
     public class CommentRepository : ICommentRepository
     {
