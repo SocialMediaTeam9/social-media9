@@ -74,7 +74,7 @@ public class PostRepository : IPostRepository
     //     throw new NotImplementedException();
     // }
 
-    public async Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId, Comment comment)
+    /*public async Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId, Comment comment)
     {
         // Save comment to DynamoDB
         var dbContext = _dbContext.Context;
@@ -93,6 +93,6 @@ public class PostRepository : IPostRepository
         // For now, username is not fetched; you may want to fetch it from user service/repo
         
         throw new NotImplementedException();
-    }
+    }*/
 }
 }

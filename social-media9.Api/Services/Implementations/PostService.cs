@@ -88,14 +88,14 @@ public class PostService : IPostService
     // }
 
     // Add comment
-    public async Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId)
+   /* public async Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId)
     {
         // For now, username is not fetched; you may want to fetch it from user service/repo
         var comment = new Comment
         {
-            CommentId = Guid.NewGuid(),
-            PostId = postId,
-            UserId = userId,
+            CommentId = Guid.NewGuid().ToString(),
+            PostId = postId.ToString(),
+            UserId = userId.ToString(),
             Username = "", // TODO: fetch username from user service if needed
             Text = request.Text,
             CreatedAt = DateTime.UtcNow
@@ -109,7 +109,7 @@ public class PostService : IPostService
     {
         // TODO: Implement get comments logic
         throw new NotImplementedException();
-    }
+    }*/
 
     public async Task<IEnumerable<PostDTO>> GetUserPostsAsync(Guid userId) 
     {
