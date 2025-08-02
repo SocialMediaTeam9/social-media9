@@ -30,7 +30,7 @@ variable "app_container_port" {
 
 variable "ecr_repo_name" {
   type = string
-  default = "team9-repository"
+  default = "nexusphere-mvp-app-repo"
 }
 
 variable "ecs_cluster_name" {
