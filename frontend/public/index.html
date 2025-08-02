@@ -1,0 +1,60 @@
+<!-- index.html -->
+<!-- This file provides the basic structure for your social media application. -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Specify the character encoding for the document. -->
+    <meta charset="UTF-8">
+    
+    <!-- 
+    The viewport meta tag is essential for creating responsive web pages.
+    It ensures that the app looks good on all devices, from mobile phones
+    to large desktop screens.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Set a descriptive title for your social media application. -->
+    <title>Social Media App</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 
+    Load the "Inter" font from Google Fonts. This provides a clean, modern
+    look for all your text. It's a great choice for user interfaces.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 
+    A custom style block is included here for any global styles or
+    overrides that are not easily done with Tailwind.
+    -->
+    <style>
+        /* Apply the Inter font to the entire body of the page. */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* This is a simple style to ensure the application fills the entire
+        viewport, removing default margins. 
+        */
+        body, #root {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <!-- 
+    This is the root element where your JavaScript application will be mounted.
+    Frameworks like React, Vue, or Svelte will find this element by its ID
+    and render all of your application's components inside it.
+    -->
+    <div id="root"></div>
+
+</body>
+</html>

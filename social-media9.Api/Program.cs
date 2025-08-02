@@ -49,10 +49,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
 // === JWT Settings ===
-// var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-// var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
-// var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured.");
-// var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience not configured.");
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
+var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured.");
+var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience not configured.");
 
 // === Authentication ===
 builder.Services.AddAuthentication(options =>
