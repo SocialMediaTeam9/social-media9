@@ -38,7 +38,6 @@ namespace social_media9.Api.Controllers
             return userIdClaim;
         }
 
-        // --- Google OAuth Endpoints ---
         [HttpGet("google-login")]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status302Found)]
@@ -55,8 +54,7 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GoogleLoginRedirect()
         {
-            // After successful Google authentication, the user is redirected here.
-            // The claims are now available in the HttpContext.User object.
+
             var email = User.FindFirst(ClaimTypes.Email)?.Value;
             var name = User.FindFirst(ClaimTypes.Name)?.Value;
             var googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -76,14 +74,14 @@ namespace social_media9.Api.Controllers
                     Username = email?.Split('@')[0],
                     Email = email,
                     FullName = name,
-                    ProfilePictureUrl = User.FindFirst("picture")?.Value, // Get picture claim from Google
+                    ProfilePictureUrl = User.FindFirst("picture")?.Value, 
                     CreatedAt = DateTime.UtcNow
                 };
                 await _userRepository.AddUserAsync(user);
             }
             else
             {
-                // Update user details if they exist
+             
                 user.Email = email;
                 user.FullName = name;
                 user.ProfilePictureUrl = User.FindFirst("picture")?.Value;
@@ -91,24 +89,22 @@ namespace social_media9.Api.Controllers
                 await _userRepository.UpdateUserAsync(user);
             }
 
-            // --- Manual Claim Refresh (without ASP.NET Identity) ---
             var identity = (ClaimsIdentity)User.Identity;
             var principal = (ClaimsPrincipal)User;
 
-            // Check if the role claim already exists to avoid duplication.
+
             if (!identity.HasClaim(c => c.Type == ClaimTypes.Role))
             {
-                // Add a new role claim.
+
                 identity.AddClaim(new Claim(ClaimTypes.Role, "Member"));
 
-                // Sign in the user again with the new claims principal. This overwrites the existing cookie.
+
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
             }
-            // --- End Manual Claim Refresh ---
 
             var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
 
-            // Return the token to the frontend
+            
             return Ok(new AuthResponseDto
             {
                 UserId = user.UserId,
@@ -190,39 +186,6 @@ namespace social_media9.Api.Controllers
             }
         }
         
-        [HttpDelete("{userId}")]
-        [Authorize]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DeleteUser(string userId)
-        {
-            try
-            {
-                if (GetCurrentUserId() != userId)
-                {
-                    return Forbid();
-                }
-        
-                var command = new DeleteUserCommand { UserId = userId };
-                await _mediator.Send(command);
-                return NoContent();
-            }
-            catch (ApplicationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { message = "An error occurred while deleting the user account." });
-            }
-        }
         
         [HttpPost("{userId}/follow")]
         [Authorize]

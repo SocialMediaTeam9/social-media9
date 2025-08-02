@@ -1,18 +1,18 @@
-using Amazon.DynamoDBv2.DataModel; // For DynamoDB attributes
+using Amazon.DynamoDBv2.DataModel;
 using System;
 
 namespace social_media9.Api.Models
 {
-    // IMPORTANT: TableName must match the one configured in appsettings.json
+
     [DynamoDBTable("social_media9_Follows")]
     public class Follow
     {
-        // FollowerId as Partition Key, FollowingId as Sort Key for efficient lookup
+        
         [DynamoDBHashKey]
-        public string FollowerId { get; set; } = string.Empty; // The user who is following (as string UUID)
+        public string FollowerId { get; set; } = string.Empty; 
 
         [DynamoDBRangeKey]
-        public string FollowingId { get; set; } = string.Empty; // The user being followed (as string UUID)
+        public string FollowingId { get; set; } = string.Empty; 
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

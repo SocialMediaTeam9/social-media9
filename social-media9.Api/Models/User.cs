@@ -7,7 +7,7 @@ namespace social_media9.Api.Models
     [DynamoDBTable("social_media9_Users")]
     public class User
     {
-        [DynamoDBHashKey]
+        [DynamoDBHashKey("userId")]
         public string UserId { get; set; } = Guid.NewGuid().ToString();
         public string? GoogleId { get; set; }
         public string FirstName { get; set; } = string.Empty;
