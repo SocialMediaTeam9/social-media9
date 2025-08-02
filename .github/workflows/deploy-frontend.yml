@@ -19,6 +19,8 @@ jobs:
   build-and-deploy:
     name: Build and Deploy Frontend
     runs-on: ubuntu-latest
+    env:
+      CI: false
 
     steps:
       - name: Checkout repository

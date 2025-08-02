@@ -55,7 +55,6 @@ jobs:
         id: render-task-definition
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-
           task-definition: ${{ secrets.ECS_SERVICE_APP }}
           container-name: "web-api"
           image: ${{ steps.build-image.outputs.image }}

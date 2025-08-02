@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { fetcher } from './utils/fetcher'; // Assuming fetcher is in this path
-import type { Post, UserProfile } from "./types/types";
 
 
 // --- SVG Icons (using a simple object for easy use) ---
