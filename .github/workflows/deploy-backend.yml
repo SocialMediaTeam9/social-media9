@@ -51,19 +51,6 @@ jobs:
           
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
 
-      - name: Create new ECS Task Definition Revision
-        id: render-task-definition
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: ${{ secrets.ECS_SERVICE_APP }}
-          container-name: "web-api"
-          image: ${{ steps.build-image.outputs.image }}
-
-      - name: Deploy new Task Definition to ECS Service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
-          service: ${{ secrets.ECS_SERVICE_APP }}
-          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
-          # This option waits for the new tasks to become healthy before finishing the workflow.
-          wait-for-service-stability: true
+      - name: Update ECS Service
+        run: |
+          - aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER_NAME }} --service ${{ secrets.ECS_SERVICE_APP }} --force-new-deployment --region ${{ secrets.AWS_REGION }} --no-paginate
