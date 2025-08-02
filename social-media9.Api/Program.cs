@@ -3,46 +3,71 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using social_media9.Api.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Data;
-using social_media9.Api.Handlers; // Needed for MediatR assembly scanning
-using FluentValidation; // For FluentValidation
-using social_media9.Api.Behaviors; // For ValidationBehavior
+using social_media9.Api.Commands;
+using FluentValidation;
+using social_media9.Api.Behaviors;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure MongoDB Settings
-builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
+// === DynamoDB ===
+builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
 
-// Register MongoDB Context as a Singleton
-builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+{
+    var config = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<DynamoDbSettings>>().Value;
+    var clientConfig = new AmazonDynamoDBConfig
+    {
+        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(config.Region)
+    };
 
-// Register Repositories
+    if (!string.IsNullOrEmpty(config.ServiceUrl))
+        clientConfig.ServiceURL = config.ServiceUrl;
+
+    return new AmazonDynamoDBClient(clientConfig);
+});
+
+builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
+builder.Services.AddScoped<DynamoDbClientFactory>();
+
+// === Application Services ===
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IFollowRepository, FollowRepository>(); // Register new FollowRepository
-
-// Register Application Services
+builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddHttpClient();
 
-// Add MediatR
-// Scan the current assembly for MediatR handlers and commands/queries
+// === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-
-// Add FluentValidation and register ValidationBehavior (Optional but Recommended)
-builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly); // Scans current assembly for validators
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
-// Configure JWT Authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
-var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured.");
-var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience not configured.");
+// === JWT Settings ===
+// var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+// var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured.");
+// var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured.");
+// var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience not configured.");
 
+// === Authentication ===
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddCookie(options =>
+{
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // for dev
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+})
+.AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -54,29 +79,58 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
     };
+})
+.AddGoogle(googleOptions =>
+{
+    googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
+        ?? throw new InvalidOperationException("Google ClientId not configured.");
+    googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
+        ?? throw new InvalidOperationException("Google ClientSecret not configured.");
+    googleOptions.CallbackPath = "/signin-google";
+    googleOptions.SaveTokens = true;
+
+    // Proper claim mapping
+    googleOptions.Events.OnCreatingTicket = context =>
+    {
+        if (context.Identity != null)
+        {
+            var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
+            if (googleIdClaim != null)
+            {
+                context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
+            }
+        }
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddAuthorization();
 
-// Add controllers
+// === Controllers & Swagger ===
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
+app.UseStaticFiles(); // If serving HTML/CSS/JS
 
-app.UseAuthentication(); // Must be before UseAuthorization
-app.UseAuthorization();
+// Protect Swagger from OAuth redirects
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
+{
+    appBuilder.UseAuthentication();
+    appBuilder.UseAuthorization();
+});
 
 app.MapControllers();
 
