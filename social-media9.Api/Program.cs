@@ -55,6 +55,7 @@ builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddHttpClient();
 
 // === MediatR & FluentValidation ===
@@ -120,6 +121,8 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+
+
 // === Controllers & Swagger ===
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -152,5 +155,7 @@ app.MapGet("/health", () =>
 {
     return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
 });
+
+var internalApi = app.MapGroup("/internal/v1");
 
 app.Run();
