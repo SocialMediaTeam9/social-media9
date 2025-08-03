@@ -44,6 +44,12 @@ variable "domain_name" {
   default     = "www.peerspace.online"
 }
 
+variable "domain" {
+  description = "The root custom domain name for the application."
+  type = string
+  default     = "peerspace.online"
+}
+
 variable "internal_api_port" {
   description = "The port for the internal ALB listener for service-to-service communication."
   type        = number

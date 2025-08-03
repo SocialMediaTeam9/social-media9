@@ -84,7 +84,7 @@ resource "aws_lb_listener_rule" "csharp_api_rule" {
 
   condition {
     host_header {
-      values = ["api.${var.domain_name}"]
+      values = ["api.${var.domain}"]
     }
   }
 }
@@ -100,7 +100,7 @@ resource "aws_lb_listener_rule" "federation_host_rule" {
 
   condition {
     host_header {
-      values = ["federation.${var.domain_name}"]
+      values = ["federation.${var.domain}"]
     }
   }
 }
