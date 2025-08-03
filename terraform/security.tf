@@ -18,11 +18,6 @@ resource "aws_iam_policy_attachment" "ecs_task_policy_att" {
   roles = [aws_iam_role.ecs_task_execution_role.name]
 }
 
-# resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
-#   role       = aws_iam_role.ecs_task_execution_role.name
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-# }
-
 resource "aws_iam_policy" "ecs_task_exec_policy" {
   name = "${var.ecs_cluster_name}-task-exec-policy"
   description = "Policy for ECS task execution role"
@@ -80,14 +75,25 @@ resource "aws_iam_policy" "app_permissions" {
         Resource = aws_dynamodb_table.main.arn
       },
       {
-        Action   = ["sqs:*"]
-        Effect   = "Allow"
-        Resource = aws_sqs_queue.main.arn
-      },
-      {
         Action   = ["elasticache:Describe*", "elasticache:List*"]
         Effect   = "Allow"
         Resource = "*"
+      },
+      {
+        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+        Effect   = "Allow"
+        Resource = aws_sqs_queue.inbound_queue.arn
+      },
+      {
+        Action   = "sqs:SendMessage"
+        Effect   = "Allow"
+        Resource = aws_sqs_queue.outbound_queue.arn
+      },
+      {
+        "Sid": "AllowS3PresignedUrlGeneration",
+        "Effect": "Allow",
+        "Action": "s3:PutObject",
+        "Resource": "${aws_s3_bucket.media.arn}/*"
       }
     ]
   })
@@ -207,10 +213,16 @@ resource "aws_iam_policy" "gts_sqs_send_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
         Action   = "sqs:SendMessage"
-        Resource = aws_sqs_queue.main.arn
+        Effect   = "Allow"
+        Resource = aws_sqs_queue.inbound_queue.arn
+      },
+      {
+        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+        Effect   = "Allow"
+        Resource = aws_sqs_queue.outbound_queue.arn
       }
+
     ]
   })
 }
