@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
+using social_media9.Api.Repositories.Interfaces;
 
-namespace social_media9.Api.Data
+namespace social_media9.Api.Repositories.Implementations
 {
     public class UserRepository : IUserRepository
     {

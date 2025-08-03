@@ -1,4 +1,4 @@
-namespace social_media9.Api.Services
+namespace social_media9.Api.Services.Interfaces
 {
     public interface IGoogleAuthService
     {

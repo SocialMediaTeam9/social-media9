@@ -1,7 +1,7 @@
 using social_media9.Api.Services;
 using System;
 
-namespace social_media9.Api.Services
+namespace social_media9.Api.Services.Interfaces
 {
     public interface IPasswordHasher
     {
