@@ -66,6 +66,14 @@ resource "aws_ecs_task_definition" "app_service" {
         {
           "name" : "DynamoDbSettings__FollowsTableName",
           "value" : "${var.project_name}-main-table"
+        },
+        {
+          "name" : "AWS__S3BucketName",
+          "value" : "${var.project_name}-media-storage"
+        },
+        {
+          "name" : "AWS__CloudFrontDomain",
+          "value" : "media.peerspace.online"
         }
       ]
       secrets = [
@@ -104,7 +112,7 @@ resource "aws_ecs_service" "app_service" {
   name            = "${var.project_name}-app-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_service.arn
-  desired_count   = 0
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -200,8 +208,16 @@ resource "aws_ecs_task_definition" "gts_sidecar" {
 
         { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
         { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
-        { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.main.id },
-        { name = "AWS_REGION", value = var.aws_region }
+        { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
+        { name = "AWS_REGION", value = var.aws_region },
+
+        { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+        { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+        { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
+
+        { name = "GTS_COLLECTIONS_HOOK_ENABLED", value = "true" },
+        { name = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS", value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/followers" },
+        { name = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING", value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following" }
       ]
       secrets = [
         {
