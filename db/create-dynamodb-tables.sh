@@ -1,4 +1,3 @@
-#!/bin/bash
 set -e
 
 echo "Creating social_media9_Users table..."

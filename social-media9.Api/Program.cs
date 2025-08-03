@@ -1,3 +1,5 @@
+// Program.cs
+
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -16,6 +18,8 @@ using social_media9.Api.Behaviors;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using System.Security.Claims;
+using Amazon.Extensions.NETCore.Setup;
+using Amazon.S3;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +42,12 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
 
 builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 builder.Services.AddScoped<DynamoDbClientFactory>();
+
+// === AWS S3 ===
+// This registers the AWS S3 client with the DI container.
+builder.Services.AddAWSService<IAmazonS3>();
+// This registers your custom service for S3 interactions.
+builder.Services.AddScoped<IS3StorageService, S3StorageService>();
 
 // === Application Services ===
 builder.Services.AddScoped<IUserRepository, UserRepository>();

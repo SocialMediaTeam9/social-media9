@@ -10,6 +10,7 @@
     <!-- Corrected package name to AWSSDK.DynamoDBv2 and updated to a stable version for .NET 8.0 -->
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.3.1" />
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.2.1" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.6.2" />
     <!-- Added a package for BCrypt, which is required for password hashing -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="FluentValidation" Version="11.11.0" />
