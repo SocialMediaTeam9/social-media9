@@ -42,13 +42,50 @@ resource "aws_ecs_task_definition" "app_service" {
         { name = "ASPNETCORE_ENVIRONMENT", value = "Production" },
         { name = "DYNAMODB_TABLE_NAME", value = aws_dynamodb_table.main.name },
         { name = "SQS_QUEUE_URL", value = aws_sqs_queue.main.id },
-        { name = "REDIS_ENDPOINT", value = aws_elasticache_cluster.redis.cache_nodes[0].address }
+        { name = "REDIS_ENDPOINT", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
+        {
+          name = "GoogleAuthSettings__RedirectUri"
+          value = "https://www.peerspace.online/api/users/google-callback"
+        },
+        {
+          "name" : "JwtSettings__Issuer",
+          "value" : "social-media9-api-dev"
+        },
+        {
+          "name" : "JwtSettings__Audience",
+          "value" : "social-media9-users-dev"
+        },
+        {
+          "name" : "DynamoDbSettings__Region",
+          "value" : var.aws_region
+        },
+        {
+          "name" : "DynamoDbSettings__UsersTableName",
+          "value" : "${var.project_name}-main-table"
+        },
+        {
+          "name" : "DynamoDbSettings__FollowsTableName",
+          "value" : "${var.project_name}-main-table"
+        }
       ]
       secrets = [
         {
           name      = "GTS_HOOK_SECRET"
           valueFrom = aws_secretsmanager_secret.gts_hook_secret.arn
-        }
+        },
+        {
+          "name" : "GoogleAuthSettings__ClientId",
+          valueFrom = "${data.aws_secretsmanager_secret.google_secrets.arn}:google_client_id::"
+        },
+        {
+          "name" : "GoogleAuthSettings__ClientSecret",
+          valueFrom = "${data.aws_secretsmanager_secret.google_secrets.arn}:google_client_secret::"
+        },
+        {
+          "name" : "JwtSettings__Secret",
+          valueFrom = "${data.aws_secretsmanager_secret.jwt_secrets.arn}:jwt_secret::"
+        },
+
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -67,7 +104,7 @@ resource "aws_ecs_service" "app_service" {
   name            = "${var.project_name}-app-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_service.arn
-  desired_count   = 1
+  desired_count   = 0
   launch_type     = "FARGATE"
 
   network_configuration {
