@@ -1,15 +1,7 @@
-// src/utils/types.ts
+export type FetcherOptions = Omit<RequestInit, 'body'> & {
+  body?: BodyInit | null;
+};
 
-/**
- * Defines the options for the fetcher utility function.
- * This is a simplified version of the standard RequestInit interface.
- */
-export interface FetcherOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  // Allows for a simple object or other BodyInit types.
-  body?: object | string | FormData | ArrayBuffer;
-  headers?: Record<string, string>;
-}
 
 /**
  * Defines the structure for a social media post.
@@ -29,10 +21,19 @@ export interface Post {
  * Defines the structure for a user's profile.
  */
 export interface UserProfile {
-  id: number;
+  userId: number;
   username: string;
+  email: string;
+  fullName: string;
   bio: string;
-  avatarUrl: string;
-  followers: number;
-  following: number;
+  profilePictureUrl: string;
+  followersCount: number;
+  followingCount: number;
+  createdAt: string;
+  googleId: string;
+}
+
+export interface UpdateProfileResponse {
+  success: boolean;
+  updatedUser: UserProfile;
 }
