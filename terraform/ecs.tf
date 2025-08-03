@@ -41,7 +41,7 @@ resource "aws_ecs_task_definition" "app_service" {
         { name = "CORS_ORIGIN", value = "https://peerspace.online" },
         { name = "ASPNETCORE_ENVIRONMENT", value = "Production" },
         { name = "DYNAMODB_TABLE_NAME", value = aws_dynamodb_table.main.name },
-        { name = "SQS_QUEUE_URL", value = aws_sqs_queue.main.id },
+        { name = "SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
         { name = "REDIS_ENDPOINT", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
         {
           name = "GoogleAuthSettings__RedirectUri"
@@ -271,7 +271,7 @@ resource "aws_secretsmanager_secret_version" "gts_config_version" {
     inbox-delivery-hook:
       enabled: true
       type: "sqs"
-      sqs-queue-url: "${aws_sqs_queue.main.id}"
+      sqs-queue-url: "${aws_sqs_queue.inbound_queue.id}"
       sqs-region: "${var.aws_region}"
   EOT
 }

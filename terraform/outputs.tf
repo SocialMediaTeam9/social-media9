@@ -13,9 +13,14 @@ output "dynamodb_table_name" {
   value       = aws_dynamodb_table.main.name
 }
 
-output "sqs_queue_url" {
-  description = "The URL of the main SQS queue."
-  value       = aws_sqs_queue.main.id
+output "sqs_inbox_queue_url" {
+  description = "The URL of the inbox SQS queue."
+  value       = aws_sqs_queue.inbound_queue.id
+}
+
+output "sqs_oubox_queue_url" {
+  description = "The URL of the outbox SQS queue."
+  value       = aws_sqs_queue.outbound_queue.id
 }
 
 output "dns_records_to_create_manually" {
@@ -27,6 +32,8 @@ output "dns_records_to_create_manually" {
       "record_type"  = "A (Alias)"
       "record_value" = aws_cloudfront_distribution.frontend.domain_name
     }
+
+
     "backend_records" = {
       "instructions" = "Create CNAME records for your API and Federation subdomains pointing to the Application Load Balancer."
       "api_record" = {
@@ -38,6 +45,12 @@ output "dns_records_to_create_manually" {
         "record_name"  = "federation.peerspace.online"
         "record_type"  = "CNAME"
         "record_value" = aws_lb.main.dns_name
+      }
+
+      "media_record" = {
+        "record_name"  = "media.peerspace.online"
+        "record_type"  = "CNAME"
+        "record_value" = aws_cloudfront_distribution.media.domain_name
       }
     }
   }
