@@ -13,7 +13,7 @@ namespace social_media9.Api.Services.Interfaces
         Task<IEnumerable<PostDTO>> GetUserPostsAsync(Guid userId);
         Task<bool> LikePostAsync(Guid postId, Guid userId);
         // Task<IEnumerable<UserSummaryDTO>> GetPostLikesAsync(Guid postId);
-        Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId);
-        Task<IEnumerable<CommentDTO>> GetCommentsAsync(Guid postId);
+       // Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId);
+        //Task<IEnumerable<CommentDTO>> GetCommentsAsync(Guid postId);
     }
 }
