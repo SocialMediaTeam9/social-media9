@@ -55,6 +55,7 @@ builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddHttpClient();
 
@@ -127,6 +128,28 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// MediatR registration
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+// Configure IAmazonDynamoDB based on environment
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+    {
+        var config = new AmazonDynamoDBConfig
+        {
+            ServiceURL = "http://localhost:8000"
+        };
+        return new AmazonDynamoDBClient(config);
+    });
+}
+else
+{
+    // Use default AWS credentials & endpoint
+    builder.Services.AddAWSService<IAmazonDynamoDB>();
+}
+
 
 var app = builder.Build();
 
