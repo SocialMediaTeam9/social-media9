@@ -34,3 +34,14 @@ public record GenerateUploadUrlResponse(
 //     string Content,
 //     List<string>? AttachmentUrls
 // );
+
+// public record UserSummary(string Username, string ActorUrl, string? ProfilePictureUrl);
+
+// DTO for creating a new post
+// public record CreatePostRequest(string Content);
+
+// DTO for following a user
+public record FollowUserRequest(string ActorUrl);
+
+// DTO to represent a post in an API response
+public record PostResponse(string PostId, string AuthorUsername, string Content, DateTime CreatedAt, int CommentCount);

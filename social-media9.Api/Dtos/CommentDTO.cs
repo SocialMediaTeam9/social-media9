@@ -18,7 +18,7 @@ namespace social_media9.Api.Dtos
             PostId = comment.PostId;
             UserId = comment.UserId;
             Username = comment.Username;
-            Text = comment.Text;
+            Text = comment.Content;
             CreatedAt = comment.CreatedAt;
         }
     }
