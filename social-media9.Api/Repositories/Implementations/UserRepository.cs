@@ -13,15 +13,35 @@ namespace social_media9.Api.Repositories.Implementations
     public class UserRepository : IUserRepository
     {
         private readonly IDynamoDBContext _dbContext;
+        private readonly IConfiguration _config;
 
-        public UserRepository(IDynamoDBContext dbContext)
+        public UserRepository(IDynamoDBContext dbContext, IConfiguration config)
         {
             _dbContext = dbContext;
+            _config = config;
+        }
+
+        public async Task<User?> GetUserByUsernameAsync(string username)
+        {
+            return await _dbContext.LoadAsync<User>($"USER#{username}", "METADATA");
         }
 
         public async Task<User?> GetUserByIdAsync(string userId)
         {
-            return await _dbContext.LoadAsync<User>(userId);
+
+            var config = new DynamoDBOperationConfig
+            {
+                IndexName = "UserId-index",
+                QueryFilter = new List<ScanCondition>
+            {
+                new ScanCondition("UserId", ScanOperator.Equal, userId)
+            }
+            };
+
+            var search = _dbContext.QueryAsync<User>(config);
+            var users = await search.GetNextSetAsync();
+            return users.FirstOrDefault();
+
         }
 
         public async Task<User?> GetUserByGoogleIdAsync(string googleId)
@@ -44,25 +64,25 @@ namespace social_media9.Api.Repositories.Implementations
             return results.FirstOrDefault();
         }
 
-        public async Task<User?> GetUserByUsernameAsync(string username)
-        {
-            var queryConfig = new QueryOperationConfig
-            {
-                IndexName = "Username-index",
-                KeyExpression = new Expression
-                {
-                    ExpressionStatement = "Username = :v_username",
-                    ExpressionAttributeValues = new Dictionary<string, DynamoDBEntry>
-                    {
-                        [":v_username"] = username
-                    }
-                }
-            };
+        // public async Task<User?> GetUserByUsernameAsync(string username)
+        // {
+        //     var queryConfig = new QueryOperationConfig
+        //     {
+        //         IndexName = "Username-index",
+        //         KeyExpression = new Expression
+        //         {
+        //             ExpressionStatement = "Username = :v_username",
+        //             ExpressionAttributeValues = new Dictionary<string, DynamoDBEntry>
+        //             {
+        //                 [":v_username"] = username
+        //             }
+        //         }
+        //     };
 
-            var search = _dbContext.FromQueryAsync<User>(queryConfig);
-            var users = await search.GetNextSetAsync();
-            return users.FirstOrDefault();
-        }
+        //     var search = _dbContext.FromQueryAsync<User>(queryConfig);
+        //     var users = await search.GetNextSetAsync();
+        //     return users.FirstOrDefault();
+        // }
 
         public async Task<User> AddUserAsync(User user)
         {
@@ -96,6 +116,32 @@ namespace social_media9.Api.Repositories.Implementations
             }
             await batch.ExecuteAsync();
             return batch.Results;
+        }
+
+        public async Task<UserSummary?> GetUserSummaryAsync(string username)
+        {
+            
+            var user = await GetUserByUsernameAsync(username);
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            
+            var domain = _config["DomainName"];
+            if (string.IsNullOrEmpty(domain))
+            {
+               
+                throw new InvalidOperationException("DomainName is not configured in app settings.");
+            }
+
+            return new UserSummary(
+                "",
+                Username: user.Username,
+                ActorUrl: $"https://federation.{domain}/users/{user.Username}",
+                ProfilePictureUrl: user.ProfilePictureUrl
+            );
         }
     }
 }
