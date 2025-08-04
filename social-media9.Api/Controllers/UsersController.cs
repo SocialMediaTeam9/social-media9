@@ -1,0 +1,373 @@
+using MediatR;
+using FluentValidation;
+// using social_media9.Api.Data;
+using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.Interfaces;
+using social_media9.Api.Services;
+using Microsoft.AspNetCore.Mvc;
+using social_media9.Api.Models;
+using social_media9.Api.Commands;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+
+namespace social_media9.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class UsersController : ControllerBase
+    {
+        private readonly IMediator _mediator;
+        private readonly IUserRepository _userRepository;
+        private readonly IJwtGenerator _jwtGenerator;
+        private readonly IConfiguration _config;
+        private readonly IS3StorageService _s3StorageService;
+
+        public UsersController(
+            IMediator mediator,
+            IUserRepository userRepository,
+            IJwtGenerator jwtGenerator,
+            IConfiguration config,
+            IS3StorageService s3StorageService)
+        {
+            _mediator = mediator;
+            _userRepository = userRepository;
+            _jwtGenerator = jwtGenerator;
+            _config = config;
+            _s3StorageService = s3StorageService;
+        }
+
+        private string GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                throw new UnauthorizedAccessException("User ID not found in token.");
+            }
+            return userIdClaim;
+        }
+
+        // === GOOGLE LOGIN FLOW ===
+
+        [HttpGet("signin-google")]
+        [AllowAnonymous]
+        public IActionResult GoogleLogin()
+        {
+            var redirectUri = Url.Action(nameof(GoogleLoginCallback), "Users", null, Request.Scheme);
+            var properties = new AuthenticationProperties { RedirectUri = redirectUri };
+            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+        }
+
+        [HttpGet("google-callback")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLoginCallback()
+        {
+            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded || result.Principal == null)
+                return BadRequest("Google authentication failed.");
+
+            var email = result.Principal.FindFirst(ClaimTypes.Email)?.Value;
+            var name = result.Principal.FindFirst(ClaimTypes.Name)?.Value;
+            var googleId = result.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(googleId))
+                return BadRequest("Google ID not found.");
+
+            var user = await _userRepository.GetUserByGoogleIdAsync(googleId);
+
+            if (user == null)
+            {
+                user = new User
+                {
+                    UserId = Guid.NewGuid().ToString(),
+                    GoogleId = googleId,
+                    Username = email?.Split('@')[0],
+                    Email = email,
+                    FullName = name,
+                    ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _userRepository.AddUserAsync(user);
+            }
+
+            var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
+            var frontendRedirect = _config["GoogleAuthSettings:FrontendRedirectUri"];
+            var redirectUrl = $"{frontendRedirect}?userId={user.UserId}&username={user.Username}&token={jwt}";
+
+            return Redirect(redirectUrl);
+        }
+
+        [HttpPost("google-login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        {
+            try
+            {
+                var command = new GoogleLoginCommand
+                {
+                    Code = request.Code,
+                    RedirectUri = request.RedirectUri
+                };
+                var response = await _mediator.Send(command);
+                return Ok(response);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { errors = ex.Errors.Select(e => e.ErrorMessage) });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred during Google login.", error = ex.Message });
+            }
+        }
+
+        // === PROFILE ===
+
+        [HttpGet("{userId}")]
+        [Authorize]
+        public async Task<IActionResult> GetUserProfile(string userId)
+        {
+            try
+            {
+                var query = new GetUserProfileQuery { UserId = userId };
+                var userProfile = await _mediator.Send(query);
+                return userProfile != null ? Ok(userProfile) : NotFound();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error retrieving profile." });
+            }
+        }
+
+        [HttpPut("{userId}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateUserProfile(string userId, [FromBody] UserProfileUpdate request)
+        {
+            try
+            {
+                if (GetCurrentUserId() != userId)
+                    return Forbid();
+
+                var command = new UpdateUserProfileCommand
+                {
+                    UserId = userId,
+                    FullName = request.FullName,
+                    Bio = request.Bio,
+                    ProfilePictureUrl = request.ProfilePictureUrl
+                };
+                var updated = await _mediator.Send(command);
+                return Ok(updated);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { errors = ex.Errors.Select(e => e.ErrorMessage) });
+            }
+            catch (ApplicationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error updating profile." });
+            }
+        }
+
+        // === DELETE USER ===
+
+        [HttpDelete("{userId}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteUser(string userId)
+        {
+            try
+            {
+                if (GetCurrentUserId() != userId)
+                    return Forbid();
+
+                await _mediator.Send(new DeleteUserCommand { UserId = userId });
+                return NoContent();
+            }
+            catch (ApplicationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error deleting account." });
+            }
+        }
+
+        // === FOLLOWING ===
+
+        [HttpPost("{userId}/follow")]
+        [Authorize]
+        public async Task<IActionResult> FollowUser(string userId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var command = new FollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
+                await _mediator.Send(command);
+                return Ok(new { message = "User followed." });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error following user." });
+            }
+        }
+
+        [HttpDelete("{userId}/unfollow")]
+        [Authorize]
+        public async Task<IActionResult> UnfollowUser(string userId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var command = new UnfollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
+                await _mediator.Send(command);
+                return Ok(new { message = "User unfollowed." });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error unfollowing user." });
+            }
+        }
+
+        // === FOLLOWERS & FOLLOWING ===
+
+        [HttpGet("{userId}/followers")]
+        public async Task<IActionResult> GetUserFollowers(string userId)
+        {
+            try
+            {
+                var query = new GetUserFollowersQuery { UserId = userId };
+                var followers = await _mediator.Send(query);
+                return Ok(followers);
+            }
+            catch (ApplicationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error retrieving followers." });
+            }
+        }
+
+        [HttpGet("{userId}/following")]
+        public async Task<IActionResult> GetUserFollowing(string userId)
+        {
+            try
+            {
+                var query = new GetUserFollowingQuery { UserId = userId };
+                var following = await _mediator.Send(query);
+                return Ok(following);
+            }
+            catch (ApplicationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error retrieving following list." });
+            }
+        }
+
+        
+        [HttpPost("{userId}/profile-picture")]
+        [Authorize]
+        public async Task<IActionResult> UploadProfilePicture(string userId, IFormFile file)
+        {
+            try
+            {
+                if (GetCurrentUserId() != userId)
+                    return Forbid();
+
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { message = "No file uploaded." });
+
+                if (!file.ContentType.StartsWith("image/"))
+                    return BadRequest(new { message = "Only image files are allowed." });
+
+                // Generate a unique file name
+                var fileName = $"{userId}-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+
+                // Upload to S3
+                string fileUrl;
+                using (var stream = file.OpenReadStream())
+                {
+                    fileUrl = await _s3StorageService.UploadFileAsync(stream, fileName, file.ContentType);
+                }
+
+                // Now, update the user's ProfilePictureUrl in your database
+                // You'll likely need a new MediatR command for this or modify UpdateUserProfileCommand
+                var updateCommand = new UpdateUserProfileCommand // Reusing or creating a new command
+                {
+                    UserId = userId,
+                    ProfilePictureUrl = fileUrl,
+                    // You might want to retrieve existing FullName and Bio if this is a dedicated update
+                    // or modify your frontend to send only the changed fields.
+                    // For simplicity, let's assume we are only updating the picture here.
+                };
+
+                // Fetch current user details to preserve other fields if only updating picture
+                var currentUser = await _userRepository.GetUserByIdAsync(userId);
+                if (currentUser == null) return NotFound();
+
+                updateCommand.FullName = currentUser.FullName; // Preserve
+                updateCommand.Bio = currentUser.Bio; // Preserve
+
+                var updatedUser = await _mediator.Send(updateCommand);
+
+                return Ok(new { profilePictureUrl = fileUrl, message = "Profile picture updated successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { errors = ex.Errors.Select(e => e.ErrorMessage) });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error uploading profile picture.", error = ex.Message });
+            }
+        }
+        
+    }
+}
