@@ -56,6 +56,7 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddHttpClient();
 
 // === MediatR & FluentValidation ===
@@ -121,6 +122,8 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+
+
 // === Controllers & Swagger ===
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -170,5 +173,12 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
 });
 
 app.MapControllers();
+
+app.MapGet("/health", () =>
+{
+    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+});
+
+var internalApi = app.MapGroup("/internal/v1");
 
 app.Run();
