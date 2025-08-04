@@ -20,8 +20,20 @@ using Amazon.DynamoDBv2.DataModel;
 using System.Security.Claims;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
+using social_media9.Api.Configurations;
+using Nest;
+//using social_media9.Api.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// === Elasticsearch ===
+var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<ElasticsearchSettings>();
+builder.Services.AddSingleton(esSettings); // Make settings available
+var settings = new ConnectionSettings(new Uri(esSettings.Uri))
+    .PrettyJson()
+    .DefaultIndex(esSettings.UsersIndex); // A default index, though we'll specify per query
+builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
+builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
 
 // === DynamoDB ===
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
