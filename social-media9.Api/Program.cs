@@ -20,6 +20,9 @@ using Amazon.DynamoDBv2.DataModel;
 using System.Security.Claims;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
+using Amazon.SQS;
+using social_media9.Api.Services.DynamoDB;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,13 +43,12 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
     return new AmazonDynamoDBClient(clientConfig);
 });
 
+builder.Services.AddAWSService<IAmazonSQS>();
+
 builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 builder.Services.AddScoped<DynamoDbClientFactory>();
 
-// === AWS S3 ===
-// This registers the AWS S3 client with the DI container.
 builder.Services.AddAWSService<IAmazonS3>();
-// This registers your custom service for S3 interactions.
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
 
 // === Application Services ===
@@ -57,12 +59,28 @@ builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
+builder.Services.AddScoped<FollowService>();
+
+builder.Services.AddScoped<ITimelineService, TimelineService>();
+
+builder.Services.AddScoped<PostService>();
 builder.Services.AddHttpClient();
+
+builder.Services.AddScoped<DynamoDbService>();               
+builder.Services.AddScoped<S3Service>();
+
+builder.Services.AddHostedService<SqsWorkerService>();
+
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuthorizationHandler, InternalApiRequirementHandler>();
+
+
 
 // === JWT Settings ===
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -120,9 +138,25 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+var gtsHookSecret = builder.Configuration["GTS_HOOK_SECRET"];
+if (string.IsNullOrEmpty(gtsHookSecret))
+{
+    throw new InvalidOperationException("GTS_HOOK_SECRET is not configured. The application cannot start.");
+}
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("InternalApi", policy =>
+        policy.Requirements.Add(new InternalApiRequirement(gtsHookSecret)));
+    
+});
+
 builder.Services.AddAuthorization();
 
-
+builder.Services.AddHttpClient("FederationClient", client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "Peerspace/1.0");
+});
 
 // === Controllers & Swagger ===
 builder.Services.AddControllers();
