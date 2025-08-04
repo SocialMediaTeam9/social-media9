@@ -74,6 +74,18 @@ resource "aws_ecs_task_definition" "app_service" {
         {
           "name" : "AWS__CloudFrontDomain",
           "value" : "media.peerspace.online"
+        },
+        {
+          "name" : "AWS__OutboundSqsQueueUrl",
+          value = aws_sqs_queue.outbound_queue.id
+        },
+        {
+          "name" : "AWS__InboundSqsQueueUrl",
+          value = aws_sqs_queue.inbound_queue.id
+        },
+        {
+          "name": "DomainName",
+          "value": "peerspace.online"
         }
       ]
       secrets = [
