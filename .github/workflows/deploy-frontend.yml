@@ -45,8 +45,8 @@ jobs:
       - name: Build React Application
         run: npm run build
         working-directory: ./frontend
-        # env:
-        #   REACT_APP_API_BASE_URL: https://api.peerspace.online
+        env:
+           REACT_APP_API_BASE_URL: https://api.peerspace.online
 
       - name: Deploy to Amazon S3
         run: |
