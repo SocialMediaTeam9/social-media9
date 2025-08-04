@@ -1,7 +1,13 @@
 using social_media9.Api.Models;
 using social_media9.Api.Services.DynamoDB;
 
-public class CommentService
+
+public interface ICommentService
+{
+    Task<Comment?> CreateCommentAsync(string postId, string authorUsername, string content);
+}
+
+public class CommentService: ICommentService
 {
     private readonly DynamoDbService _dbService;
 
@@ -10,7 +16,7 @@ public class CommentService
         _dbService = dbService;
     }
 
-   
+
     public async Task<Comment?> CreateCommentAsync(string postId, string authorUsername, string content)
     {
         var commentId = Ulid.NewUlid().ToString();

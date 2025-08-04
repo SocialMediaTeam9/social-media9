@@ -95,7 +95,7 @@ namespace social_media9.Api.Repositories.Implementations
             return true;
         }
 
-        public async Task<bool> UnlikeAsync(Guid postId, Guid userId)
+        public Task<bool> UnlikeAsync(Guid postId, Guid userId)
         {
             throw new NotImplementedException();
         }
