@@ -32,6 +32,9 @@ const endpointMapping: Record<string, string> = {
   '/user/unfollow': '/api/users',
   '/user/followers': '/api/users',
   '/user/following': '/api/users',
+  '/search/users': '/api/search/users',
+  '/search/posts': '/api/search/posts',
+  '/search/hashtags': '/api/search/hashtags',
 };
 
 export async function fetcher<T>(
@@ -40,7 +43,10 @@ export async function fetcher<T>(
 ): Promise<T> {
   try {
     const userId = options?.userId;
-    let mappedEndpoint = endpointMapping[url] || url;
+    // let mappedEndpoint = endpointMapping[url] || url;
+
+    const [baseUrlPart, queryString] = url.split('?');
+    let mappedEndpoint = endpointMapping[baseUrlPart] || baseUrlPart;
 
     if (userId && mappedEndpoint.includes('/api/users')) {
       if (url === '/user/follow') mappedEndpoint += `/${userId}/follow`;
@@ -50,7 +56,8 @@ export async function fetcher<T>(
       else if (url === '/user/profile' || url === '/user/update') mappedEndpoint += `/${userId}`;
     }
 
-    const fullUrl = `${baseURL}${mappedEndpoint}`;
+    // const fullUrl = `${baseURL}${mappedEndpoint}`;
+    const fullUrl = `${baseURL}${mappedEndpoint}${queryString ? `?${queryString}` : ''}`;
     console.log(`Fetcher is calling: ${fullUrl}`);
 
     const token = localStorage.getItem('token');
