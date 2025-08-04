@@ -86,7 +86,15 @@ resource "aws_ecs_task_definition" "app_service" {
         {
           "name": "DomainName",
           "value": "peerspace.online"
-        }
+        },
+        {
+          name = "DOMAIN_NAME",
+          value = "peerspace.online"
+        },
+        {
+          name = "DynamoDbTableName",
+          value = aws_dynamodb_table.main.name
+        },
       ]
       secrets = [
         {

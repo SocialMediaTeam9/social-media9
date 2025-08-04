@@ -4,16 +4,29 @@ using Amazon.SQS.Model;
 using social_media9.Api.Models;
 using social_media9.Api.Services.DynamoDB;
 
-public class SqsWorkerService(
-    ILogger<SqsWorkerService> logger,
-    IAmazonSQS sqsClient,
-    IConfiguration config,  
-    IServiceScopeFactory scopeFactory) : BackgroundService
+public class SqsWorkerService : BackgroundService
 {
-    private readonly ILogger<SqsWorkerService> _logger = logger;
-    private readonly IAmazonSQS _sqsClient = sqsClient;
-    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
-    private readonly string _queueUrl = config["AWS:InboundSqsQueueUrl"];
+    private readonly ILogger<SqsWorkerService> _logger;
+    private readonly IAmazonSQS _sqsClient;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly string? _queueUrl;
+
+    public SqsWorkerService(
+       ILogger<SqsWorkerService> logger,
+       IAmazonSQS sqsClient,
+       IConfiguration config,
+       IServiceScopeFactory scopeFactory)
+    {
+        _logger = logger;
+        _sqsClient = sqsClient;
+        _scopeFactory = scopeFactory;
+        _queueUrl = config["Aws:InboundSqsQueueUrl"];
+
+        if (string.IsNullOrEmpty(_queueUrl))
+        {
+            throw new InvalidOperationException("Configuration value for 'Aws:InboundSqsQueueUrl' is missing or empty. The SQS worker cannot start.");
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -31,18 +44,22 @@ public class SqsWorkerService(
                 };
 
                 var result = await _sqsClient.ReceiveMessageAsync(receiveRequest, stoppingToken);
-
-                foreach (var message in result.Messages)
+                if (result?.Messages != null)
                 {
-                    using (var scope = _scopeFactory.CreateScope())
+                    foreach (var message in result.Messages)
                     {
-                        var dbService = scope.ServiceProvider.GetRequiredService<DynamoDbService>();
-                        await ProcessMessageAsync(message, dbService);
-                    }
+                        using (var scope = _scopeFactory.CreateScope())
+                        {
+                            var dbService = scope.ServiceProvider.GetRequiredService<DynamoDbService>();
+                            await ProcessMessageAsync(message, dbService);
+                        }
 
-                 
-                    await _sqsClient.DeleteMessageAsync(_queueUrl, message.ReceiptHandle, stoppingToken);
+
+                        await _sqsClient.DeleteMessageAsync(_queueUrl, message.ReceiptHandle, stoppingToken);
+                    }
                 }
+
+
             }
             catch (OperationCanceledException)
             {
@@ -119,7 +136,7 @@ public class SqsWorkerService(
                         var boosterFollowers = await dbService.GetFollowersAsync(boosterUsername);
                         var followerUsernames = boosterFollowers.Select(f => f.FollowerInfo.Username).ToList();
 
-                      
+
                         await dbService.PopulateTimelinesAsync(originalPost, followerUsernames);
                     }
                 }
