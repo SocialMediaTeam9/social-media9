@@ -29,13 +29,11 @@ namespace social_media9.Api.Repositories.Implementations
         public async Task<User?> GetUserByIdAsync(string userId)
         {
 
-            var config = new DynamoDBOperationConfig
+            var config = new QueryOperationConfig
             {
                 IndexName = "UserId-index",
-                QueryFilter = new List<ScanCondition>
-            {
-                new ScanCondition("UserId", ScanOperator.Equal, userId)
-            }
+                Filter = new QueryFilter("UserId", QueryOperator.Equal, userId),
+                Limit = 1
             };
 
             var search = _dbContext.QueryAsync<User>(config);
@@ -114,13 +112,29 @@ namespace social_media9.Api.Repositories.Implementations
             return user != null;
         }
 
-        public async Task<IEnumerable<User>> GetUsersByIdsAsync(IEnumerable<string> ids)
+        public async Task<IEnumerable<User>> GetUsersByIdsAsync(IEnumerable<string> userIds)
         {
-            var batch = _dbContext.CreateBatchGet<User>();
-            foreach (var id in ids)
+            var distinctIds = userIds.Distinct().ToList();
+            if (!distinctIds.Any())
             {
-                batch.AddKey(id);
+                return new List<User>();
             }
+
+            var lookupTasks = distinctIds.Select(id => GetUserByIdAsync(id)).ToList();
+            var usersFound = await Task.WhenAll(lookupTasks);
+
+            var batch = _dbContext.CreateBatchGet<User>();
+
+            foreach (var user in usersFound.Where(u => u != null))
+            {
+                batch.AddKey(user!.PK, user.SK);
+            }
+
+            if (batch.TotalKeys == 0)
+            {
+                return new List<User>();
+            }
+
             await batch.ExecuteAsync();
             return batch.Results;
         }

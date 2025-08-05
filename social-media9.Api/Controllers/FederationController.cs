@@ -11,10 +11,12 @@ namespace social_media9.Api.Controllers;
 public class FederationController : ControllerBase
 {
     private readonly DynamoDbService _dbService;
+    private readonly ILogger<FederationController> _logger;
 
-    public FederationController(DynamoDbService dbService)
+    public FederationController(DynamoDbService dbService, ILogger<FederationController> logger)
     {
         _dbService = dbService;
+        _logger = logger;
     }
 
 
@@ -22,10 +24,12 @@ public class FederationController : ControllerBase
     [HttpPost("user")]
     public async Task<IActionResult> GetUserInfo([FromBody] GtsUserInfoRequest request)
     {
+        _logger.LogInformation("GetUserInfo internal api");
         var userEntity = await _dbService.GetUserProfileByUsernameAsync(request.Username);
 
         if (userEntity == null)
         {
+            _logger.LogWarning($"User '{request.Username}' not found.");
             return NotFound(new { error = $"User '{request.Username}' not found." });
         }
 
@@ -35,6 +39,8 @@ public class FederationController : ControllerBase
             PublicKey: userEntity.PublicKeyPem,
             PrivateKey: userEntity.PrivateKeyPem
         );
+
+        _logger.LogInformation(response.ToString());
 
         return Ok(response);
     }
