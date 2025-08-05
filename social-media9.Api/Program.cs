@@ -5,10 +5,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using social_media9.Api.Services;
-using social_media9.Api.Services.Interfaces;
-using social_media9.Api.Repositories.Interfaces;
-using social_media9.Api.Repositories.Implementations;
-using social_media9.Api.Services.Implementations;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Data;
@@ -20,9 +16,15 @@ using Amazon.DynamoDBv2.DataModel;
 using System.Security.Claims;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
-using social_media9.Api.Configurations;
 using Nest;
-//using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.Interfaces;
+using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Repositories.Implementations;
+using social_media9.Api.Services.Implementations;
+using social_media9.Api.Configurations;
+using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
+using ISearchRepository = social_media9.Api.Data.ISearchRepository;
+using ElasticsearchRepository = social_media9.Api.Data.ElasticsearchRepository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,7 +33,7 @@ var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<E
 builder.Services.AddSingleton(esSettings); // Make settings available
 var settings = new ConnectionSettings(new Uri(esSettings.Uri))
     .PrettyJson()
-    .DefaultIndex(esSettings.UsersIndex); // A default index, though we'll specify per query
+    .DefaultIndex(esSettings.UsersIndex); 
 builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
 builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
 
