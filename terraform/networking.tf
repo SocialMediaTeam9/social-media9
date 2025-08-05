@@ -38,6 +38,8 @@ resource "aws_lb_target_group" "gts_sidecar" {
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
   target_type = "ip"
+
+
   health_check { path = "/api/v1/instance" }
 }
 
@@ -100,7 +102,7 @@ resource "aws_lb_listener_rule" "federation_host_rule" {
 
   condition {
     host_header {
-      values = ["federation.${var.domain}"]
+      values = ["fed.${var.domain}"]
     }
   }
 }
@@ -115,3 +117,5 @@ resource "aws_lb_listener" "internal_api_listener" {
     target_group_arn = aws_lb_target_group.web_api.arn
   }
 }
+
+

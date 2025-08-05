@@ -42,7 +42,7 @@ output "dns_records_to_create_manually" {
         "record_value" = aws_lb.main.dns_name
       }
       "federation_record" = {
-        "record_name"  = "federation.peerspace.online"
+        "record_name"  = "fed.peerspace.online"
         "record_type"  = "CNAME"
         "record_value" = aws_lb.main.dns_name
       }

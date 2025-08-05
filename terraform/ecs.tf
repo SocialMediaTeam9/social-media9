@@ -44,8 +44,12 @@ resource "aws_ecs_task_definition" "app_service" {
         { name = "SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
         { name = "REDIS_ENDPOINT", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
         {
-          name = "GoogleAuthSettings__RedirectUri"
-          value = "https://www.peerspace.online/api/users/google-callback"
+          name  = "GoogleAuthSettings__RedirectUri"
+          value = "https://www.peerspace.online/login-success"
+        },
+        {
+          name  = "GoogleAuthSettings__FrontendRedirectUri"
+          value = "https://www.peerspace.online/login-success"
         },
         {
           "name" : "JwtSettings__Issuer",
@@ -84,15 +88,15 @@ resource "aws_ecs_task_definition" "app_service" {
           value = aws_sqs_queue.inbound_queue.id
         },
         {
-          "name": "DomainName",
-          "value": "peerspace.online"
+          "name" : "DomainName",
+          "value" : "peerspace.online"
         },
         {
-          name = "DOMAIN_NAME",
+          name  = "DOMAIN_NAME",
           value = "peerspace.online"
         },
         {
-          name = "DynamoDbTableName",
+          name  = "DynamoDbTableName",
           value = aws_dynamodb_table.main.name
         },
       ]
@@ -195,27 +199,31 @@ resource "aws_ecs_service" "app_service" {
 #
 
 resource "aws_ecs_task_definition" "gts_sidecar" {
-  family        = "${var.project_name}-gts-sidecar"
-  network_mode  = "awsvpc"
+  family             = "${var.project_name}-gts-sidecar"
+  network_mode       = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu           = "256"
-  memory        = "512"
+  cpu                = "256"
+  memory             = "512"
   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
-  # This task role needs SQS SendMessage permissions
-  task_role_arn = aws_iam_role.gts_task_role.arn
+  task_role_arn      = aws_iam_role.gts_task_role.arn
 
   container_definitions = jsonencode([
     {
       name = "gotosocial"
       # Use the official GTS image
       image = "superseriousbusiness/gotosocial:latest"
-      portMappings = [{ containerPort = 8080 }]
+      portMappings = [
+        {
+          containerPort = 8080
+          hostPort      = 8080
+        }
+      ]
 
       # Configure GTS via environment variables, which reference secrets
       environment = [
-        { name = "GTS_HOST", value = "federation.peerspace.online" },
-        { name = "GTS_DOMAIN", value = "peerspace.online" },
-        { name = "GTS_USER_DOMAIN", value = "peerspace.online" },
+        { name = "GTS_HOST", value = "fed.peerspace.online" },
+        { name = "GTS_USER_DOMAIN", value = "fed.peerspace.online" },
+
         { name = "GTS_PORT", value = "8080" },
         { name = "GTS_DB_TYPE", value = "sqlite" },
         { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
@@ -223,8 +231,14 @@ resource "aws_ecs_task_definition" "gts_sidecar" {
         { name = "GTS_ACCOUNT_PROVIDER_HOOK_ENABLED", value = "true" },
         {
           name  = "GTS_ACCOUNT_PROVIDER_HOOK_ENDPOINT",
-          value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
+          value = "https://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
         },
+
+        { name = "GTS_TRUSTED_PROXIES", value = "10.0.0.0/8" },
+        { name = "GTS_USE_PROXY_HEADERS", value = "true" },
+        { name = "GTS_SCHEME", value = "https" },
+
+        { name = "GTS_REGISTRATION_OPEN", value = "true" },
 
         { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
         { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
@@ -236,8 +250,14 @@ resource "aws_ecs_task_definition" "gts_sidecar" {
         { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
 
         { name = "GTS_COLLECTIONS_HOOK_ENABLED", value = "true" },
-        { name = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS", value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/followers" },
-        { name = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING", value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following" }
+        {
+          name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS",
+          value = "http://${aws_lb.main.dns_name}/internal/v1/followers"
+        },
+        {
+          name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING",
+          value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following"
+        }
       ]
       secrets = [
         {
@@ -266,6 +286,8 @@ resource "aws_ecs_service" "gts_sidecar" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  health_check_grace_period_seconds = 30
+
   network_configuration {
     subnets = module.vpc.private_subnets
     security_groups = [aws_security_group.ecs_sg.id]
@@ -276,40 +298,6 @@ resource "aws_ecs_service" "gts_sidecar" {
     container_name   = "gotosocial"
     container_port   = 8080
   }
-}
-
-resource "aws_secretsmanager_secret" "gts_config" {
-  name = "${var.project_name}/gts-config"
-}
-
-
-resource "aws_secretsmanager_secret_version" "gts_config_version" {
-  secret_id = aws_secretsmanager_secret.gts_config.id
-
-  secret_string = <<-EOT
-
-    domain: "peerspace.online"
-    listen-address: "0.0.0.0:8080"
-    database-type: "sqlite"
-    database-path: "/data/gts.db"
-
-    disable-registration: true
-    disable-login: true
-    disable-settings: true
-
-
-    account-provider-hook:
-      enabled: true
-      endpoint: "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
-
-      secret: "${random_string.hook_secret.result}"
-
-    inbox-delivery-hook:
-      enabled: true
-      type: "sqs"
-      sqs-queue-url: "${aws_sqs_queue.inbound_queue.id}"
-      sqs-region: "${var.aws_region}"
-  EOT
 }
 
 resource "random_string" "hook_secret" {
@@ -324,4 +312,27 @@ resource "aws_secretsmanager_secret" "gts_hook_secret" {
 resource "aws_secretsmanager_secret_version" "gts_hook_secret_version" {
   secret_id     = aws_secretsmanager_secret.gts_hook_secret.id
   secret_string = random_string.hook_secret.result
+}
+
+
+resource "aws_ecs_task_definition" "network_debug" {
+  family             = "network-debug"
+  network_mode       = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                = "256"
+  memory             = "512"
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn = aws_iam_role.app_task_role.arn # Reuse a role that has exec permissions
+
+  container_definitions = jsonencode([
+    {
+      name      = "debug-shell"
+      image = "public.ecr.aws/amazonlinux/amazonlinux:latest"
+      # This command keeps the container alive so we can connect to it.
+      command = ["sleep", "3600"]
+      essential = true
+
+      initProcessEnabled = true
+    }
+  ])
 }
