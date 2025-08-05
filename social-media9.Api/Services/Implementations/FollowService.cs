@@ -69,7 +69,7 @@ public class FollowService
     private string BuildUndoFollowActivityJson(string followerActorUrl, string followingActorUrl)
     {
         var domain = _config["DomainName"];
-        var activityId = $"https://federation.{domain}/activities/{Ulid.NewUlid()}";
+        var activityId = $"https://fed.{domain}/activities/{Ulid.NewUlid()}";
 
         var activity = new
         {

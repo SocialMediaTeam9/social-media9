@@ -96,7 +96,7 @@ public class DynamoDbService
         return new UserSummary(
             "",
             Username: user.Username,
-            ActorUrl: $"https://federation.{domain}/users/{user.Username}",
+            ActorUrl: $"https://fed.{domain}/users/{user.Username}",
             ProfilePictureUrl: user.ProfilePictureUrl
         );
     }

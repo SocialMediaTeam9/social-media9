@@ -155,8 +155,8 @@ namespace social_media9.Api.Services.Implementations
         {
             var postId = Ulid.NewUlid().ToString();
             var domain = _config["DomainName"];
-            var authorActorUrl = $"https://federation.{domain}/users/{authorUsername}";
-            var postUrl = $"https://federation.{domain}/users/{authorUsername}/posts/{postId}";
+            var authorActorUrl = $"https://fed.{domain}/users/{authorUsername}";
+            var postUrl = $"https://fed.{domain}/users/{authorUsername}/posts/{postId}";
 
 
             string activityJson = BuildCreateNoteActivityJson(authorActorUrl, postUrl, content, attachmentUrls);
