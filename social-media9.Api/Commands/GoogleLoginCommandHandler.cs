@@ -36,20 +36,19 @@ namespace social_media9.Api.Commands
                 throw new ApplicationException("Failed to exchange Google authorization code for token.");
             }
 
-            // 2. Get user info from Google using the access token
             var googleUserInfo = await _googleAuthService.GetUserInfoAsync(tokenResponse.AccessToken);
             if (googleUserInfo == null || string.IsNullOrEmpty(googleUserInfo.Id))
             {
                 throw new ApplicationException("Failed to retrieve user info from Google.");
             }
 
-            // 3. Find or create user in your database
+
             var user = await _userRepository.GetUserByGoogleIdAsync(googleUserInfo.Id);
-            (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
+
 
             if (user == null)
             {
-                // New user - create an entry
+                (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
 
                 var username = googleUserInfo.Email.Split('@')[0]; // Default username from email
 
@@ -61,7 +60,7 @@ namespace social_media9.Api.Commands
                     GSI1PK = $"USER#{username}",
                     GSI1SK = "METADATA",
                     GoogleId = googleUserInfo.Id,
-                    Username = googleUserInfo.Email.Split('@')[0], // Default username from email
+                    Username = googleUserInfo.Email.Split('@')[0]  ?? Ulid.NewUlid().ToString(), 
                     Email = googleUserInfo.Email,
                     FullName = googleUserInfo.Name,
                     ProfilePictureUrl = googleUserInfo.Picture,

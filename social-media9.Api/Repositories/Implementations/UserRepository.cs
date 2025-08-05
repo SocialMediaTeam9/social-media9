@@ -46,17 +46,24 @@ namespace social_media9.Api.Repositories.Implementations
 
         public async Task<User?> GetUserByGoogleIdAsync(string googleId)
         {
+
+            if (string.IsNullOrEmpty(googleId))
+            {
+                return null;
+            }
+
             var queryConfig = new QueryOperationConfig
             {
                 IndexName = "GoogleId-index",
-                KeyExpression = new Expression
-                {
-                    ExpressionStatement = "GoogleId = :v_googleId",
-                    ExpressionAttributeValues = new Dictionary<string, DynamoDBEntry>
-                    {
-                        [":v_googleId"] = googleId
-                    }
-                }
+                Filter = new QueryFilter("GoogleId", QueryOperator.Equal, googleId)
+                // KeyExpression = new Expression
+                // {
+                //     ExpressionStatement = "GoogleId = :v_googleId",
+                //     ExpressionAttributeValues = new Dictionary<string, DynamoDBEntry>
+                //     {
+                //         [":v_googleId"] = googleId
+                //     }
+                // }
             };
 
             var search = _dbContext.FromQueryAsync<User>(queryConfig);
@@ -120,7 +127,7 @@ namespace social_media9.Api.Repositories.Implementations
 
         public async Task<UserSummary?> GetUserSummaryAsync(string username)
         {
-            
+
             var user = await GetUserByUsernameAsync(username);
 
             if (user == null)
@@ -128,11 +135,11 @@ namespace social_media9.Api.Repositories.Implementations
                 return null;
             }
 
-            
+
             var domain = _config["DomainName"];
             if (string.IsNullOrEmpty(domain))
             {
-               
+
                 throw new InvalidOperationException("DomainName is not configured in app settings.");
             }
 
