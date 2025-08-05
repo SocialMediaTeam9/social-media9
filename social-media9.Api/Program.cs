@@ -45,7 +45,17 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
 
 builder.Services.AddAWSService<IAmazonSQS>();
 
-builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
+builder.Services.AddScoped<IDynamoDBContext>(sp =>
+{
+      var client = sp.GetRequiredService<IAmazonDynamoDB>();
+    
+    var config = new DynamoDBContextConfig
+    {
+        IgnoreNullValues = true,
+    };
+
+    return new DynamoDBContext(client, config);
+});
 builder.Services.AddScoped<DynamoDbClientFactory>();
 
 builder.Services.AddAWSService<IAmazonS3>();
