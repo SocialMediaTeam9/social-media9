@@ -223,6 +223,4 @@ app.MapGet("/health", () =>
     return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
 });
 
-var internalApi = app.MapGroup("/internal/v1");
-
 app.Run();
