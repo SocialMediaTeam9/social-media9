@@ -12,6 +12,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using social_media9.Api.Services.DynamoDB;
 
 namespace social_media9.Api.Controllers
 {
@@ -26,13 +27,16 @@ namespace social_media9.Api.Controllers
         private readonly IS3StorageService _s3StorageService;
         private readonly FollowService _followService;
 
+        private readonly DynamoDbService _dbService;
+        private readonly ICryptoService _cryptoService;
+
         public UsersController(
             IMediator mediator,
             IUserRepository userRepository,
             IJwtGenerator jwtGenerator,
             IConfiguration config,
             IS3StorageService s3StorageService,
-            FollowService followService)
+            FollowService followService, DynamoDbService dbService, ICryptoService cryptoService)
         {
             _mediator = mediator;
             _userRepository = userRepository;
@@ -40,6 +44,8 @@ namespace social_media9.Api.Controllers
             _config = config;
             _s3StorageService = s3StorageService;
             _followService = followService;
+            _dbService = dbService;
+            _cryptoService = cryptoService;
         }
 
         private string GetCurrentUserId()
@@ -83,17 +89,26 @@ namespace social_media9.Api.Controllers
 
             if (user == null)
             {
+                (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
+                var username = email?.Split('@')[0]  ?? Ulid.NewUlid().ToString();
                 user = new User
                 {
                     UserId = Guid.NewGuid().ToString(),
+                    PK = $"USER#{username}",
+                    SK = "METADATA",
+                    GSI1PK = $"USER#{username}",
+                    GSI1SK = "METADATA",
                     GoogleId = googleId,
-                    Username = email?.Split('@')[0],
-                    Email = email,
-                    FullName = name,
-                    ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value,
+                    Username = username,
+                    Email = email ?? "",
+                    FullName = name ?? "",
+                    ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value ?? "",
+                    PublicKeyPem = publicKey,
+                    PrivateKeyPem = privateKey,
                     CreatedAt = DateTime.UtcNow
                 };
-                await _userRepository.AddUserAsync(user);
+                await _dbService.CreateUserAsync(user);
+                // await _userRepository.AddUserAsync(user);
             }
 
             var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
