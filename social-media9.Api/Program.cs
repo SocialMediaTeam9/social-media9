@@ -47,8 +47,8 @@ builder.Services.AddAWSService<IAmazonSQS>();
 
 builder.Services.AddScoped<IDynamoDBContext>(sp =>
 {
-      var client = sp.GetRequiredService<IAmazonDynamoDB>();
-    
+    var client = sp.GetRequiredService<IAmazonDynamoDB>();
+
     var config = new DynamoDBContextConfig
     {
         IgnoreNullValues = true,
@@ -76,7 +76,7 @@ builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<PostService>();
 builder.Services.AddHttpClient();
 
-builder.Services.AddScoped<DynamoDbService>();               
+builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
 
 builder.Services.AddHostedService<SqsWorkerService>();
@@ -158,7 +158,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("InternalApi", policy =>
         policy.Requirements.Add(new InternalApiRequirement(gtsHookSecret)));
-    
+
 });
 
 builder.Services.AddAuthorization();
@@ -193,6 +193,26 @@ else
     // Use default AWS credentials & endpoint
     builder.Services.AddAWSService<IAmazonDynamoDB>();
 }
+
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+                      policy =>
+                      {
+                          var webappDomain = builder.Configuration["WebAppDomain"];
+                          if (string.IsNullOrEmpty(webappDomain))
+                          {
+
+                              Console.WriteLine("WARNING: WebAppDomain is not configured. CORS will not be enabled.");
+                              return;
+                          }
+
+
+                          policy.WithOrigins(webappDomain).AllowAnyHeader().AllowAnyMethod();
+                      });
+});
 
 
 var app = builder.Build();
