@@ -26,7 +26,7 @@ namespace social_media9.Api.Controllers
         private readonly IConfiguration _config;
         private readonly IS3StorageService _s3StorageService;
         private readonly FollowService _followService;
-
+        private readonly ILogger<FederationController> _logger;
         private readonly DynamoDbService _dbService;
         private readonly ICryptoService _cryptoService;
 
@@ -36,7 +36,7 @@ namespace social_media9.Api.Controllers
             IJwtGenerator jwtGenerator,
             IConfiguration config,
             IS3StorageService s3StorageService,
-            FollowService followService, DynamoDbService dbService, ICryptoService cryptoService)
+            FollowService followService, DynamoDbService dbService, ICryptoService cryptoService, ILogger<FederationController> logger)
         {
             _mediator = mediator;
             _userRepository = userRepository;
@@ -46,6 +46,7 @@ namespace social_media9.Api.Controllers
             _followService = followService;
             _dbService = dbService;
             _cryptoService = cryptoService;
+            _logger = logger;
         }
 
         private string GetCurrentUserId()
@@ -162,8 +163,9 @@ namespace social_media9.Api.Controllers
             {
                 return Unauthorized(new { message = ex.Message });
             }
-            catch
+            catch (Exception e)
             {
+                _logger.LogError(e, "Error retrieving profile.");
                 return StatusCode(500, new { message = "Error retrieving profile." });
             }
         }
