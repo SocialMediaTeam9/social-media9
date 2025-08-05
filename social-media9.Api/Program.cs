@@ -23,8 +23,6 @@ using social_media9.Api.Repositories.Implementations;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Configurations;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
-using ISearchRepository = social_media9.Api.Data.ISearchRepository;
-using ElasticsearchRepository = social_media9.Api.Data.ElasticsearchRepository;
 
 var builder = WebApplication.CreateBuilder(args);
 
