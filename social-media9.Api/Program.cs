@@ -27,6 +27,28 @@ using Microsoft.AspNetCore.Authorization;
 var builder = WebApplication.CreateBuilder(args);
 
 // === DynamoDB ===
+
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+                      policy =>
+                      {
+                          var webappDomain = builder.Configuration["WebAppDomain"];
+                          if (string.IsNullOrEmpty(webappDomain))
+                          {
+
+                              Console.WriteLine("WARNING: WebAppDomain is not configured. CORS will not be enabled.");
+                              return;
+                          }
+
+
+                          policy.WithOrigins(webappDomain).AllowAnyHeader().AllowAnyMethod();
+                      });
+});
+
+
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
 
 builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
@@ -194,25 +216,6 @@ else
     builder.Services.AddAWSService<IAmazonDynamoDB>();
 }
 
-var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: MyAllowSpecificOrigins,
-                      policy =>
-                      {
-                          var webappDomain = builder.Configuration["WebAppDomain"];
-                          if (string.IsNullOrEmpty(webappDomain))
-                          {
-
-                              Console.WriteLine("WARNING: WebAppDomain is not configured. CORS will not be enabled.");
-                              return;
-                          }
-
-
-                          policy.WithOrigins(webappDomain).AllowAnyHeader().AllowAnyMethod();
-                      });
-});
 
 
 var app = builder.Build();
