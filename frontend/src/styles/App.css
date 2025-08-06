@@ -1,177 +1,203 @@
-/*
-  This file contains all the CSS styles for the application.
-  It is a single stylesheet to keep everything organized and self-contained
-  as per your request to not use CSS frameworks.
-*/
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
 
 body {
   font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #121212; /* Dark background */
+  background-color: #0f172a; /* Slightly darker than #121212 */
   color: #e0e0e0;
 }
 
-.app-container {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
+button {
+  font-family: inherit;
 }
 
-/* --- Login Page Styles --- */
+/* --- Login Page --- */
+.min-h-screen {
+  min-height: 100vh;
+}
 .login-container {
+  background-color: #0f172a;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  padding: 2rem;
+  padding: 1.5rem;
+  min-height: 100vh;
 }
 
 .login-box {
-  background: #1e1e1e;
-  padding: 3rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  text-align: center;
-  max-width: 450px;
+  background-color: #1e293b;
+  padding: 2.5rem;
+  border-radius: 1rem;
+  max-width: 400px;
   width: 100%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  text-align: center;
 }
 
 .login-title {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   font-weight: 800;
-  color: #ffffff;
+  color: #3b82f6;
   margin-bottom: 0.5rem;
 }
 
 .login-subtitle {
-  font-size: 1.1rem;
-  color: #a0a0a0;
-  margin-bottom: 2.5rem;
-}
-
-.login-button {
-  background-color: #1a8cd8;
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 9999px; /* Pill-shaped button */
-  font-size: 1.2rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  width: 100%;
-}
-
-.login-button:hover {
-  background-color: #1872b7;
-  transform: translateY(-2px);
-}
-
-/* --- Dashboard Styles --- */
-.dashboard-container {
-  display: grid;
-  grid-template-columns: 280px 1fr 350px;
-  width: 100%;
-  min-height: 100vh;
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  background-color: #1e1e1e;
-  padding: 2rem 1.5rem;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-header {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #1a8cd8;
+  color: #9ca3af;
   margin-bottom: 2rem;
 }
 
-.sidebar-button {
-  display: flex;
-  align-items: center;
-  background: none;
-  border: none;
-  text-align: left;
-  padding: 1rem 1rem;
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #e0e0e0;
-  cursor: pointer;
-  border-radius: 9999px;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  margin-bottom: 0.5rem;
-}
-
-.sidebar-button svg {
-  margin-right: 1rem;
-}
-
-.sidebar-button:hover {
-  background-color: #2c2c2c;
-}
-
-.sidebar-button.active {
-  background-color: #1a8cd8;
+.login-button {
+  background-color: #2563eb;
   color: white;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
+  border-radius: 9999px;
+  border: none;
+  width: 100%;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.sidebar-button.active:hover {
-  background-color: #1872b7;
+.login-button:hover {
+  background-color: #1d4ed8;
+  transform: scale(1.05);
+}
+
+.login-button:disabled {
+  background-color: #4b5563;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+
+.login-error {
+  margin-top: 1rem;
+  color: #f87171;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* --- Dashboard Layout --- */
+.flex {
+  display: flex;
+}
+.flex-1 {
+  flex: 1 1 0%;
+}
+.h-screen {
+  height: 100vh;
+}
+.sticky {
+  position: sticky;
+  top: 0;
+}
+.border-r {
+  border-right: 1px solid #374151;
+}
+.border-b {
+  border-bottom: 1px solid #374151;
+}
+.p-6 {
+  padding: 1.5rem;
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  background-color: #0f172a;
 }
 
 .main-content {
-  padding: 0;
-  background-color: #121212;
+  flex: 1;
   overflow-y: auto;
-  border-left: 1px solid #333;
-  border-right: 1px solid #333;
 }
 
-.feed-header {
-  position: sticky;
-  top: 0;
-  background-color: rgba(18, 18, 18, 0.8);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 1.5rem 1.5rem;
-  border-bottom: 1px solid #333;
+.right-sidebar {
+  width: 20rem;
+  padding: 1.5rem;
+  border-left: 1px solid #374151;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  background-color: #111827;
+  padding: 1.5rem;
+  width: 16rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-right: 1px solid #374151;
+}
+
+.sidebar h2 {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: #3b82f6;
+  margin-bottom: 2rem;
+}
+
+.sidebar button,
+.sidebar a {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+  color: #e0e0e0;
+}
+
+.sidebar a svg {
+  margin-right: 1rem;
+}
+
+.sidebar a:hover {
+  background-color: #1f2937;
+}
+
+.sidebar a.active {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* --- Page Header --- */
+.page-header {
   font-size: 1.5rem;
   font-weight: 700;
+  padding: 1.5rem;
+  border-bottom: 1px solid #374151;
+  background-color: #111827;
+  position: sticky;
+  top: 0;
   z-index: 10;
 }
 
-.feed-content {
-  padding: 0;
-}
-
+/* --- Post Card --- */
 .post-card {
-  border-bottom: 1px solid #333;
-  padding: 1.5rem;
+  border-bottom: 1px solid #374151;
+  padding: 1rem;
   display: flex;
   gap: 1rem;
   transition: background-color 0.2s ease;
 }
 
 .post-card:hover {
-  background-color: #1a1a1a;
+  background-color: #1f2937;
 }
 
 .post-avatar {
   width: 48px;
   height: 48px;
-  background-color: #333;
+  background-color: #4b5563;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .post-content {
@@ -181,91 +207,69 @@ body {
 .post-header {
   display: flex;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .post-author {
   font-weight: 700;
-  color: #e0e0e0;
+  color: #f3f4f6;
   margin-right: 0.5rem;
 }
 
 .post-username {
-  color: #a0a0a0;
+  color: #9ca3af;
 }
 
 .post-text {
+  color: #d1d5db;
   line-height: 1.5;
 }
 
+/* --- Right Sidebar --- */
 .right-sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  padding: 2rem 1.5rem;
-  background-color: #121212;
-}
-
-.right-sidebar-header {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: #e0e0e0;
-}
-
-.right-sidebar-item {
-  background: #1e1e1e;
+  width: 20rem;
   padding: 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  color: #e0e0e0;
 }
 
-/* --- Responsive Design --- */
+.right-sidebar .box {
+  background-color: #1e293b;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  color: #e5e7eb;
+}
+
+/* --- Responsive --- */
 @media (max-width: 1024px) {
-  .dashboard-container {
-    grid-template-columns: 200px 1fr;
-  }
   .right-sidebar {
     display: none;
+  }
+  .sidebar {
+    width: 14rem;
   }
 }
 
 @media (max-width: 768px) {
-  .dashboard-container {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
   .sidebar {
     position: static;
-    height: auto;
     flex-direction: row;
     justify-content: space-around;
     padding: 1rem 0.5rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    border-radius: 0;
-    gap: 0.5rem;
-    border-right: none;
+    height: auto;
+    width: 100%;
   }
-  .sidebar-header {
+  .sidebar h2 {
     display: none;
   }
-  .sidebar-button {
-    padding: 0.75rem;
-    text-align: center;
-    flex-grow: 1;
-    margin-bottom: 0;
+  .sidebar button span {
+    display: none;
   }
-  .sidebar-button svg {
+  .sidebar button svg {
     margin-right: 0;
   }
-  .sidebar-button span {
+  .right-sidebar {
     display: none;
   }
-  .main-content {
-    padding-top: 0;
-    border-left: none;
-    border-right: none;
+  .flex {
+    flex-direction: column;
   }
 }
-

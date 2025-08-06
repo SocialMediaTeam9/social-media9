@@ -22,12 +22,21 @@ namespace social_media9.Api.Controllers
         private readonly IMediator _mediator;
         private readonly IUserRepository _userRepository;
         private readonly IJwtGenerator _jwtGenerator;
+        private readonly IConfiguration _config;
+        private readonly IS3StorageService _s3StorageService;
 
-        public UsersController(IMediator mediator, IUserRepository userRepository, IJwtGenerator jwtGenerator)
+        public UsersController(
+            IMediator mediator,
+            IUserRepository userRepository,
+            IJwtGenerator jwtGenerator,
+            IConfiguration config,
+            IS3StorageService s3StorageService)
         {
             _mediator = mediator;
             _userRepository = userRepository;
             _jwtGenerator = jwtGenerator;
+            _config = config;
+            _s3StorageService = s3StorageService;
         }
 
         private string GetCurrentUserId()
@@ -40,33 +49,35 @@ namespace social_media9.Api.Controllers
             return userIdClaim;
         }
 
-        [HttpGet("google-login")]
+        // === GOOGLE LOGIN FLOW ===
+
+        [HttpGet("signin-google")]
         [AllowAnonymous]
-        [ProducesResponseType(StatusCodes.Status302Found)]
         public IActionResult GoogleLogin()
         {
-            // This RedirectUri specifies where the user is sent *after* the middleware handles the callback.
-            var redirectUri = Url.Action(nameof(GoogleLoginRedirect), "Users", null, Request.Scheme);
+            var redirectUri = Url.Action(nameof(GoogleLoginCallback), "Users", null, Request.Scheme);
             var properties = new AuthenticationProperties { RedirectUri = redirectUri };
-
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
 
-        [HttpGet("google-login-redirect")]
+        [HttpGet("google-callback")]
         [AllowAnonymous]
-        public async Task<IActionResult> GoogleLoginRedirect()
+        public async Task<IActionResult> GoogleLoginCallback()
         {
+            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-            var email = User.FindFirst(ClaimTypes.Email)?.Value;
-            var name = User.FindFirst(ClaimTypes.Name)?.Value;
-            var googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!result.Succeeded || result.Principal == null)
+                return BadRequest("Google authentication failed.");
+
+            var email = result.Principal.FindFirst(ClaimTypes.Email)?.Value;
+            var name = result.Principal.FindFirst(ClaimTypes.Name)?.Value;
+            var googleId = result.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(googleId))
-            {
-                return BadRequest("Google authentication failed. User ID claim is missing.");
-            }
+                return BadRequest("Google ID not found.");
 
             var user = await _userRepository.GetUserByGoogleIdAsync(googleId);
+
             if (user == null)
             {
                 user = new User
@@ -76,90 +87,78 @@ namespace social_media9.Api.Controllers
                     Username = email?.Split('@')[0],
                     Email = email,
                     FullName = name,
-                    ProfilePictureUrl = User.FindFirst("picture")?.Value, 
+                    ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _userRepository.AddUserAsync(user);
             }
-            else
-            {
-             
-                user.Email = email;
-                user.FullName = name;
-                user.ProfilePictureUrl = User.FindFirst("picture")?.Value;
-                user.UpdatedAt = DateTime.UtcNow;
-                await _userRepository.UpdateUserAsync(user);
-            }
-
-            var identity = (ClaimsIdentity)User.Identity;
-            var principal = (ClaimsPrincipal)User;
-
-
-            if (!identity.HasClaim(c => c.Type == ClaimTypes.Role))
-            {
-
-                identity.AddClaim(new Claim(ClaimTypes.Role, "Member"));
-
-
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-            }
 
             var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
+            var frontendRedirect = _config["GoogleAuthSettings:FrontendRedirectUri"];
+            var redirectUrl = $"{frontendRedirect}?userId={user.UserId}&username={user.Username}&token={jwt}";
 
-            
-            return Ok(new AuthResponseDto
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                Token = jwt
-            });
+            return Redirect(redirectUrl);
         }
-        
+
+        [HttpPost("google-login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        {
+            try
+            {
+                var command = new GoogleLoginCommand
+                {
+                    Code = request.Code,
+                    RedirectUri = request.RedirectUri
+                };
+                var response = await _mediator.Send(command);
+                return Ok(response);
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { errors = ex.Errors.Select(e => e.ErrorMessage) });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred during Google login.", error = ex.Message });
+            }
+        }
+
+        // === PROFILE ===
+
         [HttpGet("{userId}")]
         [Authorize]
-        [ProducesResponseType(typeof(UserProfile), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUserProfile(string userId)
         {
             try
             {
                 var query = new GetUserProfileQuery { UserId = userId };
                 var userProfile = await _mediator.Send(query);
-                if (userProfile == null)
-                {
-                    return NotFound();
-                }
-                return Ok(userProfile);
+                return userProfile != null ? Ok(userProfile) : NotFound();
             }
             catch (UnauthorizedAccessException ex)
             {
                 return Unauthorized(new { message = ex.Message });
             }
-            catch (Exception)
+            catch
             {
-                return StatusCode(500, new { message = "An error occurred while retrieving the user profile." });
+                return StatusCode(500, new { message = "Error retrieving profile." });
             }
         }
-        
+
         [HttpPut("{userId}")]
         [Authorize]
-        [ProducesResponseType(typeof(UserProfile), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateUserProfile(string userId, [FromBody] UserProfileUpdate request)
         {
             try
             {
                 if (GetCurrentUserId() != userId)
-                {
                     return Forbid();
-                }
-        
+
                 var command = new UpdateUserProfileCommand
                 {
                     UserId = userId,
@@ -167,8 +166,8 @@ namespace social_media9.Api.Controllers
                     Bio = request.Bio,
                     ProfilePictureUrl = request.ProfilePictureUrl
                 };
-                var updatedProfile = await _mediator.Send(command);
-                return Ok(updatedProfile);
+                var updated = await _mediator.Send(command);
+                return Ok(updated);
             }
             catch (ValidationException ex)
             {
@@ -182,20 +181,40 @@ namespace social_media9.Api.Controllers
             {
                 return Unauthorized(new { message = ex.Message });
             }
-            catch (Exception)
+            catch
             {
-                return StatusCode(500, new { message = "An error occurred while updating the user profile." });
+                return StatusCode(500, new { message = "Error updating profile." });
             }
         }
-        
-        
+
+        // === DELETE USER ===
+
+        [HttpDelete("{userId}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteUser(string userId)
+        {
+            try
+            {
+                if (GetCurrentUserId() != userId)
+                    return Forbid();
+
+                await _mediator.Send(new DeleteUserCommand { UserId = userId });
+                return NoContent();
+            }
+            catch (ApplicationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Error deleting account." });
+            }
+        }
+
+        // === FOLLOWING ===
+
         [HttpPost("{userId}/follow")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> FollowUser(string userId)
         {
             try
@@ -203,30 +222,24 @@ namespace social_media9.Api.Controllers
                 var currentUserId = GetCurrentUserId();
                 var command = new FollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
                 await _mediator.Send(command);
-                return Ok(new { message = "User followed successfully." });
+                return Ok(new { message = "User followed." });
             }
             catch (ApplicationException ex)
             {
-                if (ex.Message.Contains("not found")) return NotFound(new { message = ex.Message });
                 return BadRequest(new { message = ex.Message });
             }
             catch (UnauthorizedAccessException ex)
             {
                 return Unauthorized(new { message = ex.Message });
             }
-            catch (Exception)
+            catch
             {
-                return StatusCode(500, new { message = "An error occurred while trying to follow the user." });
+                return StatusCode(500, new { message = "Error following user." });
             }
         }
-        
+
         [HttpDelete("{userId}/unfollow")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UnfollowUser(string userId)
         {
             try
@@ -234,27 +247,25 @@ namespace social_media9.Api.Controllers
                 var currentUserId = GetCurrentUserId();
                 var command = new UnfollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
                 await _mediator.Send(command);
-                return Ok(new { message = "User unfollowed successfully." });
+                return Ok(new { message = "User unfollowed." });
             }
             catch (ApplicationException ex)
             {
-                if (ex.Message.Contains("not found")) return NotFound(new { message = ex.Message });
                 return BadRequest(new { message = ex.Message });
             }
             catch (UnauthorizedAccessException ex)
             {
                 return Unauthorized(new { message = ex.Message });
             }
-            catch (Exception)
+            catch
             {
-                return StatusCode(500, new { message = "An error occurred while trying to unfollow the user." });
+                return StatusCode(500, new { message = "Error unfollowing user." });
             }
         }
-        
+
+        // === FOLLOWERS & FOLLOWING ===
+
         [HttpGet("{userId}/followers")]
-        [ProducesResponseType(typeof(IEnumerable<UserSummary>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUserFollowers(string userId)
         {
             try
@@ -267,16 +278,13 @@ namespace social_media9.Api.Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
-            catch (Exception)
+            catch
             {
-                return StatusCode(500, new { message = "An error occurred while retrieving followers." });
+                return StatusCode(500, new { message = "Error retrieving followers." });
             }
         }
-        
+
         [HttpGet("{userId}/following")]
-        [ProducesResponseType(typeof(IEnumerable<UserSummary>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUserFollowing(string userId)
         {
             try
@@ -289,10 +297,77 @@ namespace social_media9.Api.Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
-            catch (Exception)
+            catch
             {
-                return StatusCode(500, new { message = "An error occurred while retrieving following users." });
+                return StatusCode(500, new { message = "Error retrieving following list." });
             }
         }
+
+        
+        [HttpPost("{userId}/profile-picture")]
+        [Authorize]
+        public async Task<IActionResult> UploadProfilePicture(string userId, IFormFile file)
+        {
+            try
+            {
+                if (GetCurrentUserId() != userId)
+                    return Forbid();
+
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { message = "No file uploaded." });
+
+                if (!file.ContentType.StartsWith("image/"))
+                    return BadRequest(new { message = "Only image files are allowed." });
+
+                // Generate a unique file name
+                var fileName = $"{userId}-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+
+                // Upload to S3
+                string fileUrl;
+                using (var stream = file.OpenReadStream())
+                {
+                    fileUrl = await _s3StorageService.UploadFileAsync(stream, fileName, file.ContentType);
+                }
+
+                // Now, update the user's ProfilePictureUrl in your database
+                // You'll likely need a new MediatR command for this or modify UpdateUserProfileCommand
+                var updateCommand = new UpdateUserProfileCommand // Reusing or creating a new command
+                {
+                    UserId = userId,
+                    ProfilePictureUrl = fileUrl,
+                    // You might want to retrieve existing FullName and Bio if this is a dedicated update
+                    // or modify your frontend to send only the changed fields.
+                    // For simplicity, let's assume we are only updating the picture here.
+                };
+
+                // Fetch current user details to preserve other fields if only updating picture
+                var currentUser = await _userRepository.GetUserByIdAsync(userId);
+                if (currentUser == null) return NotFound();
+
+                updateCommand.FullName = currentUser.FullName; // Preserve
+                updateCommand.Bio = currentUser.Bio; // Preserve
+
+                var updatedUser = await _mediator.Send(updateCommand);
+
+                return Ok(new { profilePictureUrl = fileUrl, message = "Profile picture updated successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { errors = ex.Errors.Select(e => e.ErrorMessage) });
+            }
+            catch (ApplicationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error uploading profile picture.", error = ex.Message });
+            }
+        }
+        
     }
 }

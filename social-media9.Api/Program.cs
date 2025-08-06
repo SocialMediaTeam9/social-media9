@@ -1,12 +1,10 @@
+// Program.cs
+
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using social_media9.Api.Services;
-using social_media9.Api.Services.Interfaces;
-using social_media9.Api.Repositories.Interfaces;
-using social_media9.Api.Repositories.Implementations;
-using social_media9.Api.Services.Implementations;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Data;
@@ -16,8 +14,26 @@ using social_media9.Api.Behaviors;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using System.Security.Claims;
+using Amazon.Extensions.NETCore.Setup;
+using Amazon.S3;
+using Nest;
+using social_media9.Api.Services.Interfaces;
+using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Repositories.Implementations;
+using social_media9.Api.Services.Implementations;
+using social_media9.Api.Configurations;
+using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// === Elasticsearch ===
+var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<ElasticsearchSettings>();
+builder.Services.AddSingleton(esSettings); // Make settings available
+var settings = new ConnectionSettings(new Uri(esSettings.Uri))
+    .PrettyJson()
+    .DefaultIndex(esSettings.UsersIndex); 
+builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
+builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
 
 // === DynamoDB ===
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
@@ -39,12 +55,20 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
 builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 builder.Services.AddScoped<DynamoDbClientFactory>();
 
+// === AWS S3 ===
+// This registers the AWS S3 client with the DI container.
+builder.Services.AddAWSService<IAmazonS3>();
+// This registers your custom service for S3 interactions.
+builder.Services.AddScoped<IS3StorageService, S3StorageService>();
+
 // === Application Services ===
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddHttpClient();
 
 // === MediatR & FluentValidation ===
@@ -110,10 +134,34 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+
+
 // === Controllers & Swagger ===
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// MediatR registration
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+// Configure IAmazonDynamoDB based on environment
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+    {
+        var config = new AmazonDynamoDBConfig
+        {
+            ServiceURL = "http://localhost:8000"
+        };
+        return new AmazonDynamoDBClient(config);
+    });
+}
+else
+{
+    // Use default AWS credentials & endpoint
+    builder.Services.AddAWSService<IAmazonDynamoDB>();
+}
+
 
 var app = builder.Build();
 
@@ -137,5 +185,12 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
 });
 
 app.MapControllers();
+
+app.MapGet("/health", () =>
+{
+    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+});
+
+var internalApi = app.MapGroup("/internal/v1");
 
 app.Run();
