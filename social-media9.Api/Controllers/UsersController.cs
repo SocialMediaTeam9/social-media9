@@ -1,6 +1,5 @@
 using MediatR;
 using FluentValidation;
-// using social_media9.Api.Data;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Services;
@@ -49,7 +48,7 @@ namespace social_media9.Api.Controllers
             return userIdClaim;
         }
 
-        // === GOOGLE LOGIN FLOW ===
+        
 
         [HttpGet("signin-google")]
         [AllowAnonymous]
@@ -128,7 +127,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        // === PROFILE ===
+       
 
         [HttpGet("{userId}")]
         [Authorize]
@@ -187,31 +186,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        // === DELETE USER ===
-
-        [HttpDelete("{userId}")]
-        [Authorize]
-        public async Task<IActionResult> DeleteUser(string userId)
-        {
-            try
-            {
-                if (GetCurrentUserId() != userId)
-                    return Forbid();
-
-                await _mediator.Send(new DeleteUserCommand { UserId = userId });
-                return NoContent();
-            }
-            catch (ApplicationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { message = "Error deleting account." });
-            }
-        }
-
-        // === FOLLOWING ===
+     
 
         [HttpPost("{userId}/follow")]
         [Authorize]
@@ -263,7 +238,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        // === FOLLOWERS & FOLLOWING ===
+        
 
         [HttpGet("{userId}/followers")]
         public async Task<IActionResult> GetUserFollowers(string userId)

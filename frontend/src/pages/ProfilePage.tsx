@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetcher } from '../utils/fetcher';
 import { UserProfile } from '../types/types';
-import { UpdateProfileResponse } from '../types/types'; 
+import { UpdateProfileResponse } from '../types/types';
 
 const ProfilePage: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -9,7 +9,6 @@ const ProfilePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -25,9 +24,8 @@ const ProfilePage: React.FC = () => {
       }
       try {
         setIsLoading(true);
-        const data = await fetcher<UserProfile>(`/user/profile`, {
+        const data = await fetcher<UserProfile>(`/users/${currentUserId}`, {
           method: 'GET',
-          userId: currentUserId,
         });
         setUserProfile(data);
         setFullName(data.fullName || '');
@@ -79,10 +77,8 @@ const ProfilePage: React.FC = () => {
         newProfilePictureUrl = uploadResponse.profilePictureUrl;
       }
 
-      // 2. Update user profile with potentially new picture URL and other fields
-      // The fetcher's transformData function should handle converting the backend response
-      // to the `UpdateProfileResponse` type.
-      const updatedData = await fetcher<UpdateProfileResponse>(`/user/update`, {
+      // 2. Update user profile
+      const updatedData = await fetcher<UpdateProfileResponse>(`/users/${currentUserId}`, {
         method: 'PUT',
         userId: currentUserId,
         body: {
