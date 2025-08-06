@@ -38,7 +38,7 @@ resource "aws_ecs_task_definition" "app_service" {
         }
       ]
       environment = [
-        { name = "CORS_ORIGIN", value = "https://peerspace.online" },
+        { name = "CORS_ORIGIN", value = "https://www.peerspace.online" },
         { name = "ASPNETCORE_ENVIRONMENT", value = "Production" },
         { name = "DYNAMODB_TABLE_NAME", value = aws_dynamodb_table.main.name },
         { name = "SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
@@ -96,6 +96,14 @@ resource "aws_ecs_task_definition" "app_service" {
           value = "peerspace.online"
         },
         {
+          name  = "WebAppDomain",
+          value = "https://www.peerspace.online"
+        },
+        {
+          name  = "FederationDomain",
+          value = "fed.peerspace.online"
+        },
+        {
           name  = "DynamoDbTableName",
           value = aws_dynamodb_table.main.name
         },
@@ -138,6 +146,10 @@ resource "aws_ecs_service" "app_service" {
   task_definition = aws_ecs_task_definition.app_service.arn
   desired_count   = 1
   launch_type     = "FARGATE"
+
+  health_check_grace_period_seconds = 30
+
+  enable_execute_command = true
 
   network_configuration {
     subnets = module.vpc.private_subnets
@@ -222,48 +234,62 @@ resource "aws_ecs_task_definition" "gts_sidecar" {
       # Configure GTS via environment variables, which reference secrets
       environment = [
         { name = "GTS_HOST", value = "fed.peerspace.online" },
-        { name = "GTS_USER_DOMAIN", value = "fed.peerspace.online" },
-
-        { name = "GTS_PORT", value = "8080" },
+        { name = "GTS_USER_DOMAIN", value = "peerspace.online" }, // Note the different domains
         { name = "GTS_DB_TYPE", value = "sqlite" },
         { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
-
-        { name = "GTS_ACCOUNT_PROVIDER_HOOK_ENABLED", value = "true" },
-        {
-          name  = "GTS_ACCOUNT_PROVIDER_HOOK_ENDPOINT",
-          value = "https://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
-        },
-
-        { name = "GTS_TRUSTED_PROXIES", value = "10.0.0.0/8" },
-        { name = "GTS_USE_PROXY_HEADERS", value = "true" },
-        { name = "GTS_SCHEME", value = "https" },
-
-        { name = "GTS_REGISTRATION_OPEN", value = "true" },
 
         { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
         { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
         { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
-        { name = "AWS_REGION", value = var.aws_region },
 
+        # This tells GTS to listen on an SQS queue for outgoing posts from your C# app.
         { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
         { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
         { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
 
-        { name = "GTS_COLLECTIONS_HOOK_ENABLED", value = "true" },
-        {
-          name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS",
-          value = "http://${aws_lb.main.dns_name}/internal/v1/followers"
-        },
-        {
-          name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING",
-          value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following"
-        }
+        # { name = "GTS_HOST", value = "fed.peerspace.online" },
+        # { name = "GTS_USER_DOMAIN", value = "fed.peerspace.online" },
+        #
+        { name = "GTS_PORT", value = "8080" },
+        { name = "GTS_DB_TYPE", value = "sqlite" },
+        # { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
+        #
+        # { name = "GTS_ACCOUNT_PROVIDER_HOOK_ENABLED", value = "true" },
+        # {
+        #   name  = "GTS_ACCOUNT_PROVIDER_HOOK_ENDPOINT",
+        #   value = "https://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
+        # },
+        #
+        # { name = "GTS_TRUSTED_PROXIES", value = "10.0.0.0/8" },
+        # { name = "GTS_USE_PROXY_HEADERS", value = "true" },
+        # { name = "GTS_SCHEME", value = "https" },
+        #
+        # { name = "GTS_REGISTRATION_OPEN", value = "true" },
+        #
+        # { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+        # { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+        # { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
+        { name = "AWS_REGION", value = var.aws_region },
+        #
+        # { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+        # { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+        # { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
+        #
+        # { name = "GTS_COLLECTIONS_HOOK_ENABLED", value = "true" },
+        # {
+        #   name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS",
+        #   value = "http://${aws_lb.main.dns_name}/internal/v1/followers"
+        # },
+        # {
+        #   name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING",
+        #   value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following"
+        # }
       ]
       secrets = [
-        {
-          name      = "GTS_ACCOUNT_PROVIDER_HOOK_SECRET"
-          valueFrom = aws_secretsmanager_secret.gts_hook_secret.arn
-        }
+        # {
+        #   name      = "GTS_ACCOUNT_PROVIDER_HOOK_SECRET"
+        #   valueFrom = aws_secretsmanager_secret.gts_hook_secret.arn
+        # },
       ]
 
       logConfiguration = {
@@ -283,10 +309,12 @@ resource "aws_ecs_service" "gts_sidecar" {
   name            = "${var.project_name}-gts-sidecar-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.gts_sidecar.arn
-  desired_count   = 1
+  desired_count   = 0
   launch_type     = "FARGATE"
 
   health_check_grace_period_seconds = 30
+
+  enable_execute_command = true
 
   network_configuration {
     subnets = module.vpc.private_subnets

@@ -251,6 +251,11 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
     appBuilder.UseAuthorization();
 });
 
+// app.UseWhen(
+//     context => context.Request.Path.ToString().Contains("/inbox"),
+//     appBuilder => appBuilder.UseMiddleware<HttpSignatureValidationMiddleware>()
+// );
+
 app.MapControllers();
 
 app.MapGet("/health", () =>

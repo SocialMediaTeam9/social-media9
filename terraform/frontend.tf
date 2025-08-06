@@ -33,8 +33,8 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_root_object = "index.html"
   #
   aliases = [
+    var.domain,
     var.domain_name,
-    "peerspace.online",
     # "api.peerspace.online",
     # "federation.peerspace.online"
   ]
@@ -49,7 +49,22 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
+  origin {
+    domain_name = aws_lb.main_app.dns_name
+    origin_id   = "ALB-Peerspace-API"
+    custom_origin_config {
+      https_port               = 443
+      origin_protocol_policy   = "https-only"
+      origin_ssl_protocols     = ["TLSv1.2"]
+      http_port                = 80
+    }
+  }
 
+  # origin {
+  #   origin_id = "S3-Peerspace-Frontend"
+  #   # ...
+  #   domain_name = ""
+  # }
 
   default_cache_behavior {
     allowed_methods = ["GET", "HEAD", "OPTIONS"]
@@ -63,17 +78,41 @@ resource "aws_cloudfront_distribution" "frontend" {
     max_ttl                = 86400
   }
 
-  # ordered_cache_behavior {
-  #   path_pattern     = "/api/*"
-  #   allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-  #   cached_methods = ["GET", "HEAD"]
-  #   target_origin_id = "ALB-Peerspace-Backend"
-  #
-  #   viewer_protocol_policy = "https-only"
-  #
-  #   origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
-  #   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-  # }
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods = ["GET", "HEAD"]
+    target_origin_id = "ALB-Peerspace-API"
+
+    viewer_protocol_policy = "https-only"
+
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  }
+
+  ordered_cache_behavior {
+    path_pattern     = "/.well-known/*"
+    target_origin_id = "ALB-Peerspace-API"
+
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+
+    viewer_protocol_policy = "https-only"
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  }
+
+  ordered_cache_behavior {
+    path_pattern     = "/users/*"
+    target_origin_id = "ALB-Peerspace-API"
+
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+
+    viewer_protocol_policy = "https-only"
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  }
 
   # ordered_cache_behavior {
   #   path_pattern           = "/users/*"
@@ -192,30 +231,30 @@ resource "aws_s3_bucket_policy" "frontend" {
   })
 }
 
-resource "aws_cloudfront_function" "redirect_well_known" {
-  name    = "${var.project_name}-redirect-well-known"
-  runtime = "cloudfront-js-2.0"
-  comment = "Redirects .well-known federation paths to the federation subdomain"
-
-  code = <<-EOT
-    function handler(event) {
-        var request = event.request;
-        var host = request.headers.host.value;
-
-        if (host === "peerspace.online" || host === "www.peerspace.online") {
-            var response = {
-                statusCode: 301,
-                statusDescription: 'Moved Permanently',
-                headers: {
-                    'location': {
-                        'value': 'https://federation.peerspace.online' + request.uri + (request.querystring ? '?' + request.querystring : '')
-                    }
-                }
-            };
-            return response;
-        }
-
-        return request;
-    }
-  EOT
-}
+# resource "aws_cloudfront_function" "redirect_well_known" {
+#   name    = "${var.project_name}-redirect-well-known"
+#   runtime = "cloudfront-js-2.0"
+#   comment = "Redirects .well-known federation paths to the federation subdomain"
+#
+#   code = <<-EOT
+#     function handler(event) {
+#         var request = event.request;
+#         var host = request.headers.host.value;
+#
+#         if (host === "peerspace.online" || host === "www.peerspace.online") {
+#             var response = {
+#                 statusCode: 301,
+#                 statusDescription: 'Moved Permanently',
+#                 headers: {
+#                     'location': {
+#                         'value': 'https://federation.peerspace.online' + request.uri + (request.querystring ? '?' + request.querystring : '')
+#                     }
+#                 }
+#             };
+#             return response;
+#         }
+#
+#         return request;
+#     }
+#   EOT
+# }

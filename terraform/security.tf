@@ -123,6 +123,8 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+
+
   ingress {
     from_port   = 443
     to_port     = 443
@@ -145,20 +147,20 @@ resource "aws_security_group" "ecs_sg" {
   vpc_id      = module.vpc.vpc_id
 
 
-  # ingress {
-  #   description     = "Allow public traffic from ALB"
-  #   from_port       = 0
-  #   to_port         = 0
-  #   protocol        = "-1"
-  #   security_groups = [aws_security_group.alb_sg.id]
-  # }
+  ingress {
+    description     = "Allow public traffic from ALB"
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
 
-  # ingress {
-  #   from_port       = var.app_container_port
-  #   to_port         = var.app_container_port
-  #   protocol        = "tcp"
-  #   security_groups = [aws_security_group.alb_sg.id]
-  # }
+  ingress {
+    from_port       = var.app_container_port
+    to_port         = var.app_container_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
 
   ingress {
     description = "Allow internal traffic from other ECS tasks"
@@ -176,26 +178,26 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-resource "aws_security_group_rule" "allow_internal_hook_to_alb" {
-  type                     = "ingress"
-  from_port                = var.internal_api_port # 8081
-  to_port                  = var.internal_api_port # 8081
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.ecs_sg.id
-  security_group_id        = aws_security_group.alb_sg.id
-  description              = "Allow GoToSocial hook call to ALB internal listener"
-}
-
-# Rule B: Allow the ECS tasks to receive traffic from the ALB.
-resource "aws_security_group_rule" "allow_alb_to_ecs" {
-  type                     = "ingress"
-  from_port                = 0 # All ports, because Fargate uses dynamic ports
-  to_port                  = 0
-  protocol                 = "-1"
-  source_security_group_id = aws_security_group.alb_sg.id
-  security_group_id        = aws_security_group.ecs_sg.id
-  description              = "Allow ALB to send traffic (health checks and requests) to ECS tasks"
-}
+# resource "aws_security_group_rule" "allow_internal_hook_to_alb" {
+#   type                     = "ingress"
+#   from_port                = var.internal_api_port # 8081
+#   to_port                  = var.internal_api_port # 8081
+#   protocol                 = "tcp"
+#   source_security_group_id = aws_security_group.ecs_sg.id
+#   security_group_id        = aws_security_group.alb_sg.id
+#   description              = "Allow GoToSocial hook call to ALB internal listener"
+# }
+#
+# # Rule B: Allow the ECS tasks to receive traffic from the ALB.
+# resource "aws_security_group_rule" "allow_alb_to_ecs" {
+#   type                     = "ingress"
+#   from_port                = 0 # All ports, because Fargate uses dynamic ports
+#   to_port                  = 0
+#   protocol                 = "-1"
+#   source_security_group_id = aws_security_group.alb_sg.id
+#   security_group_id        = aws_security_group.ecs_sg.id
+#   description              = "Allow ALB to send traffic (health checks and requests) to ECS tasks"
+# }
 
 resource "aws_security_group" "redis_sg" {
   name        = "${var.project_name}-redis-sg"
