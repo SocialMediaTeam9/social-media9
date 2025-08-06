@@ -8,25 +8,37 @@ public class InboxController : ControllerBase
 {
     private readonly IAmazonSQS _sqsClient;
     private readonly IConfiguration _config;
-    
-    public InboxController(IAmazonSQS sqsClient, IConfiguration config)
+    private readonly ILogger<InboxController> _logger;
+
+    public InboxController(IAmazonSQS sqsClient, IConfiguration config, ILogger<InboxController> logger)
     {
         _sqsClient = sqsClient;
         _config = config;
+        _logger = logger;
     }
 
     [HttpPost("/users/{username}/inbox")]
     public async Task<IActionResult> PostToInbox(string username, [FromBody] object activity)
     {
-        // Because this request went through the HttpSignatureValidationMiddleware,
-        // we can trust that it is authentic.
+        var queueUrl = _config["Aws:InboundSqsQueueUrl"];
 
-        await _sqsClient.SendMessageAsync(new SendMessageRequest
+        try
         {
-            QueueUrl = _config["Aws:InboundSqsQueueUrl"],
-            MessageBody = JsonSerializer.Serialize(activity)
-        });
+            await _sqsClient.SendMessageAsync(new SendMessageRequest
+            {
+                QueueUrl = queueUrl,
+                MessageBody = JsonSerializer.Serialize(activity)
+            });
+            
+            _logger.LogInformation("Successfully queued activity for user inbox: {Username}", username);
 
-        return Accepted();
+            // Return 202 Accepted to the remote server immediately.
+            return Accepted();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send message to SQS queue {QueueUrl}", queueUrl);
+            return StatusCode(500, "Internal error while queueing activity.");
+        }
     }
 }

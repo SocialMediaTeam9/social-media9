@@ -251,6 +251,9 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
     appBuilder.UseAuthorization();
 });
 
+app.UseMiddleware<HttpSignatureValidationMiddleware>();
+
+
 // app.UseWhen(
 //     context => context.Request.Path.ToString().Contains("/inbox"),
 //     appBuilder => appBuilder.UseMiddleware<HttpSignatureValidationMiddleware>()

@@ -83,10 +83,10 @@ public class ActivityPubController : ControllerBase
             
             // --- The "Redirect" Magic ---
             // These URLs point to the GoToSocial service's domain for handling.
-            Inbox: $"{fedActorUrlBase}/inbox",
+            Inbox: $"{actorUrl}/inbox",
             Outbox: $"{fedActorUrlBase}/outbox",
-            Followers: $"{fedActorUrlBase}/followers",
-            Following: $"{fedActorUrlBase}/following",
+            Followers: $"{actorUrl}/followers",
+            Following: $"{actorUrl}/following",
 
             PublicKey: new ActorPublicKey(
                 Id: $"{actorUrl}#main-key",
