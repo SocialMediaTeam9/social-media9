@@ -20,7 +20,7 @@ public class InboxController : ControllerBase
     [HttpPost("/users/{username}/inbox")]
     public async Task<IActionResult> PostToInbox(string username, [FromBody] object activity)
     {
-        var queueUrl = _config["Aws:InboundSqsQueueUrl"];
+        var queueUrl = _config["AWS:InboundSqsQueueUrl"];
 
         try
         {

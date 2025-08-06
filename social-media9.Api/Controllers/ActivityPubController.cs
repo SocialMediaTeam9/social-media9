@@ -80,9 +80,6 @@ public class ActivityPubController : ControllerBase
             Type: "Person",
             PreferredUsername: user.Username,
             Name: user.FullName,
-            
-            // --- The "Redirect" Magic ---
-            // These URLs point to the GoToSocial service's domain for handling.
             Inbox: $"{actorUrl}/inbox",
             Outbox: $"{fedActorUrlBase}/outbox",
             Followers: $"{actorUrl}/followers",
