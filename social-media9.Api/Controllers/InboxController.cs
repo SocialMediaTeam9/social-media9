@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -18,6 +19,7 @@ public class InboxController : ControllerBase
     }
 
     [HttpPost("/users/{username}/inbox")]
+    [AllowAnonymous]
     public async Task<IActionResult> PostToInbox(string username, [FromBody] object activity)
     {
         var queueUrl = _config["AWS:InboundSqsQueueUrl"];
@@ -29,7 +31,7 @@ public class InboxController : ControllerBase
                 QueueUrl = queueUrl,
                 MessageBody = JsonSerializer.Serialize(activity)
             });
-            
+
             _logger.LogInformation("Successfully queued activity for user inbox: {Username}", username);
 
             // Return 202 Accepted to the remote server immediately.
