@@ -5,10 +5,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using social_media9.Api.Services;
-using social_media9.Api.Services.Interfaces;
-using social_media9.Api.Repositories.Interfaces;
-using social_media9.Api.Repositories.Implementations;
-using social_media9.Api.Services.Implementations;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Data;
@@ -23,8 +19,24 @@ using Amazon.S3;
 using Amazon.SQS;
 using social_media9.Api.Services.DynamoDB;
 using Microsoft.AspNetCore.Authorization;
+using Nest;
+using social_media9.Api.Services.Interfaces;
+using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Repositories.Implementations;
+using social_media9.Api.Services.Implementations;
+using social_media9.Api.Configurations;
+using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// === Elasticsearch ===
+var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<ElasticsearchSettings>();
+builder.Services.AddSingleton(esSettings); // Make settings available
+var settings = new ConnectionSettings(new Uri(esSettings.Uri))
+    .PrettyJson()
+    .DefaultIndex(esSettings.UsersIndex);
+builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
+builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
 
 // === DynamoDB ===
 

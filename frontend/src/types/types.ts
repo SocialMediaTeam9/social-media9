@@ -37,3 +37,19 @@ export interface UpdateProfileResponse {
   success: boolean;
   updatedUser: UserProfile;
 }
+
+export interface UserSearchResult {
+  userId: string;
+  username: string;
+  fullName: string;
+  profilePictureUrl?: string;
+}
+
+export interface PostSearchResult {
+  postId: string;
+  userId: string;
+  username: string;
+  content: string;
+  hashtags: string[];
+  createdAt: string;
+}
