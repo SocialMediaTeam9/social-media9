@@ -35,7 +35,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("https://peerspace.online")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -48,11 +49,6 @@ var settings = new ConnectionSettings(new Uri(esSettings.Uri))
     .DefaultIndex(esSettings.UsersIndex);
 builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
 builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
-
-// === DynamoDB ===
-
-
-
 
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
 
@@ -175,21 +171,6 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-var gtsHookSecret = builder.Configuration["GTS_HOOK_SECRET"];
-if (string.IsNullOrEmpty(gtsHookSecret))
-{
-    throw new InvalidOperationException("GTS_HOOK_SECRET is not configured. The application cannot start.");
-}
-
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("InternalApi", policy =>
-        policy.Requirements.Add(new InternalApiRequirement(gtsHookSecret)));
-
-});
-
-
-
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient("FederationClient", client =>
@@ -223,6 +204,20 @@ else
     builder.Services.AddAWSService<IAmazonDynamoDB>();
 }
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnRedirectToLogin = ctx =>
+    {
+        if (ctx.Request.Path.StartsWithSegments("/api"))
+        {
+            ctx.Response.StatusCode = 401;
+            return Task.CompletedTask;
+        }
+        ctx.Response.Redirect(ctx.RedirectUri);
+        return Task.CompletedTask;
+    };
+});
+
 
 
 var app = builder.Build();
@@ -237,9 +232,7 @@ else
     app.UseHttpsRedirection();
 }
 
-app.UseStaticFiles(); // If serving HTML/CSS/JS
-
-// Protect Swagger from OAuth redirects
+app.UseStaticFiles(); 
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
 {
     appBuilder.UseAuthentication();
@@ -247,12 +240,6 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
 });
 
 app.UseMiddleware<HttpSignatureValidationMiddleware>();
-
-
-// app.UseWhen(
-//     context => context.Request.Path.ToString().Contains("/inbox"),
-//     appBuilder => appBuilder.UseMiddleware<HttpSignatureValidationMiddleware>()
-// );
 app.UseCors("AllowPeerspace");
 app.MapControllers();
 
