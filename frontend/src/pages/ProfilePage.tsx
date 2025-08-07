@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
 import { PostResponse, UserProfile } from '../types/types';
 import { fetcher, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
+import PostCardAlt from '../components/PostCardAlt';
 
 const ProfilePage: React.FC = () => {
     const { handle } = useParams<{ handle: string }>();
@@ -94,7 +95,7 @@ const ProfilePage: React.FC = () => {
             <div className="profile-posts-feed">
                 <h3 className="feed-title">Posts</h3>
                 {posts.length > 0 ? (
-                    posts.map(post => <PostCard key={post.postId} post={post} />)
+                    posts.map(post => <PostCardAlt key={post.postId} post={post} />)
                 ) : (
                    <p className="p-4 text-gray-400">{!handle?.includes('@') ? "This user hasn't posted anything yet." : "Viewing posts from remote users is not yet supported."}</p>
                 )}
