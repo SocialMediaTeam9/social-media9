@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetcher } from '../utils/fetcher';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetcher } from "../utils/fetcher";
 
-// Define the shape of the data your API will return for a created post.
-// This should match the PostResponse DTO in your C# code.
 interface PostResponse {
   postId: string;
   authorUsername: string;
@@ -24,24 +22,14 @@ const CreatePostPage: React.FC = () => {
       setError("Post content must be between 1 and 280 characters.");
       return;
     }
-
     setIsSubmitting(true);
     setError(null);
-
     try {
-      // --- THIS IS THE KEY CHANGE ---
-      // Use your generic fetcher to make the API call.
       await fetcher<PostResponse>('/posts/create', {
         method: 'POST',
-        body: {
-          // The body must match the CreatePostRequest DTO in C#
-          content: content,
-        },
+        body: { Content: content },
       });
-      // --- END OF CHANGE ---
-      
       console.log('Post created successfully!');
-      // On success, navigate the user back to their home timeline/dashboard
       navigate('/dashboard'); 
     } catch (err: any) {
       setError(err.message || 'Failed to create post. Please try again.');
@@ -55,31 +43,45 @@ const CreatePostPage: React.FC = () => {
   const isOverLimit = characterCount > 280;
 
   return (
-    <div className="page-content" style={{ padding: '1.5rem' }}>
-      <form onSubmit={handleSubmit} className="create-post-form">
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="What's on your mind?"
-          className="post-textarea"
-          rows={5}
-          disabled={isSubmitting}
-        />
-        <div className="form-footer">
-          <span className={`char-counter ${isOverLimit ? 'over-limit' : ''}`}>
-            {characterCount} / 280
-          </span>
-          <button 
-            type="submit" 
-            className="submit-post-button" 
-            disabled={isSubmitting || !content.trim() || isOverLimit}
-          >
-            {isSubmitting ? 'Posting...' : 'Post'}
-          </button>
+    <>
+      {/* 1. Add a consistent page header */}
+      <div className="page-header">
+        Create Post
+      </div>
+
+      {/* 2. Use the 'post-card' structure for the form for a familiar look */}
+      <div className="post-card">
+        <div className="post-avatar">
+          {/* You can add the logged-in user's avatar here later */}
         </div>
-        {error && <p className="post-error">{error}</p>}
-      </form>
-    </div>
+        <div className="post-content">
+          <form onSubmit={handleSubmit} className="create-post-form">
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What's on your mind?"
+              className="post-textarea" 
+              rows={5}
+              disabled={isSubmitting}
+              autoFocus
+            />
+            <div className="form-footer">
+              <span className={`char-counter ${isOverLimit ? 'over-limit' : ''}`}>
+                {characterCount} / 280
+              </span>
+              <button 
+                type="submit" 
+                className="submit-post-button" 
+                disabled={isSubmitting || !content.trim() || isOverLimit}
+              >
+                {isSubmitting ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+            {error && <p className="post-error">{error}</p>}
+          </form>
+        </div>
+      </div>
+    </>
   );
 };
 
