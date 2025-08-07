@@ -1,7 +1,7 @@
 using Amazon.DynamoDBv2.DataModel;
 using social_media9.Api.Models.DynamoDb;
 
-[DynamoDBTable("PeerspaceTable")]
+[DynamoDBTable("nexusphere-mvp-main-table")]
 public class TimelineItemEntity : BaseEntity
 {
     public TimelineItemEntity() { Type = "TimelineItem"; }
