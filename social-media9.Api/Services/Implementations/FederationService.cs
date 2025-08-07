@@ -22,6 +22,8 @@ namespace social_media9.Api.Services.Implementations
             _httpClient = httpClientFactory.CreateClient();
             _userRepository = userRepository;
         }
+        
+        private string ExtractUsernameFromActorUrl(string url) => url.Split('/').Last();
 
         public async Task<User?> DiscoverAndCacheUserAsync(string userHandle)
         {
@@ -44,16 +46,19 @@ namespace social_media9.Api.Services.Implementations
                 var actorLink = webFingerData?.Links.FirstOrDefault(l => l.Rel == "self" && l.Type == "application/activity+json");
                 if (actorLink?.Href == null) return null;
 
-                var existingUser = await _userRepository.GetUserByActorUrl(actorLink.Href);
+                var username_ = ExtractUsernameFromActorUrl(actorLink.Href);
+
+                var existingUser = await _userRepository.GetUserByUsernameAsync(username_);
+
                 if (existingUser != null)
                 {
-                    return existingUser; 
+                    return existingUser!;
                 }
 
                 // 3. Fetch the Actor profile
                 _httpClient.DefaultRequestHeaders.Accept.Clear();
                 _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/activity+json"));
-                
+
                 var actorResponse = await _httpClient.GetAsync(actorLink.Href);
                 actorResponse.EnsureSuccessStatusCode();
 
@@ -63,24 +68,24 @@ namespace social_media9.Api.Services.Implementations
 
                 var newUser = new User
                 {
-                    PK = $"USER#{actorData.PreferredUsername}@{domain}", 
+                    PK = $"USER#{actorData.PreferredUsername}@{domain}",
                     SK = "METADATA",
                     UserId = Guid.NewGuid().ToString(),
                     Username = actorData.PreferredUsername,
                     FullName = actorData.Name ?? actorData.PreferredUsername,
-                    ProfilePictureUrl = "", 
+                    ProfilePictureUrl = "",
                     PublicKeyPem = actorData.PublicKey.PublicKeyPem,
                     PrivateKeyPem = "",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    IsRemote = true, 
+                    IsRemote = true,
                     ActorUrl = actorData.Id,
                     InboxUrl = actorData.Inbox,
                     FollowersUrl = actorData.Followers
                 };
 
                 await _userRepository.AddUserAsync(newUser);
-                
+
                 return newUser;
             }
             catch (Exception ex)
