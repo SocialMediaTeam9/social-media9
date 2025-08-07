@@ -232,6 +232,16 @@ else
     app.UseHttpsRedirection();
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["Vary"] = "Origin";
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
 app.UseStaticFiles(); 
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
 {
