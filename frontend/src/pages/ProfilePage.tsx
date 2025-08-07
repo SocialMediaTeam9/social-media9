@@ -17,18 +17,21 @@ const ProfilePage: React.FC = () => {
     const loggedInUsername = useMemo(() => localStorage.getItem('username'), []);
     const isOwnProfile = profile?.username === loggedInUsername;
 
+    const usernameToFetch = handle || loggedInUsername; 
+
+
     const fetchProfileData = useCallback(async () => {
         if (!handle) return;
         setIsLoading(true);
         setError(null);
         try {
-            const profileData = await lookupProfile(handle);
+            const profileData = await lookupProfile(usernameToFetch ?? '');
             setProfile(profileData);
             if (!handle.includes('@')) {
                 const postsData = await getPostsByUsername(handle);
                 setPosts(postsData);
             } else {
-                setPosts([]); // Fetching remote posts is a future feature
+                setPosts([]);
             }
         } catch (err: any) {
             setError(err.message || 'Failed to load profile.');
@@ -140,7 +143,6 @@ const ProfileHeader: React.FC<{
 );
 
 
-// --- Sub-Component: Edit Profile Form ---
 const EditProfileForm: React.FC<{
     initialProfile: UserProfile,
     onCancel: () => void,
