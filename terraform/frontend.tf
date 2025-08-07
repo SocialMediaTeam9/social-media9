@@ -31,12 +31,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   is_ipv6_enabled     = true
   comment             = "CDN for Nexusphere frontend"
   default_root_object = "index.html"
-
+  #
   aliases = [
+    var.domain,
     var.domain_name,
-    "peerspace.online",
-    "api.peerspace.online",
-    "federation.peerspace.online"
   ]
 
   origin {
@@ -46,13 +44,13 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   origin {
-    domain_name = aws_lb.main.dns_name
-    origin_id   = "ALB-Peerspace-Backend"
+    domain_name = aws_lb.main_app.dns_name
+    origin_id   = "ALB-Peerspace-API"
     custom_origin_config {
-      http_port  = 443
-      https_port = 443
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols = ["TLSv1.2"]
+      https_port               = 443
+      origin_protocol_policy   = "https-only"
+      origin_ssl_protocols     = ["TLSv1.2"]
+      http_port                = 80
     }
   }
 
@@ -61,7 +59,12 @@ resource "aws_cloudfront_distribution" "frontend" {
     cached_methods = ["GET", "HEAD"]
     target_origin_id = "S3-${aws_s3_bucket.frontend.bucket}"
 
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
+    cache_policy_id = aws_cloudfront_cache_policy.cors_policy.id
+
+
+    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
@@ -72,34 +75,119 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern     = "/api/*"
     allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods = ["GET", "HEAD"]
-    target_origin_id = "ALB-Peerspace-Backend"
+    target_origin_id = "ALB-Peerspace-API"
 
     viewer_protocol_policy = "https-only"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
 
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    # cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+
+    cache_policy_id = aws_cloudfront_cache_policy.cors_policy.id
+
+  }
+
+  ordered_cache_behavior {
+    path_pattern     = "/.well-known/*"
+    target_origin_id = "ALB-Peerspace-API"
+
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
+
+    viewer_protocol_policy = "https-only"
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/users/*"
-    target_origin_id       = "ALB-Peerspace-Backend"
-    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods = ["GET", "HEAD"]
-    viewer_protocol_policy = "https-only"
+    path_pattern     = "/users/*"
+    target_origin_id = "ALB-Peerspace-API"
 
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD"]
+
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
+
+    viewer_protocol_policy = "https-only"
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-  }
-  ordered_cache_behavior {
-    path_pattern           = "/.well-known/*"
-    target_origin_id       = "ALB-Peerspace-Backend"
-    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods = ["GET", "HEAD"]
-    viewer_protocol_policy = "https-only"
 
-    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
-    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+
   }
+
+  # ordered_cache_behavior {
+  #   path_pattern           = "/users/*"
+  #   target_origin_id       = "ALB-Peerspace-Backend"
+  #   allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+  #   cached_methods = ["GET", "HEAD"]
+  #   viewer_protocol_policy = "https-only"
+  #
+  #   origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+  #   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  # }
+  #
+  # ordered_cache_behavior {
+  #   path_pattern           = "/.well-known/webfinger"
+  #   target_origin_id       = "ALB-Peerspace-Backend"
+  #   allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+  #   cached_methods         = ["GET", "HEAD", "OPTIONS"]
+  #   viewer_protocol_policy = "redirect-to-https"
+  #
+  #   origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+  #   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  #
+  #   function_association {
+  #     event_type   = "viewer-request"
+  #     function_arn = aws_cloudfront_function.redirect_well_known.arn
+  #   }
+  # }
+
+  # 2. Redirect /.well-known/nodeinfo
+  # ordered_cache_behavior {
+  #   path_pattern           = "/.well-known/nodeinfo*"
+  #   target_origin_id       = "ALB-Peerspace-Backend"
+  #   allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+  #   cached_methods         = ["GET", "HEAD", "OPTIONS"]
+  #   viewer_protocol_policy = "redirect-to-https"
+  #
+  #   origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+  #   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  #
+  #   function_association {
+  #     event_type   = "viewer-request"
+  #     function_arn = aws_cloudfront_function.redirect_well_known.arn
+  #   }
+  # }
+  #
+  # # 3. Redirect /.well-known/host-meta
+  # ordered_cache_behavior {
+  #   path_pattern           = "/.well-known/host-meta"
+  #   target_origin_id       = "ALB-Peerspace-Backend"
+  #   allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+  #   cached_methods         = ["GET", "HEAD", "OPTIONS"]
+  #   viewer_protocol_policy = "redirect-to-https"
+  #
+  #   origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+  #   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  #
+  #   function_association {
+  #     event_type   = "viewer-request"
+  #     function_arn = aws_cloudfront_function.redirect_well_known.arn
+  #   }
+  # }
+  #
+  # ordered_cache_behavior {
+  #   path_pattern           = "/.well-known/*"
+  #   target_origin_id       = "ALB-Peerspace-Backend"
+  #   allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+  #   cached_methods = ["GET", "HEAD"]
+  #   viewer_protocol_policy = "https-only"
+  #
+  #   origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+  #   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  # }
 
   viewer_certificate {
     acm_certificate_arn = data.aws_acm_certificate.main.arn
@@ -111,6 +199,20 @@ resource "aws_cloudfront_distribution" "frontend" {
     geo_restriction {
       restriction_type = "none"
     }
+  }
+
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 10
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 10
   }
 }
 
@@ -131,3 +233,115 @@ resource "aws_s3_bucket_policy" "frontend" {
     }
   })
 }
+
+resource "aws_cloudfront_cache_policy" "cors_policy" {
+  name = "cors-policy-peerspace"
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    headers_config {
+      header_behavior = "whitelist"
+      headers {
+        items = ["Origin"]
+      }
+    }
+
+    cookies_config {
+      cookie_behavior = "none"
+    }
+
+    query_strings_config {
+      query_string_behavior = "none"
+    }
+
+    enable_accept_encoding_gzip   = true
+    enable_accept_encoding_brotli = true
+  }
+
+  default_ttl = 0
+  min_ttl     = 0
+  max_ttl     = 31536000
+}
+
+resource "aws_cloudfront_response_headers_policy" "cors_with_credentials" {
+  name = "AllowPeerspaceCORS"
+
+
+
+  cors_config {
+    access_control_allow_credentials = true
+
+
+
+    access_control_allow_headers {
+      items = [
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin"
+      ]
+    }
+
+
+
+    access_control_allow_methods {
+      items = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    }
+
+    access_control_allow_origins {
+      items = ["https://peerspace.online"]
+    }
+
+    origin_override = true
+  }
+
+  security_headers_config {
+    frame_options {
+      override     = true
+      frame_option = "DENY"
+    }
+
+    referrer_policy {
+      override        = true
+      referrer_policy = "same-origin"
+    }
+  }
+
+
+  custom_headers_config {
+
+    items {
+      header   = "Vary"
+      override = true
+      value    = "Origin"
+    }
+  }
+}
+
+# resource "aws_cloudfront_function" "redirect_well_known" {
+#   name    = "${var.project_name}-redirect-well-known"
+#   runtime = "cloudfront-js-2.0"
+#   comment = "Redirects .well-known federation paths to the federation subdomain"
+#
+#   code = <<-EOT
+#     function handler(event) {
+#         var request = event.request;
+#         var host = request.headers.host.value;
+#
+#         if (host === "peerspace.online" || host === "www.peerspace.online") {
+#             var response = {
+#                 statusCode: 301,
+#                 statusDescription: 'Moved Permanently',
+#                 headers: {
+#                     'location': {
+#                         'value': 'https://federation.peerspace.online' + request.uri + (request.querystring ? '?' + request.querystring : '')
+#                     }
+#                 }
+#             };
+#             return response;
+#         }
+#
+#         return request;
+#     }
+#   EOT
+# }

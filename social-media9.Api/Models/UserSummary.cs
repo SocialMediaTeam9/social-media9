@@ -1,23 +1,22 @@
-﻿using System.Text.Json.Serialization;
-
-namespace social_media9.Api.Models;
-
-public class UserSummary
+﻿namespace social_media9.Api.Models
 {
-  // [JsonPropertyName("userId")]
-  // public string UserId { get; set; }
+    public class UserSummary
+    {
+        public UserSummary()
+        {
+        }
 
-  // [JsonPropertyName("username")]
-  // public string Username { get; set; }
-
-  [JsonPropertyName("fullName")] // Important for better search quality
-  public string FullName { get; set; }
-
-  // [JsonPropertyName("profilePictureUrl")]
-  // public string ProfilePictureUrl { get; set; }
+        public UserSummary(string UserId, string Username, string ActorUrl, string? ProfilePictureUrl)
+        {
+            this.UserId = UserId;
+            this.Username = Username;
+            this.ActorUrl = ActorUrl;
+            this.ProfilePictureUrl = ProfilePictureUrl;
+        }
 
         public string UserId { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public string? ProfilePictureUrl { get; set; }
-    
+        public string ActorUrl { get; set; } = string.Empty;
+    }
 }

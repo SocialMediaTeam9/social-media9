@@ -6,6 +6,6 @@ namespace social_media9.Api
 {
     public class GetUserFollowingQuery : IRequest<IEnumerable<UserSummary>>
     {
-        public string UserId { get; set; } = string.Empty; // Changed to string
+        public string Username { get; set; } = string.Empty; // Changed to string
     }
 }

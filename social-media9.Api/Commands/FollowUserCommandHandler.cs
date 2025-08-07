@@ -39,7 +39,7 @@ namespace social_media9.Api.Commands
                 throw new ApplicationException("Already following this user.");
             }
 
-            await _followRepository.AddFollowAsync(request.FollowerId, request.FollowingId);
+            // await _followRepository.AddFollowAsync(request.FollowerId, request.FollowingId);
 
             return Unit.Value;
         }
