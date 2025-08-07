@@ -3,11 +3,20 @@ using social_media9.Api.Dtos;
 
 namespace social_media9.Api.Commands
 {
-    public class AddCommentCommand : IRequest<CommentDto>
+    public class AddCommentCommand : IRequest<CommentResponse>
     {
-        public Guid PostId { get; set; }
-        public Guid UserId { get; set; }
-        public string Username { get; set; }
-        public string Text { get; set; }
+        public string PostId { get; set; }
+        public string UserId { get; set; }
+        public string Content { get; set; }
     }
 }
+
+public record CreateCommentRequest(string Content);
+
+public record CommentResponse(
+    string CommentId,
+    string PostId,
+    string AuthorUsername,
+    string Content,
+    DateTime CreatedAt
+);

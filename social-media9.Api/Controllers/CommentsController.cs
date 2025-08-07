@@ -23,11 +23,12 @@ namespace social_media9.Api.Controllers
         public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
         {
             var result = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetComments), new { PostId = result.PostId }, result);
+
+            return CreatedAtAction(nameof(GetComments), new { result.PostId }, result);
         }
 
         [HttpGet("{postId}")]
-        public async Task<IActionResult> GetComments(Guid postId)
+        public async Task<IActionResult> GetComments([FromRoute] string postId)
         {
             var result = await _mediator.Send(new GetCommentsByContentQuery(postId));
             return Ok(result);

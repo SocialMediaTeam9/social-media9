@@ -1,35 +1,53 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+// File: Api/Queries/SearchContent/SearchContentQueryHandler.cs
+// <<< THIS FILE IS UPDATED >>>
+
 using MediatR;
 using social_media9.Api.Dtos;
-using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Repositories.Interfaces; // Using the main repository interface
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace social_media9.Api.Queries.SearchContent
 {
     public class SearchContentQueryHandler : IRequestHandler<SearchContentQuery, IEnumerable<PostSearchResultDto>>
     {
-        private readonly ISearchRepository _repository;
+        private readonly IPostRepository _postRepository;
 
-        public SearchContentQueryHandler(ISearchRepository repository)
+        public SearchContentQueryHandler(IPostRepository postRepository)
         {
-            _repository = repository;
+            _postRepository = postRepository;
         }
 
         public async Task<IEnumerable<PostSearchResultDto>> Handle(SearchContentQuery request, CancellationToken cancellationToken)
         {
-            var results = await _repository.SearchPostsAsync(request.Query, request.Limit, cancellationToken);
+            var results = await _postRepository.SearchPostsAsync(request.Query, request.Limit);
 
             return results.Select(post => new PostSearchResultDto
             {
-                PostId = post.PostId,
-                UserId = post.UserId,
-                Username = post.Username,
+
+                PostId = post.SK.Replace("POST#", ""),
+                UserId = post.PK.Replace("USER#", ""),
+                Username = post.AuthorUsername,
                 Content = post.Content,
-                Hashtags = post.Hashtags,
+                Hashtags = ExtractHashtags(post.Content),
                 CreatedAt = post.CreatedAt
             });
+        }
+        
+        private List<string> ExtractHashtags(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return new List<string>();
+            }
+            return Regex.Matches(content, @"#(\w+)")
+                        .Cast<Match>()
+                        .Select(m => m.Groups[1].Value)
+                        .Distinct()
+                        .ToList();
         }
     }
 }

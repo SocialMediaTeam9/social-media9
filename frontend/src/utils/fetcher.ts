@@ -1,3 +1,4 @@
+import { GenerateUploadUrlPayload, GenerateUploadUrlResponse } from "../types/types";
 
 const baseURL = process.env.REACT_APP_API_URL || "http://localhost:5245";
 
@@ -35,6 +36,29 @@ const endpointMapping: Record<string, string> = {
   '/search/users': '/api/search/users',
   '/search/posts': '/api/search/posts',
   '/search/hashtags': '/api/search/hashtags',
+  '/posts/create': '/api/posts',
+  '/media/upload-url': '/api/media/generate-upload-url',
+};
+
+export const getUploadUrl = async (payload: GenerateUploadUrlPayload): Promise<GenerateUploadUrlResponse> => {
+  return fetcher<GenerateUploadUrlResponse>('/media/upload-url', {
+    method: 'POST',
+    body: payload,
+  });
+};
+
+export const uploadFileToS3 = async (uploadUrl: string, file: File) => {
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: {
+      'Content-Type': file.type,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload file to S3.');
+  }
 };
 
 export async function fetcher<T>(
@@ -62,11 +86,11 @@ export async function fetcher<T>(
 
     const token = localStorage.getItem('token');
     const headers = new Headers(options?.headers);
-    
+
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    
+
     let requestBody: BodyInit | null = null;
     if (options?.body != null) {
       if (
@@ -159,7 +183,13 @@ function transformData(endpoint: string, data: any): any {
         username: data.username,
         token: data.token,
       };
-
+    case '/posts/create':
+      return {
+        id: data.postId,
+        author: data.authorUsername,
+        text: data.content,
+        created: formatDate(data.createdAt),
+      };
     default:
       return data;
   }

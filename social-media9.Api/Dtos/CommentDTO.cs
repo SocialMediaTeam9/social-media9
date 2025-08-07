@@ -12,14 +12,14 @@ namespace social_media9.Api.Dtos
 
         public CommentDto() { }
 
-        public CommentDto(Comment comment)
-        {
-            CommentId = comment.CommentId;
-            PostId = comment.PostId;
-            UserId = comment.UserId;
-            Username = comment.Username;
-            Text = comment.Text;
-            CreatedAt = comment.CreatedAt;
-        }
+        // public CommentDto(Comment comment)
+        // {
+        //     CommentId = comment.CommentId;
+        //     PostId = comment.PostId;
+        //     UserId = comment.UserId;
+        //     Username = comment.Username;
+        //     Text = comment.Content;
+        //     CreatedAt = comment.CreatedAt;
+        // }
     }
 }

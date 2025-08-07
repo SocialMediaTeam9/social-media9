@@ -11,10 +11,12 @@
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.3.1" />
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.2.1" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.6.2" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.0.14" />
     <!-- Added a package for BCrypt, which is required for password hashing -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="FluentValidation" Version="11.11.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
+    <PackageReference Include="HttpSignatures" Version="1.1.4" />
     <PackageReference Include="MediatR" Version="12.2.0" />
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.7" />
@@ -32,6 +34,7 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.7" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.13.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
+    <PackageReference Include="Ulid" Version="1.4.1" />
   </ItemGroup>
 
 </Project>

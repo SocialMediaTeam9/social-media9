@@ -22,28 +22,32 @@ namespace social_media9.Api
 
         public async Task<IEnumerable<UserSummary>> Handle(GetUserFollowingQuery request, CancellationToken cancellationToken)
         {
-            var userExists = await _userRepository.ExistsAsync(request.UserId);
+            var userExists = await _userRepository.ExistsAsync(request.Username);
             if (!userExists)
             {
                 throw new ApplicationException("User not found.");
             }
 
-            var followingIds = await _followRepository.GetFollowingAsync(request.UserId);
-            if (!followingIds.Any())
-            {
-                return Enumerable.Empty<UserSummary>();
-            }
-
-            var users = await _userRepository.GetUsersByIdsAsync(followingIds);
-
-            var summaries = users.Select(user => new UserSummary
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                ProfilePictureUrl = user.ProfilePicture
-            });
+            var followerEntities = await _followRepository.GetFollowingAsync(request.Username);
+            var summaries = followerEntities.Select(entity => entity.FollowerInfo);
 
             return summaries;
+
+            // if (!followingIds.Any())
+            // {
+            //     return Enumerable.Empty<UserSummary>();
+            // }
+
+            // var users = await _userRepository.GetUsersByIdsAsync(followingIds);
+
+            // var summaries = users.Select(user => new UserSummary
+            // {
+            //     UserId = user.UserId,
+            //     Username = user.Username,
+            //     ProfilePictureUrl = user.ProfilePicture
+            // });
+
+            // return summaries;
         }
     }
 }
