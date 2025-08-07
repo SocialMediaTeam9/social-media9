@@ -21,8 +21,6 @@ namespace social_media9.Api.Services.Implementations
     {
         private readonly IPostRepository _postRepository;
         private readonly IUserRepository _userRepository;
-        private readonly IStorageService _storageService;
-
         private readonly DynamoDbService _dbService;
         private readonly IAmazonSQS _sqsClient;
         private readonly IConfiguration _config;
@@ -35,13 +33,11 @@ namespace social_media9.Api.Services.Implementations
         public PostService(
             IPostRepository postRepository,
             IAmazonSQS sqsClient,
-            IStorageService storageService,
             DynamoDbService dbService,
             IUserRepository userRepository,
             IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory)
         {
             _postRepository = postRepository;
-            _storageService = storageService;
             _dbService = dbService;
             _sqsClient = sqsClient;
             _config = config;

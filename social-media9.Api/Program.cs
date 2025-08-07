@@ -34,7 +34,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowPeerspace", policy =>
     {
         policy.WithOrigins("https://peerspace.online")
-              .AllowAnyMethod()
+              .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
               .WithHeaders("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin")
               .AllowCredentials();
     });
