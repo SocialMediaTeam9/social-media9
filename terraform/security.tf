@@ -86,7 +86,7 @@ resource "aws_iam_policy" "app_permissions" {
         "Resource": "${aws_dynamodb_table.main.arn}/index/*"
       },
       {
-        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+        Action   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
         Effect   = "Allow"
         Resource = aws_sqs_queue.inbound_queue.arn
       },

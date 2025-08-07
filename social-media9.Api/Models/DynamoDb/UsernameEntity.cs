@@ -6,13 +6,10 @@ public class UsernameEntity : BaseEntity
 {
     public UsernameEntity() { Type = "Username"; }
 
-    [DynamoDBProperty("UserId")]
-    public string UserId { get; set; } = string.Empty;
-
-    public static UsernameEntity Create(string username, string userId)
+    public static UsernameEntity Create(string username)
     {
         var key = $"USERNAME#{username}";
-        return new UsernameEntity { PK = key, SK = key, UserId = userId };
+        return new UsernameEntity { PK = key, SK = key, };
     }
 }
 

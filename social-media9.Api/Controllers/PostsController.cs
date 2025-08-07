@@ -5,6 +5,7 @@ using social_media9.Api.Dtos;
 using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Models;
 using social_media9.Api.Services.Implementations;
+using social_media9.Api.Repositories.Interfaces;
 
 namespace social_media9.Api.Controllers
 {
@@ -14,10 +15,12 @@ namespace social_media9.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly PostService _postService;
+        private readonly IUserRepository _userRepository;
 
-        public PostsController(PostService postService)
+        public PostsController(PostService postService, IUserRepository userRepository)
         {
             _postService = postService;
+            _userRepository = userRepository;
         }
 
         private string GetCurrentUsername() => User.FindFirstValue(ClaimTypes.Name)!;
@@ -33,8 +36,15 @@ namespace social_media9.Api.Controllers
             if (userIdClaim == null)
                 return Unauthorized();
 
-            // var userId = Guid.Parse(userIdClaim.Value);
-            var post = await _postService.CreateAndFederatePostAsync(userIdClaim, request.Content, request.AttachmentUrls);
+            var user = await _userRepository.GetUserByIdAsync(userIdClaim);
+
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+
+
+            var post = await _postService.CreateAndFederatePostAsync(user.Username, request.Content, request.AttachmentUrls);
 
             if (post == null)
             {
@@ -114,6 +124,6 @@ namespace social_media9.Api.Controllers
             return Ok();
         }
 
-    
+
     }
 }

@@ -54,14 +54,7 @@ namespace social_media9.Api.Repositories.Implementations
             {
                 IndexName = "GoogleId-index",
                 Filter = new QueryFilter("GoogleId", QueryOperator.Equal, googleId)
-                // KeyExpression = new Expression
-                // {
-                //     ExpressionStatement = "GoogleId = :v_googleId",
-                //     ExpressionAttributeValues = new Dictionary<string, DynamoDBEntry>
-                //     {
-                //         [":v_googleId"] = googleId
-                //     }
-                // }
+               
             };
 
             var search = _dbContext.FromQueryAsync<User>(queryConfig);
