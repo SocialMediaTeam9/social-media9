@@ -36,17 +36,18 @@ namespace social_media9.Api.Commands
             // This can be complex and might be better handled by a background process
             // For simplicity, we'll just demonstrate deleting entries directly related to this user
             // In a real system, you'd likely have cascade deletes or more robust cleanup
-            var followers = await _followRepository.GetFollowersAsync(request.UserId);
-            foreach (var followerId in followers)
-            {
-                await _followRepository.RemoveFollowAsync(followerId, request.UserId);
-            }
+            // var followers = await _followRepository.GetFollowersAsync(request.UserId);
+            // foreach (var followerId in followers)
+            // {
+            //     await _followRepository.RemoveFollowAsync(followerId, request.UserId);
+            // }
 
-            var following = await _followRepository.GetFollowingAsync(request.UserId);
-            foreach (var followingId in following)
-            {
-                await _followRepository.RemoveFollowAsync(request.UserId, followingId);
-            }
+            // var following = await _followRepository.GetFollowingAsync(request.UserId);
+
+            // foreach (var followingId in following)
+            // {
+            //     await _followRepository.RemoveFollowAsync(request.UserId, followingId);
+            // }
 
             return Unit.Value;
         }

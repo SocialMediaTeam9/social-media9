@@ -5,6 +5,6 @@ namespace social_media9.Api.Dtos
     public class AddCommentRequest
     {
         [Required]
-        public string Text { get; set; }
+        public string Content { get; set; }
     }
 }

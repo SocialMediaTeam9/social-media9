@@ -11,6 +11,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using social_media9.Api.Services.DynamoDB;
 
 namespace social_media9.Api.Controllers
 {
@@ -23,19 +24,28 @@ namespace social_media9.Api.Controllers
         private readonly IJwtGenerator _jwtGenerator;
         private readonly IConfiguration _config;
         private readonly IS3StorageService _s3StorageService;
+        private readonly FollowService _followService;
+        private readonly ILogger<FederationController> _logger;
+        private readonly DynamoDbService _dbService;
+        private readonly ICryptoService _cryptoService;
 
         public UsersController(
             IMediator mediator,
             IUserRepository userRepository,
             IJwtGenerator jwtGenerator,
             IConfiguration config,
-            IS3StorageService s3StorageService)
+            IS3StorageService s3StorageService,
+            FollowService followService, DynamoDbService dbService, ICryptoService cryptoService, ILogger<FederationController> logger)
         {
             _mediator = mediator;
             _userRepository = userRepository;
             _jwtGenerator = jwtGenerator;
             _config = config;
             _s3StorageService = s3StorageService;
+            _followService = followService;
+            _dbService = dbService;
+            _cryptoService = cryptoService;
+            _logger = logger;
         }
 
         private string GetCurrentUserId()
@@ -79,17 +89,26 @@ namespace social_media9.Api.Controllers
 
             if (user == null)
             {
+                (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
+                var username = email?.Split('@')[0]  ?? Ulid.NewUlid().ToString();
                 user = new User
                 {
                     UserId = Guid.NewGuid().ToString(),
+                    PK = $"USER#{username}",
+                    SK = "METADATA",
+                    GSI1PK = $"USER#{username}",
+                    GSI1SK = "METADATA",
                     GoogleId = googleId,
-                    Username = email?.Split('@')[0],
-                    Email = email,
-                    FullName = name,
-                    ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value,
-                    CreatedAt = DateTime.UtcNow
+                    Username = username,
+                    Email = email ?? "",
+                    FullName = name ?? "",
+                    ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value ?? "",
+                    PublicKeyPem = publicKey,
+                    PrivateKeyPem = privateKey,
+                    CreatedAt = DateTime.UtcNow,
                 };
-                await _userRepository.AddUserAsync(user);
+                await _dbService.CreateUserAsync(user);
+                // await _userRepository.AddUserAsync(user);
             }
 
             var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
@@ -143,8 +162,9 @@ namespace social_media9.Api.Controllers
             {
                 return Unauthorized(new { message = ex.Message });
             }
-            catch
+            catch (Exception e)
             {
+                _logger.LogError(e, "Error retrieving profile.");
                 return StatusCode(500, new { message = "Error retrieving profile." });
             }
         }
@@ -215,14 +235,15 @@ namespace social_media9.Api.Controllers
 
         [HttpDelete("{userId}/unfollow")]
         [Authorize]
-        public async Task<IActionResult> UnfollowUser(string userId)
+        public async Task<IActionResult> UnfollowUser([FromBody] UnfollowUserRequest request)
         {
             try
             {
                 var currentUserId = GetCurrentUserId();
-                var command = new UnfollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
+                var command = new UnfollowUserCommand { FollowerId = currentUserId, UnfollowedActorUrl = request.ActorUrl };
                 await _mediator.Send(command);
-                return Ok(new { message = "User unfollowed." });
+                
+                return NoContent();
             }
             catch (ApplicationException ex)
             {
@@ -240,12 +261,37 @@ namespace social_media9.Api.Controllers
 
         
 
-        [HttpGet("{userId}/followers")]
-        public async Task<IActionResult> GetUserFollowers(string userId)
+        // [HttpPost("followers")]
+        // public async Task<IActionResult> GetFollowers([FromBody] GtsCollectionRequest request)
+        // {
+        //     var query = new GetUserFollowersQuery { Username = request.Username };
+        //     var followers = await _mediator.Send(query);
+        //     return Ok(followers);
+        //     // var response = new GtsCollectionResponse(followerUrls);
+        //     // return Ok(response);
+        // }
+
+        // [HttpPost("following")]
+        // public async Task<IActionResult> GetFollowing([FromBody] GtsCollectionRequest request)
+        // {
+        //     var query = new GetUserFollowingQuery { Username = request.Username };
+        //     var following = await _mediator.Send(query);
+        //     return Ok(following);
+        //     // var followingEntities = await _dbService.GetFollowingAsync(request.Username);
+        //     // var followingUrls = followingEntities
+        //     //     .Select(entity => entity.FollowingInfo.ActorUrl)
+        //     //     .ToList();
+
+        //     // var response = new GtsCollectionResponse(followingUrls);
+        //     // return Ok(response);
+        // }
+
+        [HttpGet("{username}/followers")]
+        public async Task<IActionResult> GetUserFollowers(string username)
         {
             try
             {
-                var query = new GetUserFollowersQuery { UserId = userId };
+                var query = new GetUserFollowersQuery { Username = username };
                 var followers = await _mediator.Send(query);
                 return Ok(followers);
             }
@@ -259,12 +305,12 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        [HttpGet("{userId}/following")]
-        public async Task<IActionResult> GetUserFollowing(string userId)
+        [HttpGet("{username}/following")]
+        public async Task<IActionResult> GetUserFollowing(string username)
         {
             try
             {
-                var query = new GetUserFollowingQuery { UserId = userId };
+                var query = new GetUserFollowingQuery { Username = username };
                 var following = await _mediator.Send(query);
                 return Ok(following);
             }
@@ -278,7 +324,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        
+
         [HttpPost("{userId}/profile-picture")]
         [Authorize]
         public async Task<IActionResult> UploadProfilePicture(string userId, IFormFile file)
@@ -343,6 +389,6 @@ namespace social_media9.Api.Controllers
                 return StatusCode(500, new { message = "Error uploading profile picture.", error = ex.Message });
             }
         }
-        
+
     }
 }

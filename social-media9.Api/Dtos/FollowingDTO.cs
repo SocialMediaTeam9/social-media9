@@ -1,0 +1,1 @@
+public record UnfollowUserRequest(string ActorUrl);

@@ -15,7 +15,9 @@ using Amazon.DynamoDBv2.DataModel;
 using System.Security.Claims;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
-using Nest;
+using Amazon.SQS;
+using social_media9.Api.Services.DynamoDB;
+using Microsoft.AspNetCore.Authorization;
 using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Repositories.Implementations;
@@ -26,21 +28,22 @@ using social_media9.Api.Domain.ActivityPub.Entities;
 
 using Nest;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
-
-//using social_media9.Api.Repositories.Interfaces;
+using Amazon.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// === Elasticsearch ===
-var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<ElasticsearchSettings>();
-builder.Services.AddSingleton(esSettings); // Make settings available
-var settings = new ConnectionSettings(new Uri(esSettings.Uri))
-    .PrettyJson()
-    .DefaultIndex(esSettings.UsersIndex); 
-builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
-builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowPeerspace", policy =>
+    {
+        policy.WithOrigins("https://peerspace.online")
+              .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+              .WithHeaders("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin")
+              .AllowCredentials();
+    });
+});
 
-// === DynamoDB ===
+  
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
 
 builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
@@ -57,28 +60,52 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
     return new AmazonDynamoDBClient(clientConfig);
 });
 
-builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
+builder.Services.AddAWSService<IAmazonSQS>();
+
+builder.Services.AddScoped<IDynamoDBContext>(sp =>
+{
+    var client = sp.GetRequiredService<IAmazonDynamoDB>();
+
+    var config = new DynamoDBContextConfig
+    {
+        IgnoreNullValues = true,
+    };
+
+    return new DynamoDBContext(client, config);
+});
 builder.Services.AddScoped<DynamoDbClientFactory>();
 
-// === AWS S3 ===
-// This registers the AWS S3 client with the DI container.
 builder.Services.AddAWSService<IAmazonS3>();
-// This registers your custom service for S3 interactions.
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
-
+builder.Services.AddScoped<IFederationService, FederationService>();
 // === Application Services ===
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<DynamoDbContext>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddTransient<CommentService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddTransient<ICommentService, CommentService>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<IActorStorageService, DynamoDbActorStorageService>();
-builder.Services.AddSingleton<HttpSignatureService>();
-builder.Services.AddTransient<WebFingerService>(); 
+builder.Services.AddScoped<FollowService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 
+builder.Services.AddScoped<ITimelineService, TimelineService>();
+
+builder.Services.AddScoped<PostService>();
+builder.Services.AddHttpClient();
+
+builder.Services.AddScoped<DynamoDbService>();
+builder.Services.AddScoped<S3Service>();
+
+builder.Services.AddHostedService<SqsWorkerService>();
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
@@ -86,6 +113,9 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuthorizationHandler, InternalApiRequirementHandler>();
 
 // === JWT Settings ===
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -98,7 +128,7 @@ builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddCookie(options =>
 {
@@ -121,29 +151,34 @@ builder.Services.AddAuthentication(options =>
 })
 .AddGoogle(googleOptions =>
 {
-    googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
-        ?? throw new InvalidOperationException("Google ClientId not configured.");
-    googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
-        ?? throw new InvalidOperationException("Google ClientSecret not configured.");
-    googleOptions.CallbackPath = "/signin-google";
-    googleOptions.SaveTokens = true;
+   googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
+       ?? throw new InvalidOperationException("Google ClientId not configured.");
+   googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
+       ?? throw new InvalidOperationException("Google ClientSecret not configured.");
+   googleOptions.CallbackPath = "/signin-google";
+   googleOptions.SaveTokens = true;
 
-    // Proper claim mapping
-    googleOptions.Events.OnCreatingTicket = context =>
-    {
-        if (context.Identity != null)
-        {
-            var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
-            if (googleIdClaim != null)
-            {
-                context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
-            }
-        }
-        return Task.CompletedTask;
-    };
+   // Proper claim mapping
+   googleOptions.Events.OnCreatingTicket = context =>
+   {
+       if (context.Identity != null)
+       {
+           var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
+           if (googleIdClaim != null)
+           {
+               context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
+           }
+       }
+       return Task.CompletedTask;
+   };
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpClient("FederationClient", client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", $"Peerspace/1.0 (+https://{builder.Configuration["DomainName"]})");
+});
 
 // === Controllers & Swagger ===
 builder.Services.AddControllers();
@@ -171,6 +206,21 @@ else
     builder.Services.AddAWSService<IAmazonDynamoDB>();
 }
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnRedirectToLogin = ctx =>
+    {
+        if (ctx.Request.Path.StartsWithSegments("/api"))
+        {
+            ctx.Response.StatusCode = 401;
+            return Task.CompletedTask;
+        }
+        ctx.Response.Redirect(ctx.RedirectUri);
+        return Task.CompletedTask;
+    };
+});
+
+
 
 var app = builder.Build();
 
@@ -184,14 +234,25 @@ else
     app.UseHttpsRedirection();
 }
 
-app.UseStaticFiles(); // If serving HTML/CSS/JS
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["Vary"] = "Origin";
+        return Task.CompletedTask;
+    });
 
-// Protect Swagger from OAuth redirects
+    await next();
+});
+app.UseStaticFiles();
+app.UseCors("AllowPeerspace");
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
 {
     appBuilder.UseAuthentication();
     appBuilder.UseAuthorization();
 });
+
+app.UseMiddleware<HttpSignatureValidationMiddleware>();
 
 app.MapControllers();
 
@@ -200,6 +261,16 @@ app.MapGet("/health", () =>
     return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
 });
 
-var internalApi = app.MapGroup("/internal/v1");
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == HttpMethods.Options)
+    {
+        context.Response.StatusCode = 204;
+        await context.Response.CompleteAsync();
+        return;
+    }
+
+    await next();
+});
 
 app.Run();

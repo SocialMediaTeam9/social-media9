@@ -26,11 +26,6 @@ namespace social_media9.Api.Repositories.Implementations
             await _context.SaveAsync(comment);
         }
 
-        public async Task<Comment?> GetCommentByIdAsync(Guid commentId)
-        {
-            return await _context.LoadAsync<Comment>(commentId.ToString());
-        }
-
         public async Task<bool> DeleteCommentAsync(Guid commentId, Guid PostId)
         {
             try
@@ -60,7 +55,7 @@ namespace social_media9.Api.Repositories.Implementations
             if (comment == null)
                 return false;
 
-            comment.Text = newContent;
+            comment.Content = newContent;
 
             await _context.SaveAsync(comment);
             return true;
@@ -72,6 +67,11 @@ namespace social_media9.Api.Repositories.Implementations
             var search = _context.QueryAsync<Comment>(postId.ToString());
             var results = await search.GetRemainingAsync();
             return results;
+        }
+
+        public async Task<Comment?> GetCommentByIdAsync(Guid postId,Guid commentId)
+        {
+            return await _context.LoadAsync<Comment>(postId.ToString(),commentId.ToString());
         }
     }
 }

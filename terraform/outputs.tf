@@ -1,6 +1,6 @@
 output "alb_dns_name" {
   description = "The public DNS name of the Application Load Balancer."
-  value       = aws_lb.main.dns_name
+  value       = aws_lb.main_app.dns_name
 }
 
 output "ecr_repository_url" {
@@ -39,12 +39,12 @@ output "dns_records_to_create_manually" {
       "api_record" = {
         "record_name"  = "api.peerspace.online"
         "record_type"  = "CNAME"
-        "record_value" = aws_lb.main.dns_name
+        "record_value" = aws_lb.main_app.dns_name
       }
       "federation_record" = {
-        "record_name"  = "federation.peerspace.online"
+        "record_name"  = "fed.peerspace.online"
         "record_type"  = "CNAME"
-        "record_value" = aws_lb.main.dns_name
+        "record_value" = aws_lb.federation.dns_name
       }
 
       "media_record" = {

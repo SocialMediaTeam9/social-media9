@@ -80,7 +80,13 @@ resource "aws_iam_policy" "app_permissions" {
         Resource = "*"
       },
       {
-        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+        "Sid": "AllowQueryOnIndexes",
+        "Effect": "Allow",
+        "Action": "dynamodb:Query",
+        "Resource": "${aws_dynamodb_table.main.arn}/index/*"
+      },
+      {
+        Action   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
         Effect   = "Allow"
         Resource = aws_sqs_queue.inbound_queue.arn
       },
@@ -117,12 +123,15 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+
+
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
 
   egress {
     from_port   = 0
@@ -168,6 +177,27 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+# resource "aws_security_group_rule" "allow_internal_hook_to_alb" {
+#   type                     = "ingress"
+#   from_port                = var.internal_api_port # 8081
+#   to_port                  = var.internal_api_port # 8081
+#   protocol                 = "tcp"
+#   source_security_group_id = aws_security_group.ecs_sg.id
+#   security_group_id        = aws_security_group.alb_sg.id
+#   description              = "Allow GoToSocial hook call to ALB internal listener"
+# }
+#
+# # Rule B: Allow the ECS tasks to receive traffic from the ALB.
+# resource "aws_security_group_rule" "allow_alb_to_ecs" {
+#   type                     = "ingress"
+#   from_port                = 0 # All ports, because Fargate uses dynamic ports
+#   to_port                  = 0
+#   protocol                 = "-1"
+#   source_security_group_id = aws_security_group.alb_sg.id
+#   security_group_id        = aws_security_group.ecs_sg.id
+#   description              = "Allow ALB to send traffic (health checks and requests) to ECS tasks"
+# }
 
 resource "aws_security_group" "redis_sg" {
   name        = "${var.project_name}-redis-sg"
@@ -230,4 +260,67 @@ resource "aws_iam_policy" "gts_sqs_send_policy" {
 resource "aws_iam_role_policy_attachment" "gts_task_role_policy_attachment" {
   role       = aws_iam_role.gts_task_role.name
   policy_arn = aws_iam_policy.gts_sqs_send_policy.arn
+}
+
+
+
+resource "aws_security_group" "main_app_sg" {
+  name        = "${var.project_name}-main-app-sg"
+  description = "Main SG for both ALB and ECS tasks"
+
+  # Allow public HTTPS traffic in
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow ALL traffic from any resource within this same security group.
+  # This is the key that solves the internal communication problem.
+  ingress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true # Allows traffic from itself
+  }
+
+  # Allow all traffic out
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
+resource "aws_iam_policy" "ecs_exec_policy" {
+  name = "${var.project_name}-ecs-exec-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Now, attach this policy to BOTH of your application task roles.
+resource "aws_iam_role_policy_attachment" "gts_task_role_ecs_exec_attachment" {
+  role       = aws_iam_role.gts_task_role.name
+  policy_arn = aws_iam_policy.ecs_exec_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "csharp_app_task_role_ecs_exec_attachment" {
+  role       = aws_iam_role.app_task_role.name
+  policy_arn = aws_iam_policy.ecs_exec_policy.arn
 }

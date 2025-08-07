@@ -6,6 +6,7 @@ using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Dtos;
 using social_media9.Api.Repositories.Interfaces;
 using System;
+using social_media9.Api.Services.DynamoDB;
 
 namespace social_media9.Api.Commands
 {
@@ -14,12 +15,16 @@ namespace social_media9.Api.Commands
         private readonly IUserRepository _userRepository;
         private readonly IJwtGenerator _jwtGenerator;
         private readonly IGoogleAuthService _googleAuthService;
+        private readonly DynamoDbService _dbService;
+        private readonly ICryptoService _cryptoService;
 
-        public GoogleLoginCommandHandler(IUserRepository userRepository, IJwtGenerator jwtGenerator, IGoogleAuthService googleAuthService)
+        public GoogleLoginCommandHandler(IUserRepository userRepository, IJwtGenerator jwtGenerator, IGoogleAuthService googleAuthService, DynamoDbService dbService, ICryptoService cryptoService)
         {
             _userRepository = userRepository;
             _jwtGenerator = jwtGenerator;
             _googleAuthService = googleAuthService;
+            _dbService = dbService;
+            _cryptoService = cryptoService;
         }
 
         public async Task<AuthResponseDto> Handle(GoogleLoginCommand request, CancellationToken cancellationToken)
@@ -31,30 +36,41 @@ namespace social_media9.Api.Commands
                 throw new ApplicationException("Failed to exchange Google authorization code for token.");
             }
 
-            // 2. Get user info from Google using the access token
             var googleUserInfo = await _googleAuthService.GetUserInfoAsync(tokenResponse.AccessToken);
             if (googleUserInfo == null || string.IsNullOrEmpty(googleUserInfo.Id))
             {
                 throw new ApplicationException("Failed to retrieve user info from Google.");
             }
 
-            // 3. Find or create user in your database
+
             var user = await _userRepository.GetUserByGoogleIdAsync(googleUserInfo.Id);
+
 
             if (user == null)
             {
-                // New user - create an entry
+                (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
+
+                var username = googleUserInfo.Email.Split('@')[0]; // Default username from email
+
                 user = new User
                 {
                     UserId = Guid.NewGuid().ToString(), // Generate a new internal UUID
+                    PK = $"USER#{username}",
+                    SK = "METADATA",
+                    GSI1PK = $"USER#{username}",
+                    GSI1SK = "METADATA",
                     GoogleId = googleUserInfo.Id,
-                    Username = googleUserInfo.Email.Split('@')[0], // Default username from email
+                    Username = googleUserInfo.Email.Split('@')[0]  ?? Ulid.NewUlid().ToString(), 
                     Email = googleUserInfo.Email,
                     FullName = googleUserInfo.Name,
                     ProfilePictureUrl = googleUserInfo.Picture,
+                    PublicKeyPem = publicKey,
+                    PrivateKeyPem = privateKey,
                     CreatedAt = DateTime.UtcNow
                 };
-                await _userRepository.AddUserAsync(user);
+
+                await _dbService.CreateUserAsync(user);
+
             }
             else
             {
