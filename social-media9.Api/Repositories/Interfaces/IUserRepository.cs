@@ -26,6 +26,9 @@ namespace social_media9.Api.Repositories.Interfaces
         // Added method for deleting a user
         Task DeleteUserAsync(string id);
 
+        Task<User?> GetUserByUsernameAsync(string username);
+
+
         // Added to efficiently get a list of users by their IDs
         Task<IEnumerable<User>> GetUsersByIdsAsync(IEnumerable<string> ids);
     }

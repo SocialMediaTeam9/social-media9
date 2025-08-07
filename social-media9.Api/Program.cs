@@ -21,6 +21,9 @@ using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Repositories.Implementations;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Configurations;
+using social_media9.Api.Infrastructure.ActivityPub.Services;
+using social_media9.Api.Domain.ActivityPub.Entities;
+
 using Nest;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
 

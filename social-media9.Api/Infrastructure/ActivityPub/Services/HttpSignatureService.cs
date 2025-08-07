@@ -1,3 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
+
+
 public class HttpSignatureService
 {
     public Dictionary<string, string> SignHeaders(string url, string body, string privateKeyPem)
