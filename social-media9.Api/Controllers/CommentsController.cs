@@ -14,11 +14,13 @@ namespace social_media9.Api.Controllers
     {
         private readonly IMediator _mediator;
         private readonly IUserRepository _userRepository;
+        private readonly ICommentRepository _commentRepository;
 
-        public CommentsController(IMediator mediator, IUserRepository userRepository)
+        public CommentsController(IMediator mediator, IUserRepository userRepository, ICommentRepository commentRepository)
         {
             _mediator = mediator;
             _userRepository = userRepository;
+            _commentRepository = commentRepository;
         }
 
         [HttpPost]
@@ -38,6 +40,10 @@ namespace social_media9.Api.Controllers
         [HttpDelete("{postId}/{commentId}")]
         public async Task<IActionResult> DeleteComment(Guid postId, Guid commentId)
         {
+            if (!IsUserAuthorized(postId,commentId))
+            {
+                return Unauthorized("You are not authorized to delete this comment.");
+            }
             await _mediator.Send(new DeleteCommentCommand(commentId, postId));
             return NoContent();
         }
@@ -45,7 +51,7 @@ namespace social_media9.Api.Controllers
         [HttpPut("update")]
         public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
         {
-            if (!IsUserAuthorized(dto.CommentId))
+            if (!IsUserAuthorized(dto.PostId,dto.CommentId))
             {
                 return Unauthorized("You are not authorized to update this comment.");
             }
@@ -60,12 +66,13 @@ namespace social_media9.Api.Controllers
             var result = await _mediator.Send(command);
             return result ? Ok("Updated") : BadRequest("Update failed");
         }
-        public bool IsUserAuthorized(Guid commentId)
+        public bool IsUserAuthorized(Guid postId,Guid commentId)
         {
                         
             string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
-            var comment = _commentRepository.GetCommentByIdAsync(commentId).Result;
+            var comment = _commentRepository.GetCommentByIdAsync(postId,commentId).Result;
+            Console.WriteLine($"Comment: {comment.UserId}, UserId: {userId}");
             if (comment == null)
             {
                 return false; 
