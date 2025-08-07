@@ -1,13 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Make sure these paths are correct for your project structure
 import { fetcher, getUploadUrl, uploadFileToS3 } from '../utils/fetcher'; 
 import PhotoIcon from '../components/PhotoIcon';
 
-// This is the DTO for the response from your /posts/create endpoint
 interface PostResponse {
   postId: string;
-  // ... other properties your API returns
 }
 
 const CreatePostPage: React.FC = () => {
@@ -48,7 +45,7 @@ const CreatePostPage: React.FC = () => {
       setFinalAttachmentUrl(finalUrl);
     } catch (err: any) {
       setError(err.message || "Failed to upload image.");
-      setPreviewUrl(null); // Clear preview on failure
+      setPreviewUrl(null); 
     } finally {
       setIsUploading(false);
       URL.revokeObjectURL(localPreviewUrl);
@@ -67,8 +64,8 @@ const CreatePostPage: React.FC = () => {
       await fetcher<PostResponse>('/posts/create', {
         method: 'POST',
         body: {
-          content: content,
-          attachmentUrls: finalAttachmentUrl ? [finalAttachmentUrl] : [],
+          Content: content,
+          AttachmentUrls: finalAttachmentUrl ? [finalAttachmentUrl] : [],
         },
       });
       navigate('/dashboard'); 
