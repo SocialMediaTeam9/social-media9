@@ -3,7 +3,7 @@ using social_media9.Api.Models;
 using social_media9.Api.Dtos;
 
 
-public class GetCommentsByContentQuery : IRequest<List<CommentDto>>
+public class GetCommentByCommentIdQuery : IRequest<CommentDto>
 {
     public Guid CommentId { get; set; }
 
