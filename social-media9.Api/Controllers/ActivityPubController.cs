@@ -83,7 +83,7 @@ public class ActivityPubController : ControllerBase
             Outbox: $"{actorUrl}/outbox",
             Followers: $"{actorUrl}/followers",
             Following: $"{actorUrl}/following",
-
+            
             PublicKey: new ActorPublicKey(
                 Id: $"{actorUrl}#main-key",
                 Owner: actorUrl,

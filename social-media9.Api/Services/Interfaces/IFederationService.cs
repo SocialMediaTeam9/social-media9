@@ -1,5 +1,3 @@
-// <<< THIS IS A NEW FILE >>>
-
 using social_media9.Api.Models;
 using System.Threading.Tasks;
 

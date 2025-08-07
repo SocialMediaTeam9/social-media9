@@ -12,6 +12,8 @@ useEffect(() => {
  const username = params.get('username');
 
 if (token && userId && username) {
+    localStorage.clear();
+
       localStorage.setItem('token', token);
       localStorage.setItem('userId', userId);
       localStorage.setItem('username', username);

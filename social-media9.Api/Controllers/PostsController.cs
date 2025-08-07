@@ -6,6 +6,8 @@ using social_media9.Api.Models;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Repositories.Interfaces;
 using System.Security.Claims;
+using MediatR;
+using social_media9.Api.Queries.Posts;
 
 namespace social_media9.Api.Controllers
 {
@@ -17,10 +19,13 @@ namespace social_media9.Api.Controllers
         private readonly PostService _postService;
         private readonly IUserRepository _userRepository;
 
-        public PostsController(PostService postService, IUserRepository userRepository)
+        private readonly IMediator _mediator;
+
+        public PostsController(PostService postService, IUserRepository userRepository, IMediator mediator)
         {
             _postService = postService;
             _userRepository = userRepository;
+            _mediator = mediator;
         }
 
         private string GetCurrentUsername() => User.FindFirstValue(ClaimTypes.Name)!;
@@ -56,24 +61,41 @@ namespace social_media9.Api.Controllers
                 AuthorUsername: post.AuthorUsername,
                 Content: post.Content,
                 CreatedAt: post.CreatedAt,
-                CommentCount: post.CommentCount
+                CommentCount: post.CommentCount,
+                Attachments: post.Attachments
             );
 
             return CreatedAtAction(nameof(GetPost), new { postId = response.PostId }, response);
         }
 
-        // [HttpGet]
-        // [AllowAnonymous]
-        // public async Task<IActionResult> GetPosts()
-        // {
-        //     var posts = await _postService.GetPostsAsync();
-        //     return Ok(posts);
-        // }
+        [HttpGet("by/{username}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPostsByUsername(
+        string username,
+        [FromQuery] int limit = 15,
+        [FromQuery] string? cursor = null)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return BadRequest("Username cannot be empty.");
+            }
+
+            try
+            {
+                var query = new GetPostsByUserQuery(username, limit, cursor);
+                var result = await _mediator.Send(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving posts." });
+            }
+        }
 
         // GET /api/posts/{postId}
         [HttpGet("{postId}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPost(String postId)
+        public async Task<IActionResult> GetPost(string postId)
         {
             var post = await _postService.GetPostByIdAsync(postId);
             if (post == null)
@@ -86,7 +108,8 @@ namespace social_media9.Api.Controllers
                 AuthorUsername: post.AuthorUsername,
                 Content: post.Content,
                 CreatedAt: post.CreatedAt,
-                CommentCount: post.CommentCount
+                CommentCount: post.CommentCount,
+                Attachments: post.Attachments
             );
 
             return Ok(response);
@@ -97,8 +120,8 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetUserPosts(Guid userId)
         {
-           var posts = await _postService.GetUserPostsAsync(userId.ToString());
-           return Ok(posts);
+            var posts = await _postService.GetUserPostsAsync(userId.ToString());
+            return Ok(posts);
         }
 
         // POST /api/posts/{postId}/like

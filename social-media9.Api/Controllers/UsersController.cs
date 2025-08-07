@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Services.DynamoDB;
+using System.Net;
 
 namespace social_media9.Api.Controllers
 {
@@ -91,7 +92,7 @@ namespace social_media9.Api.Controllers
             if (user == null)
             {
                 (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
-                var username = email?.Split('@')[0]  ?? Ulid.NewUlid().ToString();
+                var username = email?.Split('@')[0] ?? Ulid.NewUlid().ToString();
                 user = new User
                 {
                     UserId = Guid.NewGuid().ToString(),
@@ -109,7 +110,6 @@ namespace social_media9.Api.Controllers
                     CreatedAt = DateTime.UtcNow,
                 };
                 await _dbService.CreateUserAsync(user);
-                // await _userRepository.AddUserAsync(user);
             }
 
             var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
@@ -233,16 +233,26 @@ namespace social_media9.Api.Controllers
 
         // === FOLLOWING ===
 
-        [HttpPost("{userId}/follow")]
+        [HttpPost("{username}/follow")]
         [Authorize]
-        public async Task<IActionResult> FollowUser(string userId)
+        public async Task<IActionResult> FollowUser(string username)
         {
             try
             {
-                var currentUserId = GetCurrentUserId();
-                var command = new FollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
+                var currentUserUsername = User.FindFirstValue(ClaimTypes.Name);
+                if (string.IsNullOrEmpty(currentUserUsername))
+                {
+                    return Unauthorized();
+                }
+
+                var command = new FollowUserCommand
+                {
+                    FollowerUsername = currentUserUsername,
+                    FollowingUsername = username
+                };
+
                 await _mediator.Send(command);
-                return Ok(new { message = "User followed." });
+                return Ok(new { message = "Successfully followed user." });
             }
             catch (ApplicationException ex)
             {
@@ -267,7 +277,7 @@ namespace social_media9.Api.Controllers
                 var currentUserId = GetCurrentUserId();
                 var command = new UnfollowUserCommand { FollowerId = currentUserId, UnfollowedActorUrl = request.ActorUrl };
                 await _mediator.Send(command);
-                
+
                 return NoContent();
             }
             catch (ApplicationException ex)
@@ -284,41 +294,44 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        // === FOLLOWERS & FOLLOWING ===
-
-        // [HttpPost("followers")]
-        // public async Task<IActionResult> GetFollowers([FromBody] GtsCollectionRequest request)
-        // {
-        //     var query = new GetUserFollowersQuery { Username = request.Username };
-        //     var followers = await _mediator.Send(query);
-        //     return Ok(followers);
-        //     // var response = new GtsCollectionResponse(followerUrls);
-        //     // return Ok(response);
-        // }
-
-        // [HttpPost("following")]
-        // public async Task<IActionResult> GetFollowing([FromBody] GtsCollectionRequest request)
-        // {
-        //     var query = new GetUserFollowingQuery { Username = request.Username };
-        //     var following = await _mediator.Send(query);
-        //     return Ok(following);
-        //     // var followingEntities = await _dbService.GetFollowingAsync(request.Username);
-        //     // var followingUrls = followingEntities
-        //     //     .Select(entity => entity.FollowingInfo.ActorUrl)
-        //     //     .ToList();
-
-        //     // var response = new GtsCollectionResponse(followingUrls);
-        //     // return Ok(response);
-        // }
-
         [HttpGet("{username}/followers")]
-        public async Task<IActionResult> GetUserFollowers(string username)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserFollowers(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
         {
             try
             {
-                var query = new GetUserFollowersQuery { Username = username };
-                var followers = await _mediator.Send(query);
-                return Ok(followers);
+                var user = await _dbService.GetUserProfileByUsernameAsync(username);
+                if (user == null) return NotFound();
+
+                var followersUrl = $"https://{_config["DomainName"]}/users/{username}/followers";
+
+                if (page)
+                {
+                    var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
+                    var pageResponse = new OrderedCollectionPage
+                    {
+                        Id = $"{followersUrl}?page=true",
+                        PartOf = followersUrl,
+                        OrderedItems = followers.Select(f => (object)f.FollowerInfo.ActorUrl).ToList()
+                    };
+
+                    if (!string.IsNullOrEmpty(nextToken))
+                    {
+                        pageResponse.Next = $"{followersUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}";
+                    }
+
+                    return Ok(pageResponse);
+                }
+                else
+                {
+                    var collectionResponse = new OrderedCollection
+                    {
+                        Id = followersUrl,
+                        TotalItems = user.FollowersCount,
+                        First = $"{followersUrl}?page=true"
+                    };
+                    return Ok(collectionResponse);
+                }
             }
             catch (ApplicationException ex)
             {
@@ -331,13 +344,52 @@ namespace social_media9.Api.Controllers
         }
 
         [HttpGet("{username}/following")]
-        public async Task<IActionResult> GetUserFollowing(string username)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserFollowing(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
         {
             try
             {
-                var query = new GetUserFollowingQuery { Username = username };
-                var following = await _mediator.Send(query);
-                return Ok(following);
+
+                var user = await _dbService.GetUserProfileByUsernameAsync(username);
+                if (user == null)
+                {
+                    return NotFound($"User '{username}' not found.");
+                }
+
+                var domain = _config["DomainName"];
+                var followingUrl = $"https://{domain}/users/{username}/following";
+
+                if (page)
+                {
+
+                    var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
+
+                    var pageResponse = new OrderedCollectionPage
+                    {
+                        Id = $"{followingUrl}?page=true" + (!string.IsNullOrEmpty(cursor) ? $"&cursor={cursor}" : ""),
+                        PartOf = followingUrl,
+                        OrderedItems = following.Select(f => (object)f.FollowingInfo.ActorUrl).ToList()
+                    };
+
+                    if (!string.IsNullOrEmpty(nextToken))
+                    {
+                        pageResponse.Next = $"{followingUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}";
+                    }
+
+                    return Ok(pageResponse);
+                }
+                else
+                {
+                    var collectionResponse = new OrderedCollection
+                    {
+                        Id = followingUrl,
+                        Type = "OrderedCollection",
+                        TotalItems = user.FollowingCount,
+                        First = $"{followingUrl}?page=true"
+                    };
+
+                    return Ok(collectionResponse);
+                }
             }
             catch (ApplicationException ex)
             {
@@ -348,6 +400,7 @@ namespace social_media9.Api.Controllers
                 return StatusCode(500, new { message = "Error retrieving following list." });
             }
         }
+
 
 
         [HttpPost("{userId}/profile-picture")]

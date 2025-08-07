@@ -21,14 +21,6 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           <Route path="search" element={<SearchPage />} />
         </Routes>
       </main>
-
-      {/* Right Sidebar */}
-      <aside className="right-sidebar">
-        <div className="right-sidebar-header">Who to Follow</div>
-        <div className="right-sidebar-item">
-          <p>Follow a user to see their posts!</p>
-        </div>
-      </aside>
     </div>
   );
 };

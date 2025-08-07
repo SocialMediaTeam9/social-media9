@@ -1,4 +1,4 @@
-import { GenerateUploadUrlPayload, GenerateUploadUrlResponse } from "../types/types";
+import { GenerateUploadUrlPayload, GenerateUploadUrlResponse, PostResponse, UserProfile } from "../types/types";
 
 const baseURL = process.env.REACT_APP_API_URL || "http://localhost:5245";
 
@@ -59,6 +59,15 @@ export const uploadFileToS3 = async (uploadUrl: string, file: File) => {
   if (!response.ok) {
     throw new Error('Failed to upload file to S3.');
   }
+};
+
+export const lookupProfile = (handle: string): Promise<UserProfile> => {
+  const encodedHandle = encodeURIComponent(handle);
+  return fetcher<UserProfile>(`/api/profiles/lookup?handle=${encodedHandle}`);
+};
+
+export const getPostsByUsername = (username: string): Promise<PostResponse[]> => {
+  return fetcher<PostResponse[]>(`/api/posts/by/${username}`);
 };
 
 export async function fetcher<T>(

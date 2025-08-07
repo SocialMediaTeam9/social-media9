@@ -35,7 +35,9 @@ namespace social_media9.Api.Repositories.Interfaces
         // Task<IEnumerable<UserSummaryDTO>> GetLikesAsync(Guid postId);
         //Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId);
         //Task<IEnumerable<CommentDTO>> GetCommentsAsync(Guid postId);
-        Task<IEnumerable<Post>> SearchPostsAsync(string searchText, int limit);
+        Task<IEnumerable<Post>> SearchUserPostsAsync(string searchText, int limit);
         Task<IEnumerable<Post>> SearchHashtagsAsync(string tag, int limit);
+
+        Task<IEnumerable<Post>> SearchPostsAsync(string searchText, int limit);
     }
 }

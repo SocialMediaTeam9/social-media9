@@ -15,6 +15,7 @@ export interface Post {
   timestamp: string;
   likes: number;
   comments: number;
+  attachments: string[];
 }
 
 /**
@@ -31,6 +32,7 @@ export interface UserProfile {
   followingCount: number;
   createdAt: string;
   googleId: string;
+  isFollowing: boolean;
 }
 
 export interface UpdateProfileResponse {
@@ -65,3 +67,11 @@ export interface GenerateUploadUrlResponse {
   finalUrl: string; 
 }
 
+export interface PostResponse {
+  postId: string;
+  authorUsername: string;
+  content: string;
+  createdAt: string;
+  commentCount: number;
+  attachments: string[];
+}
