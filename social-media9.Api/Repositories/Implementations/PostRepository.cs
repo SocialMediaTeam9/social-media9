@@ -124,7 +124,7 @@ namespace social_media9.Api.Repositories.Implementations
             var search = _context.FromQueryAsync<Comment>(queryConfig);
             return await search.GetNextSetAsync();
         }
-        
+
         public async Task<IEnumerable<Post>> SearchPostsAsync(string searchText, int limit)
         {
             if (string.IsNullOrWhiteSpace(searchText)) return Enumerable.Empty<Post>();
@@ -151,7 +151,7 @@ namespace social_media9.Api.Repositories.Implementations
         {
             var cleanTag = tag.TrimStart('#');
             if (string.IsNullOrWhiteSpace(cleanTag)) return Enumerable.Empty<Post>();
-            
+
             return await SearchPostsAsync("#" + cleanTag, limit);
         }
     }

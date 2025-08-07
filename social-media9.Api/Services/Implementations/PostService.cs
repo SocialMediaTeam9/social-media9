@@ -162,7 +162,7 @@ namespace social_media9.Api.Services.Implementations
         public async Task<Post?> CreateAndFederatePostAsync(string authorUsername, string content, List<string>? attachmentUrls)
         {
             var author = await _dbService.GetUserProfileByUsernameAsync(authorUsername);
-            
+
             if (author == null || string.IsNullOrEmpty(author.PrivateKeyPem))
             {
                 _logger.LogError("Cannot federate post for user {Username} because they do not exist or have no private key.", authorUsername);
