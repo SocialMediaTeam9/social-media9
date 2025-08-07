@@ -91,6 +91,7 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddScoped<FollowService>();
 
