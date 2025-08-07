@@ -18,7 +18,7 @@ public class MediaController : ControllerBase
     [HttpPost("generate-upload-url")]
     public IActionResult GenerateUploadUrl([FromBody] GenerateUploadUrlRequest request)
     {
-        var userId = User.FindFirstValue("UserId");
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     
 
         if (string.IsNullOrEmpty(userId))
@@ -26,7 +26,10 @@ public class MediaController : ControllerBase
             return Unauthorized();
         }
 
-        // TODO: Add validation for FileName and ContentType
+        if (string.IsNullOrEmpty(request.FileName) || string.IsNullOrEmpty(request.ContentType))
+        {
+            return BadRequest("FileName and ContentType must be provided.");
+        }
 
         var response = _s3Service.GetPresignedUploadUrl(userId, request.FileName, request.ContentType);
         
