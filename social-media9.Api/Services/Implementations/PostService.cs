@@ -88,13 +88,6 @@ namespace social_media9.Api.Services.Implementations
         // }
 
 
-        // // Get posts by user
-        // public async Task<IEnumerable<PostDTO>> GetUserPostsAsync(Guid userId)
-        // {
-        //     // TODO: Implement get posts by user logic
-        //     throw new NotImplementedException();
-        // }
-
         // Like post
         // public async Task<bool> LikePostAsync(Guid postId, Guid userId)
         // {
@@ -102,12 +95,6 @@ namespace social_media9.Api.Services.Implementations
         //     return await _postRepository.LikeAsync(postId, userId);
         // }
 
-        // // Get post likes
-        // public async Task<IEnumerable<UserSummaryDTO>> GetPostLikesAsync(Guid postId)
-        // {
-        //     // TODO: Implement get post likes logic
-        //     throw new NotImplementedException();
-        // }
 
         // Add comment
         /* public async Task<Guid> AddCommentAsync(Guid postId, AddCommentRequest request, Guid userId)
@@ -124,13 +111,6 @@ namespace social_media9.Api.Services.Implementations
              };
              await _postRepository.AddCommentAsync(postId, request, userId);
              return comment.CommentId;
-         }
-
-         // Get comments
-         public async Task<IEnumerable<CommentDTO>> GetCommentsAsync(Guid postId)
-         {
-             // TODO: Implement get comments logic
-             throw new NotImplementedException();
          }*/
 
         public async Task<IEnumerable<Post>> GetUserPostsAsync(String username)
