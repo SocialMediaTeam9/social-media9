@@ -22,7 +22,7 @@ public class PostService : IPostService
         _storageService = storageService;
     }
 
-    public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId)
+    public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId, IFormFile? file)
     {
         string? mediaUrl = null;
 
@@ -62,8 +62,20 @@ public class PostService : IPostService
     // Get post by id
     public async Task<PostDTO> GetPostAsync(Guid postId)
     {
-        // TODO: Implement get post by id logic
-        throw new NotImplementedException();
+        var post = await _postRepository.GetByIdAsync(postId);
+
+        if (post == null)
+            return null;
+
+        return new PostDTO
+        {
+            PostId = post.PostId,
+            UserId = post.UserId,
+            Content = post.Content,
+            MediaType = post.MediaType,
+            MediaUrl = post.MediaUrl,
+            CreatedAt = post.CreatedAt
+        };
     }
 
     // // Get posts by user

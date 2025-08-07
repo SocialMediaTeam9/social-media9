@@ -33,8 +33,7 @@ public class PostRepository : IPostRepository
 
     public async Task<Post> GetByIdAsync(Guid postId)
     {
-        // TODO: Implement get post by id logic
-        throw new NotImplementedException();
+        return await _dbContext.Context.LoadAsync<Post>(postId);
     }
 
     // public async Task<bool> UpdateAsync(Guid postId, PostUpdateRequest request, Guid userId)

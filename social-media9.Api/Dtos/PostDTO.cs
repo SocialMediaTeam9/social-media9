@@ -8,7 +8,7 @@ namespace social_media9.Api.Dtos
     {
         [Required]
         [StringLength(500)]
-        public string Content { get; set; }
+        public string Content { get; set; } = string.Empty;
         public IFormFile? MediaFile { get; set; }
         public string MediaType { get; set; } // Optional: validate "image", "video"
     }
