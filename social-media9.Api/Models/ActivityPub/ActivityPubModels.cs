@@ -34,3 +34,46 @@ public record ActorResponse(
     [property: JsonPropertyName("following")] string Following,
     [property: JsonPropertyName("publicKey")] ActorPublicKey PublicKey
 );
+
+
+
+public record OrderedCollectionPage
+{
+    [JsonPropertyName("@context")]
+    public string Context { get; set; } = "https://www.w3.org/ns/activitystreams";
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "OrderedCollectionPage";
+
+    [JsonPropertyName("next")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Next { get; set; }
+
+    [JsonPropertyName("partOf")]
+    public string PartOf { get; set; } = string.Empty;
+
+    [JsonPropertyName("orderedItems")]
+    public List<object> OrderedItems { get; set; } = new();
+}
+
+// Represents the top-level collection resource
+public record OrderedCollection
+{
+    [JsonPropertyName("@context")]
+    public string Context { get; set; } = "https://www.w3.org/ns/activitystreams";
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "OrderedCollection";
+
+    [JsonPropertyName("totalItems")]
+    public int TotalItems { get; set; }
+
+    [JsonPropertyName("first")]
+    public string First { get; set; } = string.Empty;
+}

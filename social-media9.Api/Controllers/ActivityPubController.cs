@@ -72,7 +72,6 @@ public class ActivityPubController : ControllerBase
         }
 
         var actorUrl = $"https://{_domainName}/users/{username}";
-        var fedActorUrlBase = $"https://{_federationDomain}/users/{username}";
         
         var actorResponse = new ActorResponse(
             Context: new List<string> { "https://www.w3.org/ns/activitystreams", "https://w3id.org/security/v1" },
@@ -81,7 +80,7 @@ public class ActivityPubController : ControllerBase
             PreferredUsername: user.Username,
             Name: user.FullName,
             Inbox: $"{actorUrl}/inbox",
-            Outbox: $"{fedActorUrlBase}/outbox",
+            Outbox: $"{actorUrl}/outbox",
             Followers: $"{actorUrl}/followers",
             Following: $"{actorUrl}/following",
 

@@ -249,4 +249,16 @@ app.MapGet("/health", () =>
     return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
 });
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == HttpMethods.Options)
+    {
+        context.Response.StatusCode = 204;
+        await context.Response.CompleteAsync();
+        return;
+    }
+
+    await next();
+});
+
 app.Run();

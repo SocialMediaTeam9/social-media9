@@ -106,7 +106,7 @@ namespace social_media9.Api.Controllers
                     ProfilePictureUrl = result.Principal.FindFirst("picture")?.Value ?? "",
                     PublicKeyPem = publicKey,
                     PrivateKeyPem = privateKey,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
                 };
                 await _dbService.CreateUserAsync(user);
                 // await _userRepository.AddUserAsync(user);
