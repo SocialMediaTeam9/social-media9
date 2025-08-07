@@ -157,5 +157,31 @@ namespace social_media9.Api.Repositories.Implementations
                 ProfilePictureUrl: user.ProfilePictureUrl
             );
         }
+
+        public async Task<IEnumerable<User>> SearchUsersAsync(string searchText, int limit)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                return Enumerable.Empty<User>();
+            }
+
+            var scanConfig = new ScanOperationConfig();
+
+            var search = _dbContext.FromScanAsync<User>(scanConfig);
+
+            var results = new List<User>();
+            do
+            {
+                var page = await search.GetNextSetAsync();
+
+                results.AddRange(page.Where(u =>
+                    (u.Username?.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (u.FullName?.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                ));
+
+            } while (!search.IsDone && results.Count < limit);
+
+            return results.Take(limit);
+        }
     }
 }

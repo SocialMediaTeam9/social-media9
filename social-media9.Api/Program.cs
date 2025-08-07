@@ -19,7 +19,6 @@ using Amazon.S3;
 using Amazon.SQS;
 using social_media9.Api.Services.DynamoDB;
 using Microsoft.AspNetCore.Authorization;
-using Nest;
 using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Repositories.Implementations;
@@ -40,16 +39,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// === Elasticsearch ===
-var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<ElasticsearchSettings>();
-
-builder.Services.AddSingleton(esSettings); // Make settings available
-var settings = new ConnectionSettings(new Uri(esSettings.Uri))
-    .PrettyJson()
-    .DefaultIndex(esSettings.UsersIndex);
-builder.Services.AddSingleton<IElasticClient>(new ElasticClient(settings));
-builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
-
+  
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
 
 builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
@@ -94,6 +84,8 @@ builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddScoped<FollowService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 
 builder.Services.AddScoped<ITimelineService, TimelineService>();
 
@@ -105,7 +97,6 @@ builder.Services.AddScoped<S3Service>();
 
 builder.Services.AddHostedService<SqsWorkerService>();
 
-
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
@@ -113,8 +104,6 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuthorizationHandler, InternalApiRequirementHandler>();
-
-
 
 // === JWT Settings ===
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

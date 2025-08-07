@@ -1,26 +1,25 @@
+using MediatR;
+using social_media9.Api.Dtos;
+using social_media9.Api.Repositories.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediatR;
-using social_media9.Api.Dtos;
-using social_media9.Api.Repositories.Interfaces;
 
 namespace social_media9.Api.Queries.SearchUsers
 {
     public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, IEnumerable<UserSearchResultDto>>
     {
-        private readonly ISearchRepository _repository;
+        private readonly IUserRepository _userRepository;
 
-        public SearchUsersQueryHandler(ISearchRepository repository)
+        public SearchUsersQueryHandler(IUserRepository userRepository)
         {
-            _repository = repository;
+            _userRepository = userRepository;
         }
 
         public async Task<IEnumerable<UserSearchResultDto>> Handle(SearchUsersQuery request, CancellationToken cancellationToken)
         {
-            var results = await _repository.SearchUsersAsync(request.Query, request.Limit, cancellationToken);
-
+            var results = await _userRepository.SearchUsersAsync(request.Query, request.Limit);
             return results.Select(user => new UserSearchResultDto
             {
                 UserId = user.UserId,
