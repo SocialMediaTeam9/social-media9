@@ -87,13 +87,13 @@ public class FollowService
     private string BuildUndoFollowActivityJson(string followerActorUrl, string followingActorUrl)
     {
         var domain = _config["DomainName"];
-        var activityId = $"https://fed.{domain}/activities/{Ulid.NewUlid()}";
+        var activityId = $"https://{domain}/activities/{Ulid.NewUlid()}";
 
         var activity = new
         {
             type = "Undo",
             actor = followerActorUrl,
-            to = new[] { followingActorUrl }, // Address it directly to the person being unfollowed
+            to = new[] { followingActorUrl },
             @object = new
             {
                 type = "Follow",

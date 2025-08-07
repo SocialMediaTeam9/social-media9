@@ -181,10 +181,10 @@ public class DynamoDbService
                 _logger.LogWarning(ex, "Failed to deserialize pagination token. Ignoring token.");
             }
         }
-        
+
         var response = await _dynamoDbClient.QueryAsync(request);
-        
-        
+
+
         var posts = _dbContext.FromDocuments<Post>(response.Items.Select(Document.FromAttributeMap)).ToList();
 
         string? nextToken = null;
@@ -239,14 +239,51 @@ public class DynamoDbService
     /// Retrieves the list of entities representing the followers of a user.
     /// Uses the GSI for an efficient reverse lookup.
     /// </summary>
-    public async Task<List<Follow>> GetFollowersAsync(string username)
+    public async Task<(List<Follow> Followers, string? NextToken)> GetFollowersAsync(string username,
+        int pageSize = 15,
+        string? paginationToken = null)
     {
-        var config = new DynamoDBOperationConfig
+        var gsiPk = $"USER#{username}";
+        var gsiSkPrefix = "FOLLOWED_BY#";
+
+        var request = new QueryRequest
         {
-            IndexName = "GSI1"
+            TableName = _tableName,
+            IndexName = "GSI1",
+            Limit = pageSize,
+            // Sort by follower username alphabetically (default)
+            ScanIndexForward = true,
+            KeyConditionExpression = "GSI1PK = :v_pk AND begins_with(GSI1SK, :v_sk)",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":v_pk", new AttributeValue(gsiPk) },
+                { ":v_sk", new AttributeValue(gsiSkPrefix) }
+            }
         };
-        var query = _dbContext.QueryAsync<Follow>($"USER#{username}", QueryOperator.BeginsWith, new[] { "FOLLOWED_BY#" });
-        return await query.GetNextSetAsync();
+
+        if (!string.IsNullOrEmpty(paginationToken))
+        {
+            try
+            {
+                request.ExclusiveStartKey = JsonSerializer.Deserialize<Dictionary<string, AttributeValue>>(
+                    System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(paginationToken))
+                );
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Invalid pagination token received for GetFollowersAsync."); }
+        }
+
+        var response = await _dynamoDbClient.QueryAsync(request);
+        var followers = _dbContext.FromDocuments<Follow>(response.Items.Select(Document.FromAttributeMap)).ToList();
+
+        string? nextToken = null;
+        if (response.LastEvaluatedKey != null && response.LastEvaluatedKey.Count > 0)
+        {
+            nextToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(response.LastEvaluatedKey)
+            ));
+        }
+
+        return (followers, nextToken);
     }
 
 
@@ -326,10 +363,48 @@ public class DynamoDbService
         }
     }
 
-    public async Task<List<Follow>> GetFollowingAsync(string username)
+    public async Task<(List<Follow> Following, string? NextToken)> GetFollowingAsync(string username,
+    int pageSize = 15,
+    string? paginationToken = null)
     {
-        var query = _dbContext.QueryAsync<Follow>($"USER#{username}", QueryOperator.BeginsWith, new[] { "FOLLOWS#" });
-        return await query.GetNextSetAsync();
+        var pk = $"USER#{username}";
+        var skPrefix = "FOLLOWS#";
+        var request = new QueryRequest
+        {
+            TableName = _tableName,
+            KeyConditionExpression = "PK = :v_pk AND begins_with(SK, :v_sk)",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+        {
+            { ":v_pk", new AttributeValue(pk) },
+            { ":v_sk", new AttributeValue(skPrefix) }
+        },
+            Limit = pageSize,
+            ScanIndexForward = true // Sort by username alphabetically (default)
+        };
+
+        if (!string.IsNullOrEmpty(paginationToken))
+        {
+            // Deserialize the token to set the starting point for the query.
+            request.ExclusiveStartKey = JsonSerializer.Deserialize<Dictionary<string, AttributeValue>>(
+                System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(paginationToken))
+            );
+        }
+
+        var response = await _dynamoDbClient.QueryAsync(request);
+
+        // Map the raw results back to our C# objects.
+        var following = _dbContext.FromDocuments<Follow>(response.Items.Select(Document.FromAttributeMap)).ToList();
+
+        // Prepare the token for the next page.
+        string? nextToken = null;
+        if (response.LastEvaluatedKey != null && response.LastEvaluatedKey.Count > 0)
+        {
+            nextToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(response.LastEvaluatedKey)
+            ));
+        }
+
+        return (following, nextToken);
     }
 
     #endregion
@@ -346,7 +421,7 @@ public class DynamoDbService
             TransactItems = new List<TransactWriteItem>
                 {
                     new() { Put = new Put { TableName = _tableName, Item = _dbContext.ToDocument(post).ToAttributeMap(), ConditionExpression = "attribute_not_exists(PK)" } },
-                    new() { Update = CreateUpdateCountRequest($"USER{post.AuthorUsername}", "METADATA", "PostCount", 1) }
+                    new() { Update = CreateUpdateCountRequest($"USER#{post.AuthorUsername}", "METADATA", "PostCount", 1) }
                 }
         };
         try

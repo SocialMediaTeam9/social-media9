@@ -207,27 +207,46 @@ namespace social_media9.Api.Services.Implementations
 
         private async Task DeliverPostToFollowersAsync(JsonDocument activityDoc, User author)
         {
-            var followers = await _dbService.GetFollowersAsync(author.Username);
-            if (!followers.Any()) return;
-
-            _logger.LogInformation("Starting outbound delivery of post by {Username} to {FollowerCount} followers.", author.Username, followers.Count);
-
-
+            string? paginationToken = null;
+            int pageNumber = 1;
+            int totalDelivered = 0;
+            const int pageSize = 50;
             var httpClient = _httpClientFactory.CreateClient("FederationClient");
-
             var domain = _config["DomainName"];
             var actorUrl = $"https://{domain}/users/{author.Username}";
             var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem);
+            // var activityDoc = JsonDocument.Parse(activityJson);
 
-            var deliveryTasks = followers.Select(follower =>
+            do
             {
-                var targetInbox = $"{follower.FollowerInfo.ActorUrl}/inbox";
-                return deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
-            });
+                _logger.LogInformation("Fetching page {PageNumber} of followers for {Username}.", pageNumber, author.Username);
 
-            await Task.WhenAll(deliveryTasks);
+                var (followers, nextToken) = await _dbService.GetFollowersAsync(author.Username, pageSize, paginationToken);
 
-            _logger.LogInformation("Completed outbound delivery for post by {Username}", author.Username);
+                if (!followers.Any())
+                {
+                    break;
+                }
+
+                var deliveryTasks = followers.Select(follower =>
+                {
+                    var targetInbox = $"{follower.FollowerInfo.ActorUrl}/inbox";
+                    return deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
+                });
+
+                await Task.WhenAll(deliveryTasks);
+
+                totalDelivered += followers.Count;
+                _logger.LogInformation("Completed delivery to batch {PageNumber} for {Username}. Total delivered so far: {Total}", pageNumber, author.Username, totalDelivered);
+
+                paginationToken = nextToken;
+                pageNumber++;
+
+                if (paginationToken != null) await Task.Delay(1000);
+
+            } while (!string.IsNullOrEmpty(paginationToken));
+
+            _logger.LogInformation("Completed outbound delivery for post by {Username}. Total followers reached: {TotalDelivered}", author.Username, totalDelivered);
         }
 
 

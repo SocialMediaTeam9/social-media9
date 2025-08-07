@@ -33,7 +33,7 @@ namespace social_media9.Api.Commands
             }
 
             var domain = _config["DomainName"];
-            var selfActorUrl = $"https://fed.{domain}/users/{follower.Username}";
+            var selfActorUrl = $"https://{domain}/users/{follower.Username}";
             if (selfActorUrl == request.UnfollowedActorUrl)
             {
                 throw new ApplicationException("Cannot unfollow yourself.");
