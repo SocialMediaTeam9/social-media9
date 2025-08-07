@@ -73,7 +73,7 @@ builder.Services.AddScoped<DynamoDbClientFactory>();
 
 builder.Services.AddAWSService<IAmazonS3>();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
-
+builder.Services.AddScoped<IFederationService, FederationService>();
 // === Application Services ===
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFollowRepository, FollowRepository>();

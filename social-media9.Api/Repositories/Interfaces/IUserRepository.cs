@@ -32,7 +32,9 @@ namespace social_media9.Api.Repositories.Interfaces
         Task<IEnumerable<User>> GetUsersByIdsAsync(IEnumerable<string> ids);
 
         Task<UserSummary?> GetUserSummaryAsync(string username);
-        
+
         Task<IEnumerable<User>> SearchUsersAsync(string query, int limit);
+        
+        Task<User?> GetUserByActorUrl(string actorUrl);
     }
 }

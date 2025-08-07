@@ -54,7 +54,7 @@ namespace social_media9.Api.Repositories.Implementations
             {
                 IndexName = "GoogleId-index",
                 Filter = new QueryFilter("GoogleId", QueryOperator.Equal, googleId)
-               
+
             };
 
             var search = _dbContext.FromQueryAsync<User>(queryConfig);
@@ -182,6 +182,26 @@ namespace social_media9.Api.Repositories.Implementations
             } while (!search.IsDone && results.Count < limit);
 
             return results.Take(limit);
+        }
+        
+        public async Task<User?> GetUserByActorUrl(string actorUrl)
+        {
+            if (string.IsNullOrEmpty(actorUrl))
+            {
+                return null;
+            }
+
+            var config = new QueryOperationConfig
+            {
+                IndexName = "ActorUrl-index", 
+                Filter = new QueryFilter("ActorUrl", QueryOperator.Equal, actorUrl),
+                Limit = 1
+            };
+
+            var search = _dbContext.FromQueryAsync<User>(config);
+            var users = await search.GetNextSetAsync();
+            
+            return users.FirstOrDefault();
         }
     }
 }

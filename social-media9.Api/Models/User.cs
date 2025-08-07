@@ -61,8 +61,20 @@ namespace social_media9.Api.Models
 
         [DynamoDBProperty("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
+
         [DynamoDBProperty("UpdatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        
+        [DynamoDBProperty("IsRemote")]
+        public bool IsRemote { get; set; } = false;
+
+        [DynamoDBProperty("ActorUrl")]
+        public string? ActorUrl { get; set; }
+
+        [DynamoDBProperty("InboxUrl")]
+        public string? InboxUrl { get; set; }
+
+        [DynamoDBProperty("FollowersUrl")]
+        public string? FollowersUrl { get; set; }
     }
 }
