@@ -129,7 +129,6 @@ namespace social_media9.Api.Repositories.Implementations
         {
             if (string.IsNullOrWhiteSpace(searchText)) return Enumerable.Empty<Post>();
 
-            // <<< FIX #2: Create the ScanFilter correctly >>>
             var filter = new ScanFilter();
             filter.AddCondition("Content", ScanOperator.Contains, searchText);
 
@@ -153,7 +152,6 @@ namespace social_media9.Api.Repositories.Implementations
             var cleanTag = tag.TrimStart('#');
             if (string.IsNullOrWhiteSpace(cleanTag)) return Enumerable.Empty<Post>();
             
-            // This is a simple but effective way: find posts containing the hashtag text.
             return await SearchPostsAsync("#" + cleanTag, limit);
         }
     }

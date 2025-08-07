@@ -172,8 +172,6 @@ namespace social_media9.Api.Repositories.Implementations
                 return Enumerable.Empty<User>();
             }
 
-            // <<< FIX #1: The ConditionalOperator is removed. We will do a broad scan and filter in C#. >>>
-            // We will scan the entire table. This is inefficient for large tables but simplest for development.
             var scanConfig = new ScanOperationConfig();
 
             var search = _dbContext.FromScanAsync<User>(scanConfig);
@@ -183,7 +181,6 @@ namespace social_media9.Api.Repositories.Implementations
             {
                 var page = await search.GetNextSetAsync();
 
-                // The "OR" logic is now handled here, in the client-side C# code.
                 results.AddRange(page.Where(u =>
                     (u.Username?.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (u.FullName?.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
