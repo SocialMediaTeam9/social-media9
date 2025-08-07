@@ -2,83 +2,117 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using social_media9.Api.Dtos;
 using social_media9.Api.Services.Interfaces;
+using social_media9.Api.Models;
+using social_media9.Api.Services.Implementations;
+using social_media9.Api.Repositories.Interfaces;
+using System.Security.Claims;
 
 namespace social_media9.Api.Controllers
 {
+
     [ApiController]
     [Route("api/[controller]")]
     public class PostsController : ControllerBase
     {
-        private readonly IPostService _postService;
+        private readonly PostService _postService;
+        private readonly IUserRepository _userRepository;
 
-        public PostsController(IPostService postService)
+        public PostsController(PostService postService, IUserRepository userRepository)
         {
             _postService = postService;
+            _userRepository = userRepository;
         }
+
+        private string GetCurrentUsername() => User.FindFirstValue(ClaimTypes.Name)!;
 
         [HttpPost]
-        // [Authorize]
-        [AllowAnonymous]
-        public async Task<IActionResult> CreatePost(
-            [FromForm] CreatePostRequest request,
-            [FromForm] IFormFile? mediaFile)
+        [Authorize]
+        public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
         {
             if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            var user = await _userRepository.GetUserByIdAsync(userIdClaim);
+
+            if (user == null)
             {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return BadRequest(new { message = "Validation failed", errors });
+                return Unauthorized("User not found.");
             }
 
-            // TODO: Replace hardcoded userId with actual authenticated userId
-            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            var postId = await _postService.CreatePostAsync(request, userId, mediaFile);
 
-            return Ok(new { PostId = postId });
+            var post = await _postService.CreateAndFederatePostAsync(user.Username, request.Content, request.AttachmentUrls);
+
+            if (post == null)
+            {
+                return StatusCode(500, "Failed to create post.");
+            }
+
+            var response = new PostResponse(
+                PostId: post.SK.Replace("POST#", ""),
+                AuthorUsername: post.AuthorUsername,
+                Content: post.Content,
+                CreatedAt: post.CreatedAt,
+                CommentCount: post.CommentCount
+            );
+
+            return CreatedAtAction(nameof(GetPost), new { postId = response.PostId }, response);
         }
 
-        [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetPosts()
-        {
-            var posts = await _postService.GetPostsAsync();
-            return Ok(posts);
-        }
+        // [HttpGet]
+        // [AllowAnonymous]
+        // public async Task<IActionResult> GetPosts()
+        // {
+        //     var posts = await _postService.GetPostsAsync();
+        //     return Ok(posts);
+        // }
 
         // GET /api/posts/{postId}
         [HttpGet("{postId}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPost(Guid postId)
+        public async Task<IActionResult> GetPost(String postId)
         {
-            var post = await _postService.GetPostAsync(postId);
-
+            var post = await _postService.GetPostByIdAsync(postId);
             if (post == null)
-                return NotFound(new { message = "Post not found." });
+            {
+                return NotFound();
+            }
 
-            return Ok(post);
+            var response = new PostResponse(
+                PostId: post.SK.Replace("POST#", ""),
+                AuthorUsername: post.AuthorUsername,
+                Content: post.Content,
+                CreatedAt: post.CreatedAt,
+                CommentCount: post.CommentCount
+            );
+
+            return Ok(response);
         }
 
         // GET /api/users/{userId}/posts
-        [HttpGet("/api/users/{userId}/posts")]
+        [HttpGet("{username}/posts")]
         [AllowAnonymous]
         public async Task<IActionResult> GetUserPosts(Guid userId)
         {
-            var posts = await _postService.GetUserPostsAsync(userId);
-            return Ok(posts);
+           var posts = await _postService.GetUserPostsAsync(userId.ToString());
+           return Ok(posts);
         }
 
         // POST /api/posts/{postId}/like
         [HttpPost("{postId}/like")]
-        [AllowAnonymous] // Change to [Authorize] when authentication is added
-        public async Task<IActionResult> LikePost(Guid postId)
+        [Authorize]
+        public async Task<IActionResult> LikePost(string postId)
         {
-            // TODO: Replace hardcoded userId with actual authenticated userId
-            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-
-            var result = await _postService.LikePostAsync(postId, userId);
-            if (result)
-                return Ok(new { message = "Post liked." });
-            else
-                return BadRequest(new { message = "Could not like post." });
+            var likerUsername = GetCurrentUsername();
+            var success = await _postService.LikePostAsync(postId, likerUsername);
+            if (!success)
+            {
+                return BadRequest(new { message = "Post not found or you have already liked this post." });
+            }
+            return Ok(new { message = "Post liked successfully." });
         }
 
         // GET /api/posts/{postId}/likes
@@ -86,7 +120,7 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetPostLikes(Guid postId)
         {
-            // TODO: Implement get likes logic in service and call here
+            // TODO: Implement get likes logic
             return Ok();
         }
 

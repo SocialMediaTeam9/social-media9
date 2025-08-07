@@ -16,7 +16,9 @@ namespace social_media9.Api
 
         public async Task<UserProfile?> Handle(GetUserProfileQuery request, CancellationToken cancellationToken)
         {
-            User? user = (await _userRepository.GetUsersByIdsAsync(new[] { request.UserId })).FirstOrDefault();
+            // User? user = (await _userRepository.GetUsersByIdsAsync(new[] { request.UserId })).FirstOrDefault();
+
+            User? user = await _userRepository.GetUserByIdAsync(request.UserId);
 
             if (user == null)
             {

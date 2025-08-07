@@ -55,7 +55,7 @@ namespace social_media9.Api.Repositories.Implementations
             if (comment == null)
                 return false;
 
-            comment.Text = newContent;
+            comment.Content = newContent;
 
             await _context.SaveAsync(comment);
             return true;

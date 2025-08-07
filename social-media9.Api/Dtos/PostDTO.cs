@@ -10,7 +10,9 @@ namespace social_media9.Api.Dtos
         [StringLength(500)]
         public string Content { get; set; } = string.Empty;
         public IFormFile? MediaFile { get; set; }
-        public string MediaType { get; set; } // Optional: validate "image", "video"
+        public string? MediaType { get; set; } // Optional: validate "image", "video"
+
+        public List<string>? AttachmentUrls  { get; set; }
     }
 
     public class PostDTO

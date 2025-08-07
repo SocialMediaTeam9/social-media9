@@ -26,59 +26,69 @@ namespace social_media9.Api.Repositories.Implementations
             _userRepository = userRepository;
         }
 
-        public async Task AddFollowAsync(string followerId, string followingId)
+        // public async Task AddFollowAsync(string followerId, string followingId)
+        // {
+        //     var existingFollow = await IsFollowingAsync(followerId, followingId);
+        //     if (!existingFollow)
+        //     {
+        //         var follow = new Follow { FollowerId = followerId, FollowingId = followingId, CreatedAt = DateTime.UtcNow };
+        //         await _context.SaveAsync(follow);
+
+        //         // Update counts on User documents
+        //         await IncrementFollowingCountAsync(followerId);
+        //         await IncrementFollowersCountAsync(followingId);
+        //     }
+        // }
+
+        // public async Task RemoveFollowAsync(string followerId, string followingId)
+        // {
+        //     var isFollowing = await IsFollowingAsync(followerId, followingId);
+        //     if (isFollowing)
+        //     {
+        //         await _context.DeleteAsync<Follow>(followerId, followingId);
+
+        //         // Update counts on User documents
+        //         await DecrementFollowingCountAsync(followerId);
+        //         await DecrementFollowersCountAsync(followingId);
+        //     }
+        // }
+
+        public async Task<bool> IsFollowingAsync(string followerUsername, string followedUsername)
         {
-            var existingFollow = await IsFollowingAsync(followerId, followingId);
-            if (!existingFollow)
+            var result = await _context.LoadAsync<Follow>($"USER#{followerUsername}", $"FOLLOWS#{followedUsername}");
+            return result != null;
+        }
+
+        public async Task<IEnumerable<Follow>> GetFollowersAsync(string username)
+        {
+            var queryConfig = new QueryOperationConfig
             {
-                var follow = new Follow { FollowerId = followerId, FollowingId = followingId, CreatedAt = DateTime.UtcNow };
-                await _context.SaveAsync(follow);
+                IndexName = "GSI1",
+                Filter = new QueryFilter("GSI1PK", QueryOperator.Equal, $"USER#{username}"),
+                KeyExpression = new Expression
+                {
+                    ExpressionStatement = "begins_with(GSI1SK, :v_sk)",
+                    ExpressionAttributeValues = { [":v_sk"] = "FOLLOWED_BY#" }
+                }
+            };
+            var search = _context.FromQueryAsync<Follow>(queryConfig);
+            return await search.GetNextSetAsync();
 
-                // Update counts on User documents
-                await IncrementFollowingCountAsync(followerId);
-                await IncrementFollowersCountAsync(followingId);
-            }
         }
 
-        public async Task RemoveFollowAsync(string followerId, string followingId)
+        public async Task<IEnumerable<Follow>> GetFollowingAsync(string username)
         {
-            var isFollowing = await IsFollowingAsync(followerId, followingId);
-            if (isFollowing)
+            var queryConfig = new QueryOperationConfig
             {
-                await _context.DeleteAsync<Follow>(followerId, followingId);
-
-                // Update counts on User documents
-                await DecrementFollowingCountAsync(followerId);
-                await DecrementFollowersCountAsync(followingId);
-            }
-        }
-
-        public async Task<bool> IsFollowingAsync(string followerId, string followingId)
-        {
-           var config = new LoadConfig { ConsistentRead = false };
-           var follow = await _context.LoadAsync<Follow>(followerId, followingId, config);
-
-            return follow != null;
-        }
-
-        public async Task<IEnumerable<string>> GetFollowersAsync(string userId)
-        {
-            // Query by FollowingId (GSI needed for this if not using a separate table)
-            // For now, assuming you'd query the Follows table where FollowingId is a GSI Hash Key
-            // You would need to define a GSI on Follows table: 'FollowingId-index' with FollowingId as HashKey
-            var queryFilter = new QueryFilter("FollowingId", QueryOperator.Equal, userId);
-            var config = new QueryConfig { IndexName = "FollowingId-index" }; // Requires GSI
-            var search = _context.QueryAsync<Follow>(userId, config);
-            var results = await search.GetRemainingAsync();
-            return results.Select(f => f.FollowerId).ToList();
-        }
-
-        public async Task<IEnumerable<string>> GetFollowingAsync(string userId)
-        {
-            // Query by FollowerId (which is the HashKey)
-            var search = _context.QueryAsync<Follow>(userId);
-            var results = await search.GetRemainingAsync();
-            return results.Select(f => f.FollowingId).ToList();
+                Filter = new QueryFilter("PK", QueryOperator.Equal, $"USER#{username}"),
+                KeyExpression = new Expression
+                {
+                    ExpressionStatement = "begins_with(SK, :v_sk)",
+                    ExpressionAttributeValues = { [":v_sk"] = "FOLLOWS#" }
+                }
+            };
+            var search = _context.FromQueryAsync<Follow>(queryConfig);
+            return await search.GetNextSetAsync();
         }
 
         // --- Methods to update denormalized counts on User table ---
