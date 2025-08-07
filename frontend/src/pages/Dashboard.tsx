@@ -12,7 +12,6 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     <div className="dashboard-container">
       <Sidebar onLogout={onLogout} />
 
-      {/* Main Content */}
       <main className="main-content">
         <Routes>
           <Route index element={<ExplorePage />} />
@@ -22,13 +21,6 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         </Routes>
       </main>
 
-      {/* Right Sidebar */}
-      <aside className="right-sidebar">
-        <div className="right-sidebar-header">Who to Follow</div>
-        <div className="right-sidebar-item">
-          <p>Follow a user to see their posts!</p>
-        </div>
-      </aside>
     </div>
   );
 };
