@@ -134,7 +134,7 @@ public class SqsWorkerService : BackgroundService
                     if (originalPost != null)
                     {
                         var boosterUsername = ExtractUsernameFromActorUrl(actorUrl);
-                        var boosterFollowers = await dbService.GetFollowersAsync(boosterUsername);
+                        var (boosterFollowers, nextToken) = await dbService.GetFollowersAsync(boosterUsername);
                         var followerUsernames = boosterFollowers.Select(f => f.FollowerInfo.Username).ToList();
 
 
@@ -174,7 +174,7 @@ public class SqsWorkerService : BackgroundService
             // ... map other fields like attachments
         };
 
-        var followers = await dbService.GetFollowersAsync(post.AuthorUsername);
+        var (followers, nextToken)  = await dbService.GetFollowersAsync(post.AuthorUsername);
         var followerUsernames = followers.Select(f => f.FollowerInfo.Username).ToList();
 
         if (!followerUsernames.Any())
