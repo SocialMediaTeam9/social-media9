@@ -45,6 +45,11 @@ namespace social_media9.Api.Controllers
         [HttpPut("update")]
         public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
         {
+            if (!IsUserAuthorized(dto.CommentId))
+            {
+                return Unauthorized("You are not authorized to update this comment.");
+            }
+            
             var command = new UpdateCommentCommand
             {
                 CommentId = dto.CommentId,
