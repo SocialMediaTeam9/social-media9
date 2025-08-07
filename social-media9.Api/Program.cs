@@ -29,8 +29,19 @@ using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowPeerspace", policy =>
+    {
+        policy.WithOrigins("https://peerspace.online")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 // === Elasticsearch ===
 var esSettings = builder.Configuration.GetSection("ElasticsearchSettings").Get<ElasticsearchSettings>();
+
 builder.Services.AddSingleton(esSettings); // Make settings available
 var settings = new ConnectionSettings(new Uri(esSettings.Uri))
     .PrettyJson()
@@ -40,25 +51,7 @@ builder.Services.AddScoped<ISearchRepository, ElasticsearchRepository>();
 
 // === DynamoDB ===
 
-var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: MyAllowSpecificOrigins,
-                      policy =>
-                      {
-                          var webappDomain = builder.Configuration["WebAppDomain"];
-                          if (string.IsNullOrEmpty(webappDomain))
-                          {
-
-                              Console.WriteLine("WARNING: WebAppDomain is not configured. CORS will not be enabled.");
-                              return;
-                          }
-
-
-                          policy.WithOrigins(webappDomain).AllowAnyHeader().AllowAnyMethod();
-                      });
-});
 
 
 builder.Services.Configure<DynamoDbSettings>(builder.Configuration.GetSection("DynamoDbSettings"));
@@ -195,6 +188,8 @@ builder.Services.AddAuthorization(options =>
 
 });
 
+
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient("FederationClient", client =>
@@ -258,7 +253,7 @@ app.UseMiddleware<HttpSignatureValidationMiddleware>();
 //     context => context.Request.Path.ToString().Contains("/inbox"),
 //     appBuilder => appBuilder.UseMiddleware<HttpSignatureValidationMiddleware>()
 // );
-
+app.UseCors("AllowPeerspace");
 app.MapControllers();
 
 app.MapGet("/health", () =>
