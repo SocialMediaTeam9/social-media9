@@ -7,6 +7,7 @@ using social_media9.Api.Models;
 using social_media9.Api.Data;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Dtos;
+using Amazon.DynamoDBv2.DocumentModel;
 
 namespace social_media9.Api.Repositories.Implementations
 {
@@ -33,8 +34,7 @@ public class PostRepository : IPostRepository
 
     public async Task<Post> GetByIdAsync(Guid postId)
     {
-        // TODO: Implement get post by id logic
-        throw new NotImplementedException();
+        return await _dbContext.Context.LoadAsync<Post>(postId);
     }
 
     // public async Task<bool> UpdateAsync(Guid postId, PostUpdateRequest request, Guid userId)
@@ -45,8 +45,18 @@ public class PostRepository : IPostRepository
 
     public async Task<IEnumerable<Post>> GetByUserAsync(Guid userId)
     {
-        // TODO: Implement get posts by user logic
-        throw new NotImplementedException();
+        var queryConfig = new DynamoDBOperationConfig
+        {
+            IndexName = "UserId-CreatedAt-index"
+        };
+
+        var conditions = new List<ScanCondition>
+        {
+            new ScanCondition("UserId", ScanOperator.Equal, userId)
+        };
+
+        var search = _dbContext.Context.QueryAsync<Post>(userId, queryConfig);
+        return await search.GetRemainingAsync();
     }
 
     public async Task<bool> LikeAsync(Guid postId, Guid userId)

@@ -7,7 +7,7 @@ namespace social_media9.Api.Services.Interfaces
 {
     public interface IPostService
     {
-        Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId);
+        Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId, IFormFile? file = null);
         Task<IEnumerable<PostDTO>> GetPostsAsync();
         Task<PostDTO> GetPostAsync(Guid postId);
         Task<IEnumerable<PostDTO>> GetUserPostsAsync(Guid userId);
