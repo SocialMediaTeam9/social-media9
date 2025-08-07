@@ -3,14 +3,11 @@ import { fetcher } from '../utils/fetcher';
 
 interface SearchResult {
   resultType: 'User' | 'Post';
-  // User fields
   userId?: string;
   fullName?: string;
   profilePictureUrl?: string;
-  // Post fields
   postId?: string;
   content?: string;
-  // Shared fields
   username: string;
   createdAt: string;
 }
@@ -33,10 +30,10 @@ const SearchPage: React.FC = () => {
     setResults([]);
 
     try {
-        const endpoint = `/search/${searchType}?q=${encodeURIComponent(query)}`;
+        const endpoint = `/api/search/${searchType}?q=${encodeURIComponent(query)}`;
         const data = await fetcher<SearchResult[]>(endpoint, { method: 'GET' });
         setResults(data);
-    } catch (err: any)        {
+    } catch (err: any) {
         setError(err.message || 'An error occurred during search.');
         setResults([]);
     } finally {
