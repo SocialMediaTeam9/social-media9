@@ -110,8 +110,41 @@ public class DynamoDbService
         var followerUsername = followerActorUrl.Split('/').Last();
         var followerSummary = new UserSummary("", followerUsername, followerActorUrl, null);
         var followedSummary = await GetUserSummaryAsync(followedUsername);
-        if (followedSummary == null) return false;
+        if (followedSummary == null)
+        {
+            _logger.LogError("Received a follow for a non-existent local user: {Username}", followedUsername);
+            return false;
+        }
+
         return await CreateFollowAndIncrementCountsAsync(followerSummary, followedSummary);
+    }
+
+    public async Task<bool> ProcessLocalUserFollowAsync(UserSummary localFollower, UserSummary userToFollow)
+    {
+
+        var followEntity = Follow.Create(localFollower, userToFollow);
+        var transaction = new TransactWriteItemsRequest { TransactItems = new List<TransactWriteItem>() };
+
+        transaction.TransactItems.Add(new()
+        {
+            Put = new Put
+            {
+                TableName = _tableName,
+                Item = _dbContext.ToDocument(followEntity).ToAttributeMap(),
+                ConditionExpression = "attribute_not_exists(PK)"
+            }
+        });
+
+        transaction.TransactItems.Add(new() { Update = CreateUpdateCountRequest(localFollower.Username, "METADATA", "FollowingCount", 1) });
+
+        var followedIsLocal = await GetUserProfileByUsernameAsync(userToFollow.Username);
+        if (followedIsLocal != null)
+        {
+            transaction.TransactItems.Add(new() { Update = CreateUpdateCountRequest(userToFollow.Username, "METADATA", "FollowersCount", 1) });
+        }
+
+        try { await _dynamoDbClient.TransactWriteItemsAsync(transaction); return true; }
+        catch (TransactionCanceledException) { return false; }
     }
 
 
@@ -131,10 +164,6 @@ public class DynamoDbService
                             Item = _dbContext.ToDocument(followEntity).ToAttributeMap(),
                             ConditionExpression = "attribute_not_exists(PK)"
                         }
-                    },
-                    new TransactWriteItem
-                    {
-                        Update = CreateUpdateCountRequest($"USER#{follower.Username}", "METADATA", "FollowingCount", 1)
                     },
                     new TransactWriteItem
                     {
@@ -388,7 +417,7 @@ public class DynamoDbService
         var queryConfig = new QueryOperationConfig
         {
             Limit = pageSize,
-           
+
             // BackwardSearch = false
             Filter = new QueryFilter("PK", QueryOperator.Equal, pk)
         };

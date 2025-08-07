@@ -29,16 +29,34 @@ public class FollowService
     }
 
 
-    public async Task<bool> FollowUserAsync(string localUsername, string remoteActorUrl)
+    public async Task<bool> FollowUserAsync(string localUsername, string targetUsername)
     {
         var localUser = await _dbService.GetUserSummaryAsync(localUsername);
         if (localUser == null) return false;
 
+        var targetUserSummary = await _dbService.GetUserSummaryAsync(targetUsername);
 
-        var remoteUser = await GetRemoteUserSummaryAsync(remoteActorUrl);
-        if (remoteUser is null) return false;
+        if (targetUserSummary == null)
+        {
+            var remoteActorUrl = $"https://{targetUsername.Split('@')[1]}/users/{targetUsername.Split('@')[0]}";
+            targetUserSummary = await GetRemoteUserSummaryAsync(remoteActorUrl);
+        }
+        
+        if (targetUserSummary == null)
+        {
+            throw new ApplicationException("User to follow not found.");
+        }
 
-        return await _dbService.CreateFollowAndIncrementCountsAsync(localUser, remoteUser);
+         var success = await _dbService.ProcessLocalUserFollowAsync(localUser, targetUserSummary);
+
+        if (success)
+        {
+            // 4. If the database was updated, queue the outbound 'Follow' activity for federation.
+            // (This would be in a separate method, called from here)
+            // await QueueOutboundFollowActivityAsync(localFollowerSummary.ActorUrl, targetUserSummary.ActorUrl);
+        }
+
+        return success;
     }
 
     public async Task<bool> UnfollowUserAsync(string localUsername, string unfollowedActorUrl)
