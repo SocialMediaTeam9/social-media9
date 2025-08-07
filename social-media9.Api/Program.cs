@@ -25,6 +25,7 @@ using social_media9.Api.Repositories.Implementations;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Configurations;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
+using Amazon.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,6 +76,10 @@ builder.Services.AddAWSService<IAmazonS3>();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
 builder.Services.AddScoped<IFederationService, FederationService>();
 // === Application Services ===
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<DynamoDbContext>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFollowRepository, FollowRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -139,26 +144,26 @@ builder.Services.AddAuthentication(options =>
 })
 .AddGoogle(googleOptions =>
 {
-    googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
-        ?? throw new InvalidOperationException("Google ClientId not configured.");
-    googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
-        ?? throw new InvalidOperationException("Google ClientSecret not configured.");
-    googleOptions.CallbackPath = "/signin-google";
-    googleOptions.SaveTokens = true;
+   googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
+       ?? throw new InvalidOperationException("Google ClientId not configured.");
+   googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
+       ?? throw new InvalidOperationException("Google ClientSecret not configured.");
+   googleOptions.CallbackPath = "/signin-google";
+   googleOptions.SaveTokens = true;
 
-    // Proper claim mapping
-    googleOptions.Events.OnCreatingTicket = context =>
-    {
-        if (context.Identity != null)
-        {
-            var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
-            if (googleIdClaim != null)
-            {
-                context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
-            }
-        }
-        return Task.CompletedTask;
-    };
+   // Proper claim mapping
+   googleOptions.Events.OnCreatingTicket = context =>
+   {
+       if (context.Identity != null)
+       {
+           var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
+           if (googleIdClaim != null)
+           {
+               context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
+           }
+       }
+       return Task.CompletedTask;
+   };
 });
 
 builder.Services.AddAuthorization();

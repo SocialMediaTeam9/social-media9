@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using social_media9.Api.Dtos;
 using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Models;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Repositories.Interfaces;
+using System.Security.Claims;
 
 namespace social_media9.Api.Controllers
 {
@@ -62,7 +62,7 @@ namespace social_media9.Api.Controllers
             return CreatedAtAction(nameof(GetPost), new { postId = response.PostId }, response);
         }
 
-        // [HttpGet]               
+        // [HttpGet]
         // [AllowAnonymous]
         // public async Task<IActionResult> GetPosts()
         // {
@@ -97,8 +97,8 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetUserPosts(Guid userId)
         {
-            // TODO: Implement get all posts by user
-            return Ok();
+           var posts = await _postService.GetUserPostsAsync(userId.ToString());
+           return Ok(posts);
         }
 
         // POST /api/posts/{postId}/like
@@ -124,6 +124,22 @@ namespace social_media9.Api.Controllers
             return Ok();
         }
 
+        // POST /api/posts/{postId}/comments
+        [HttpPost("{postId}/comments")]
+        // [Authorize]
+        public async Task<IActionResult> AddComment(Guid postId, [FromBody] AddCommentRequest request)
+        {
+            // TODO: Implement add comment logic in service and call here
+            return StatusCode(201);
+        }
 
+        // GET /api/posts/{postId}/comments
+        [HttpGet("{postId}/comments")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetComments(Guid postId)
+        {
+            // TODO: Implement get comments logic in service and call here
+            return Ok();
+        }
     }
 }
