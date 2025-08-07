@@ -154,5 +154,6 @@ namespace social_media9.Api.Repositories.Implementations
 
             return await SearchPostsAsync("#" + cleanTag, limit);
         }
+
     }
 }

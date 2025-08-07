@@ -5,6 +5,7 @@ using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Models;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Repositories.Interfaces;
+using System.Security.Claims;
 
 namespace social_media9.Api.Controllers
 {
@@ -96,7 +97,7 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetUserPosts(Guid userId)
         {
-           var posts = await _postService.GetUserPostsAsync(userId);
+           var posts = await _postService.GetUserPostsAsync(userId.ToString());
            return Ok(posts);
         }
 
@@ -120,17 +121,6 @@ namespace social_media9.Api.Controllers
         public async Task<IActionResult> GetPostLikes(Guid postId)
         {
             // TODO: Implement get likes logic
-            return Ok();
-        }
-
-
-    }
-        // GET /api/posts/{postId}/likes
-        [HttpGet("{postId}/likes")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetPostLikes(Guid postId)
-        {
-            // TODO: Implement get likes logic in service and call here
             return Ok();
         }
 
