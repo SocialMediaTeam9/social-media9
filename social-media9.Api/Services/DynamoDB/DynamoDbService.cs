@@ -36,7 +36,7 @@ public class DynamoDbService
     /// </summary>
     public async Task<bool> CreateUserAsync(User newUser)
     {
-        var usernameLock = UsernameEntity.Create(newUser.Username, newUser.UserId);
+        var usernameLock = UsernameEntity.Create(newUser.Username);
 
         var transactionRequest = new TransactWriteItemsRequest
         {
