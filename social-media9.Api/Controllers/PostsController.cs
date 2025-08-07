@@ -61,7 +61,8 @@ namespace social_media9.Api.Controllers
                 AuthorUsername: post.AuthorUsername,
                 Content: post.Content,
                 CreatedAt: post.CreatedAt,
-                CommentCount: post.CommentCount
+                CommentCount: post.CommentCount,
+                Attachments: post.Attachments
             );
 
             return CreatedAtAction(nameof(GetPost), new { postId = response.PostId }, response);
@@ -94,7 +95,7 @@ namespace social_media9.Api.Controllers
         // GET /api/posts/{postId}
         [HttpGet("{postId}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPost(String postId)
+        public async Task<IActionResult> GetPost(string postId)
         {
             var post = await _postService.GetPostByIdAsync(postId);
             if (post == null)
@@ -107,7 +108,8 @@ namespace social_media9.Api.Controllers
                 AuthorUsername: post.AuthorUsername,
                 Content: post.Content,
                 CreatedAt: post.CreatedAt,
-                CommentCount: post.CommentCount
+                CommentCount: post.CommentCount,
+                Attachments: post.Attachments
             );
 
             return Ok(response);
