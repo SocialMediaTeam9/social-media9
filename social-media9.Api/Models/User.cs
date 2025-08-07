@@ -61,8 +61,11 @@ namespace social_media9.Api.Models
 
         [DynamoDBProperty("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
+
         [DynamoDBProperty("UpdatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        [DynamoDBProperty("PostCount")]
+        public int PostCount { get; set; } = 0;
     }
 }

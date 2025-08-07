@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using Amazon.DynamoDBv2;
+using System.Text.Json;
 
 namespace social_media9.Api.Services.DynamoDB;
 
@@ -146,6 +147,56 @@ public class DynamoDbService
         try { await _dynamoDbClient.TransactWriteItemsAsync(transaction); return true; }
         catch (TransactionCanceledException) { return false; }
     }
+
+    public async Task<(List<Post> Posts, string? NextToken)> GetPostsByUserAsync(
+    string username,
+    int pageSize = 10,
+    string? paginationToken = null)
+    {
+
+        var request = new QueryRequest
+        {
+            TableName = _tableName,
+            IndexName = "GSI1",
+            ScanIndexForward = false,
+            Limit = pageSize,
+
+            KeyConditionExpression = "GSI1PK = :v_pk AND begins_with(GSI1SK, :v_sk)",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":v_pk", new AttributeValue($"USER#{username}") },
+                { ":v_sk", new AttributeValue("POST#") }
+            }
+        };
+
+        if (!string.IsNullOrEmpty(paginationToken))
+        {
+            try
+            {
+                var tokenJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(paginationToken));
+                request.ExclusiveStartKey = JsonSerializer.Deserialize<Dictionary<string, AttributeValue>>(tokenJson);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize pagination token. Ignoring token.");
+            }
+        }
+        
+        var response = await _dynamoDbClient.QueryAsync(request);
+        
+        
+        var posts = _dbContext.FromDocuments<Post>(response.Items.Select(Document.FromAttributeMap)).ToList();
+
+        string? nextToken = null;
+        if (response.LastEvaluatedKey != null && response.LastEvaluatedKey.Count > 0)
+        {
+            var tokenJson = JsonSerializer.Serialize(response.LastEvaluatedKey);
+            nextToken = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(tokenJson));
+        }
+
+        return (posts, nextToken);
+    }
+
 
 
     public async Task<bool> CreateFollowAndIncrementCountsAsync(UserSummary follower, UserSummary following)
@@ -290,17 +341,61 @@ public class DynamoDbService
     /// </summary>
     public async Task<bool> CreatePostAsync(Post post)
     {
+        var transactionRequest = new TransactWriteItemsRequest
+        {
+            TransactItems = new List<TransactWriteItem>
+                {
+                    new() { Put = new Put { TableName = _tableName, Item = _dbContext.ToDocument(post).ToAttributeMap(), ConditionExpression = "attribute_not_exists(PK)" } },
+                    new() { Update = CreateUpdateCountRequest(post.AuthorUsername, "METADATA", "PostCount", 1) }
+                }
+        };
         try
         {
-            await _dbContext.SaveAsync(post);
+            await _dynamoDbClient.TransactWriteItemsAsync(transactionRequest);
+            _logger.LogInformation("Successfully created post {PostId} for user {Username}", post.SK, post.AuthorUsername);
             return true;
         }
-        catch (ConditionalCheckFailedException)
+        catch (TransactionCanceledException ex)
         {
-            // Console.WriteLine($"Create post failed due to a key collision for PK={post.PK}");
+            _logger.LogWarning(ex, "Transaction failed for post creation by {Username}", post.AuthorUsername);
             return false;
         }
     }
+
+    // public async Task<bool> DeletePostAsync(string postId, string authorUsername)
+    // {
+    //     // TODO: In a real app, you would also delete all comments and likes for this post.
+    //     // For now, we will just delete the post and update the counter.
+    //     var transactionRequest = new TransactWriteItemsRequest
+    //     {
+    //         TransactItems = new List<TransactWriteItem>
+    //             {
+    //                 new() { Delete = new Delete { TableName = _tableName, Item = _dbContext.ToDocument(post).ToAttributeMap(), ConditionExpression = "attribute_not_exists(PK)" } },
+    //                 new() { Update = CreateUpdateCountRequest(post.AuthorUsername, "METADATA", "PostCount", 1) }
+    //             }
+    //     };
+
+
+    //     var transaction = _dbContext.CreateTransactWrite();
+
+    //     // Item 1: Delete the PostEntity
+    //     transaction.AddDelete<PostEntity>($"POST#{postId}", $"POST#{postId}");
+
+    //     // Item 2: Decrement the PostCount on the author's UserEntity
+    //     transaction.AddUpdate(CreateUpdateUserCountRequest(authorUsername, "METADATA", "PostCount", -1));
+
+    //     try
+    //     {
+    //         await transaction.ExecuteAsync();
+    //         _logger.LogInformation("Successfully deleted post {PostId} and decremented PostCount for user {Username}", postId, authorUsername);
+    //         return true;
+    //     }
+    //     catch (TransactionCanceledException ex)
+    //     {
+    //         _logger.LogWarning(ex, "Transaction failed for post deletion by {Username}", authorUsername);
+    //         return false;
+    //     }
+    // }
 
     /// <summary>
     /// Retrieves a single post by its ID (the ULID part).
@@ -450,6 +545,7 @@ public class DynamoDbService
     #endregion
 
     #region Private Helpers
+
 
     private Update CreateUpdateUserCountRequest(string username, string attributeName, int incrementBy)
     {
