@@ -1,4 +1,3 @@
-// <<< THIS IS A NEW FILE >>>
 using MediatR;
 using social_media9.Api.Dtos;
 using System.Collections.Generic;
