@@ -4,6 +4,7 @@ using social_media9.Api.Models;
 using social_media9.Api.Dtos;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Services.DynamoDB;
+using social_media9.Api.Services;
 
 
 public class GetCommentsByContentHandler : IRequestHandler<GetCommentsByContentQuery, List<CommentResponse>>

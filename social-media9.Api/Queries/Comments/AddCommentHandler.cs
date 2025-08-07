@@ -4,15 +4,18 @@ using social_media9.Api.Models;
 using social_media9.Api.Dtos;
 using social_media9.Api.Commands;
 using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.Comments;
 
 public class AddCommentHandler : IRequestHandler<AddCommentCommand, CommentResponse>
 {
     private readonly ICommentRepository _repository;
-    private readonly CommentService _commentService;
+    private readonly ICommentService _commentService;
     private readonly IUserRepository _userRepository;
 
-
-    public AddCommentHandler(ICommentRepository repository, CommentService commentService, IUserRepository userRepository)
+    public AddCommentHandler(
+        ICommentRepository repository,
+        ICommentService commentService,
+        IUserRepository userRepository)
     {
         _repository = repository;
         _commentService = commentService;
@@ -21,7 +24,6 @@ public class AddCommentHandler : IRequestHandler<AddCommentCommand, CommentRespo
 
     public async Task<CommentResponse> Handle(AddCommentCommand request, CancellationToken cancellationToken)
     {
-
         var author = await _userRepository.GetUserByIdAsync(request.UserId);
         if (author == null)
         {

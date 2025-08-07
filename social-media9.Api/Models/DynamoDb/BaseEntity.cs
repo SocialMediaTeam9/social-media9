@@ -18,4 +18,10 @@ public abstract class BaseEntity
 
     [DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
     public string? GSI1SK { get; set; }
+
+    [DynamoDBHashKey]
+    public string PartitionKey { get; set; } = string.Empty;
+
+    [DynamoDBRangeKey]
+    public string SortKey { get; set; } = string.Empty;
 }

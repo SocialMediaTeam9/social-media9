@@ -1,10 +1,9 @@
-// Program.cs
-
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using social_media9.Api.Services;
+using social_media9.Api.Services.Comments;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Data;
@@ -87,6 +86,8 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 
+builder.Services.AddScoped<ICommentService, CommentService>();
+
 builder.Services.AddScoped<ITimelineService, TimelineService>();
 
 builder.Services.AddScoped<PostService>();
@@ -95,7 +96,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
 
-builder.Services.AddHostedService<SqsWorkerService>();
+// builder.Services.AddHostedService<SqsWorkerService>();
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
@@ -112,56 +113,56 @@ var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT I
 var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience not configured.");
 
 // === Authentication ===
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // for dev
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = issuer,
-        ValidAudience = audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
-    };
-})
-.AddGoogle(googleOptions =>
-{
-    googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
-        ?? throw new InvalidOperationException("Google ClientId not configured.");
-    googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
-        ?? throw new InvalidOperationException("Google ClientSecret not configured.");
-    googleOptions.CallbackPath = "/signin-google";
-    googleOptions.SaveTokens = true;
+// builder.Services.AddAuthentication(options =>
+// {
+//     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//     options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+//     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+// })
+// .AddCookie(options =>
+// {
+//     options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+//     options.Cookie.SecurePolicy = CookieSecurePolicy.None; // for dev
+//     options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+// })
+// .AddJwtBearer(options =>
+// {
+//     options.TokenValidationParameters = new TokenValidationParameters
+//     {
+//         ValidateIssuer = true,
+//         ValidateAudience = true,
+//         ValidateLifetime = true,
+//         ValidateIssuerSigningKey = true,
+//         ValidIssuer = issuer,
+//         ValidAudience = audience,
+//         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+//     };
+// })
+// .AddGoogle(googleOptions =>
+// {
+//     googleOptions.ClientId = builder.Configuration["GoogleAuthSettings:ClientId"]
+//         ?? throw new InvalidOperationException("Google ClientId not configured.");
+//     googleOptions.ClientSecret = builder.Configuration["GoogleAuthSettings:ClientSecret"]
+//         ?? throw new InvalidOperationException("Google ClientSecret not configured.");
+//     googleOptions.CallbackPath = "/signin-google";
+//     googleOptions.SaveTokens = true;
 
-    // Proper claim mapping
-    googleOptions.Events.OnCreatingTicket = context =>
-    {
-        if (context.Identity != null)
-        {
-            var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
-            if (googleIdClaim != null)
-            {
-                context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
-            }
-        }
-        return Task.CompletedTask;
-    };
-});
+//     // Proper claim mapping
+//     googleOptions.Events.OnCreatingTicket = context =>
+//     {
+//         if (context.Identity != null)
+//         {
+//             var googleIdClaim = context.Identity.FindFirst(c => c.Type == "sub");
+//             if (googleIdClaim != null)
+//             {
+//                 context.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, googleIdClaim.Value));
+//             }
+//         }
+//         return Task.CompletedTask;
+//     };
+// });
 
-builder.Services.AddAuthorization();
+// builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient("FederationClient", client =>
 {
@@ -183,7 +184,8 @@ if (builder.Environment.IsDevelopment())
     {
         var config = new AmazonDynamoDBConfig
         {
-            ServiceURL = "http://localhost:8000"
+            ServiceURL = "http://localhost:8000",
+            // AuthenticationRegion = "elasticmq" // Required for ElasticMQ
         };
         return new AmazonDynamoDBClient(config);
     });
@@ -236,8 +238,8 @@ app.UseStaticFiles();
 app.UseCors("AllowPeerspace");
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
 {
-    appBuilder.UseAuthentication();
-    appBuilder.UseAuthorization();
+    // appBuilder.UseAuthentication();
+    // appBuilder.UseAuthorization();
 });
 
 app.UseMiddleware<HttpSignatureValidationMiddleware>();
