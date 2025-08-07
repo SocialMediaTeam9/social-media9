@@ -1,239 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { fetcher } from '../utils/fetcher';
-import { UserProfile } from '../types/types';
-import { UpdateProfileResponse } from '../types/types'; 
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import PostCard from '../components/PostCard';
+import { PostResponse, UserProfile } from '../types/types';
+import { fetcher, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
 
 const ProfilePage: React.FC = () => {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+    const { handle } = useParams<{ handle: string }>();
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [posts, setPosts] = useState<PostResponse[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isFollowLoading, setIsFollowLoading] = useState(false);
 
-  
-  const [fullName, setFullName] = useState('');
-  const [bio, setBio] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const loggedInUsername = useMemo(() => localStorage.getItem('username'), []);
+    const isOwnProfile = profile?.username === loggedInUsername;
 
-  const currentUserId = localStorage.getItem('userId');
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!currentUserId) {
-        setError("User ID not found. Please log in.");
-        setIsLoading(false);
-        return;
-      }
-      try {
+    const fetchProfileData = useCallback(async () => {
+        if (!handle) return;
         setIsLoading(true);
-        const data = await fetcher<UserProfile>(`/user/profile`, {
-          method: 'GET',
-          userId: currentUserId,
-        });
-        setUserProfile(data);
-        setFullName(data.fullName || '');
-        setBio(data.bio || '');
-      } catch (err: any) {
-        console.error('Failed to fetch user profile:', err);
-        setError(err.message || 'Failed to load profile. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+        setError(null);
+        try {
+            const profileData = await lookupProfile(handle);
+            setProfile(profileData);
+            if (!handle.includes('@')) {
+                const postsData = await getPostsByUsername(handle);
+                setPosts(postsData);
+            } else {
+                setPosts([]); // Fetching remote posts is a future feature
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to load profile.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [handle]);
+
+    useEffect(() => {
+        fetchProfileData();
+    }, [fetchProfileData]);
+
+    const handleFollowToggle = async () => {
+        if (!profile || isFollowLoading || isOwnProfile) return;
+        setIsFollowLoading(true);
+        const isCurrentlyFollowing = profile.isFollowing;
+        const newFollowerCount = isCurrentlyFollowing ? profile.followersCount - 1 : profile.followersCount + 1;
+        
+        setProfile(p => p ? { ...p, isFollowing: !isCurrentlyFollowing, followersCount: newFollowerCount } : null);
+        try {
+            const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
+            await fetcher(`/api/v1/profiles/${profile.username}/follow`, { method });
+        } catch (err) {
+            setProfile(p => p ? { ...p, isFollowing: isCurrentlyFollowing, followersCount: profile.followersCount } : null);
+            alert(`Failed to ${isCurrentlyFollowing ? 'unfollow' : 'follow'} user.`);
+        } finally {
+            setIsFollowLoading(false);
+        }
+    };
+    
+    const handleSaveProfile = (updatedProfile: UserProfile) => {
+        setProfile(updatedProfile);
+        setIsEditing(false);
     };
 
-    fetchUserProfile();
-  }, [currentUserId]);
+    if (isLoading) return <div className="page-header">Loading Profile...</div>;
+    if (error) return <div className="page-header text-red-500">{error}</div>;
+    if (!profile) return <div className="page-header">User not found.</div>;
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setSelectedFile(event.target.files[0]);
-    } else {
-      setSelectedFile(null);
-    }
-  };
-
-  const handleUpdateProfile = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!currentUserId) {
-      setError("User ID not found. Cannot update profile.");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      let newProfilePictureUrl = userProfile?.profilePictureUrl;
-
-      // 1. Upload new profile picture if selected
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-
-        const uploadResponse = await fetcher<{ profilePictureUrl: string }>(
-          `/users/${currentUserId}/profile-picture`,
-          {
-            method: 'POST',
-            body: formData,
-          }
-        );
-        newProfilePictureUrl = uploadResponse.profilePictureUrl;
-      }
-
-      // 2. Update user profile with potentially new picture URL and other fields
-      // The fetcher's transformData function should handle converting the backend response
-      // to the `UpdateProfileResponse` type.
-      const updatedData = await fetcher<UpdateProfileResponse>(`/user/update`, {
-        method: 'PUT',
-        userId: currentUserId,
-        body: {
-          fullName: fullName,
-          bio: bio,
-          profilePictureUrl: newProfilePictureUrl,
-        },
-      });
-
-      setUserProfile(updatedData.updatedUser);
-      setIsEditing(false);
-      setSelectedFile(null);
-    } catch (err: any) {
-      console.error('Failed to update profile:', err);
-      setError(err.message || 'Failed to update profile. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return <div className="p-8 text-white">Loading profile...</div>;
-  }
-
-  if (error) {
-    return <div className="p-8 text-red-500">Error: {error}</div>;
-  }
-
-  if (!userProfile) {
-    return <div className="p-8 text-white">No profile data found.</div>;
-  }
-
-  return (
-    <div className="page-content" style={{ padding: '2rem' }}>
-      <h2 className="text-2xl font-bold mb-4 text-white">My Profile</h2>
-
-      {isEditing ? (
-        <form onSubmit={handleUpdateProfile} className="space-y-4">
-          <div className="flex items-center space-x-4">
-            {userProfile.profilePictureUrl && (
-              <img
-                src={userProfile.profilePictureUrl}
-                alt="Profile"
-                className="w-24 h-24 rounded-full object-cover border-2 border-blue-500"
-              />
-            )}
-            <div>
-              <label htmlFor="profilePicture" className="block text-gray-400 text-sm font-bold mb-2">
-                Change Profile Picture:
-              </label>
-              <input
-                type="file"
-                id="profilePicture"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {selectedFile && <p className="text-sm text-gray-500 mt-1">Selected: {selectedFile.name}</p>}
+    return (
+        <div className="profile-page">
+            {isEditing && isOwnProfile ? (
+                <>
+                    <div className="page-header">Edit Profile</div>
+                    <EditProfileForm 
+                        initialProfile={profile} 
+                        onCancel={() => setIsEditing(false)}
+                        onSave={handleSaveProfile}
+                    />
+                </>
+             ) : (
+                <>
+                    <div className="page-header">{profile.fullName}</div>
+                    <ProfileHeader 
+                        profile={profile}
+                        isOwnProfile={isOwnProfile}
+                        onEditClick={() => setIsEditing(true)}
+                        onFollowToggle={handleFollowToggle}
+                        isFollowLoading={isFollowLoading}
+                    />
+                </>
+             )}
+            
+            <div className="profile-posts-feed">
+                <h3 className="feed-title">Posts</h3>
+                {posts.length > 0 ? (
+                    posts.map(post => <PostCard key={post.postId} post={post} />)
+                ) : (
+                   <p className="p-4 text-gray-400">{!handle?.includes('@') ? "This user hasn't posted anything yet." : "Viewing posts from remote users is not yet supported."}</p>
+                )}
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="fullName" className="block text-gray-400 text-sm font-bold mb-2">
-              Full Name:
-            </label>
-            <input
-              type="text"
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-700 text-white"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="bio" className="block text-gray-400 text-sm font-bold mb-2">
-              Bio:
-            </label>
-            <textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={4}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-700 text-white"
-            ></textarea>
-          </div>
-
-          <div className="flex space-x-4">
-            <button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditing(false);
-                setFullName(userProfile.fullName || '');
-                setBio(userProfile.bio || '');
-                setSelectedFile(null);
-              }}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-4">
-            {userProfile.profilePictureUrl ? (
-              <img
-                src={userProfile.profilePictureUrl}
-                alt={`${userProfile.username}'s profile`}
-                className="w-32 h-32 rounded-full object-cover border-4 border-blue-500"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-full bg-gray-600 flex items-center justify-center text-gray-300 text-5xl font-bold">
-                {userProfile.username ? userProfile.username[0].toUpperCase() : 'U'}
-              </div>
-            )}
-            <div>
-              <p className="text-gray-400 text-lg">@{userProfile.username}</p>
-              <h3 className="text-white text-3xl font-bold">{userProfile.fullName}</h3>
-            </div>
-          </div>
-
-          <p className="text-gray-300 text-lg">{userProfile.bio || 'No bio available.'}</p>
-
-          <div className="flex space-x-6 text-gray-400">
-            <p className="text-lg">
-              <span className="font-bold text-white">{userProfile.followersCount || 0}</span> Followers
-            </p>
-            <p className="text-lg">
-              <span className="font-bold text-white">{userProfile.followingCount || 0}</span> Following
-            </p>
-          </div>
-          <p className="text-sm text-gray-500">Joined: {userProfile.createdAt}</p>
-
-          <button
-            onClick={() => setIsEditing(true)}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline"
-          >
-            Edit Profile
-          </button>
         </div>
-      )}
+    );
+};
+
+
+const ProfileHeader: React.FC<{
+    profile: UserProfile;
+    isOwnProfile: boolean;
+    onEditClick: () => void;
+    onFollowToggle: () => void;
+    isFollowLoading: boolean;
+}> = ({ profile, isOwnProfile, onEditClick, onFollowToggle, isFollowLoading }) => (
+    <div className="profile-header">
+        <img 
+            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${profile.fullName || profile.username}&background=334155&color=e2e8f0&size=128`} 
+            alt={profile.username} 
+            className="profile-avatar" 
+        />
+        <div className="profile-actions">
+            {isOwnProfile ? (
+                <button onClick={onEditClick} className="profile-button-secondary">Edit Profile</button>
+            ) : profile.isFollowing ? (
+                <button onClick={onFollowToggle} disabled={isFollowLoading} className="profile-button-secondary">Following</button>
+            ) : (
+                <button onClick={onFollowToggle} disabled={isFollowLoading} className="profile-button-primary">Follow</button>
+            )}
+        </div>
+        <div className="profile-info">
+            <h3 className="profile-fullname">{profile.fullName}</h3>
+            <p className="profile-username">@{profile.username}</p>
+            <p className="profile-bio">{profile.bio}</p>
+            <div className="profile-stats">
+                <span className="stat-link"><span className="font-bold text-white">{profile.followingCount}</span> Following</span>
+                <span className="stat-link"><span className="font-bold text-white">{profile.followersCount}</span> Followers</span>
+            </div>
+        </div>
     </div>
-  );
+);
+
+
+// --- Sub-Component: Edit Profile Form ---
+const EditProfileForm: React.FC<{
+    initialProfile: UserProfile,
+    onCancel: () => void,
+    onSave: (updatedProfile: UserProfile) => void
+}> = ({ initialProfile, onCancel, onSave }) => {
+    const [fullName, setFullName] = useState(initialProfile.fullName || '');
+    const [bio, setBio] = useState(initialProfile.bio || '');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setError(null);
+        
+        try {
+            let profilePictureUrl = initialProfile.profilePictureUrl;
+            if (selectedFile) {
+                const { uploadUrl, finalUrl } = await getUploadUrl({
+                  fileName: selectedFile.name, contentType: selectedFile.type
+                });
+                await uploadFileToS3(uploadUrl, selectedFile);
+                profilePictureUrl = finalUrl;
+            }
+            
+            const updatedProfile = await fetcher<UserProfile>(`/api/v1/profiles/me`, {
+                method: 'PUT',
+                body: { fullName, bio, profilePictureUrl },
+            });
+            onSave(updatedProfile);
+        } catch (err: any) {
+            setError(err.message || "Failed to save profile.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="p-4">
+            <form onSubmit={handleSave} className="edit-profile-form space-y-4">
+                <div>
+                    <label className="block text-gray-400 text-sm font-bold mb-2">Profile Picture</label>
+                    <input type="file" ref={fileInputRef} onChange={e => setSelectedFile(e.target.files?.[0] || null)} accept="image/*" />
+                </div>
+                <div>
+                    <label className="block text-gray-400 text-sm font-bold mb-2">Full Name</label>
+                    <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full bg-gray-700 text-white rounded p-2" />
+                </div>
+                <div>
+                    <label className="block text-gray-400 text-sm font-bold mb-2">Bio</label>
+                    <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full bg-gray-700 text-white rounded p-2" rows={4} />
+                </div>
+
+                <div className="flex space-x-4">
+                    <button type="submit" disabled={isSaving} className="profile-button-primary">{isSaving ? 'Saving...' : 'Save Changes'}</button>
+                    <button type="button" onClick={onCancel} className="profile-button-secondary">Cancel</button>
+                </div>
+                {error && <p className="text-red-500 mt-2">{error}</p>}
+            </form>
+        </div>
+    );
 };
 
 export default ProfilePage;
