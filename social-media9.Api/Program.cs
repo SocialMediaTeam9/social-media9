@@ -72,6 +72,10 @@ builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<IActorStorageService, DynamoDbActorStorageService>();
+builder.Services.AddSingleton<HttpSignatureService>();
+builder.Services.AddTransient<WebFingerService>(); 
+
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
