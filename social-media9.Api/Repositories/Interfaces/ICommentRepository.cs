@@ -6,6 +6,7 @@ namespace social_media9.Api.Repositories.Interfaces
     {
         Task SaveCommentAsync(Comment comment);
         Task<List<Comment>> GetCommentsByContentAsync(Guid postId);
+        Task<Comment?> GetCommentByIdAsync(Guid postId,Guid commentId);
         Task<bool> DeleteCommentAsync(Guid commentId, Guid postId);
         Task<bool> UpdateCommentAsync(Guid commentId, string newContent);
     }
