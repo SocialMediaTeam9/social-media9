@@ -1,7 +1,8 @@
-// <<< THIS IS A NEW FILE >>>
 using MediatR;
 using social_media9.Api.Dtos;
+using social_media9.Api.Models;
 using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,37 +16,57 @@ namespace social_media9.Api.Queries.SearchAll
     {
         private readonly IUserRepository _userRepository;
         private readonly IPostRepository _postRepository;
+        private readonly IFederationService _federationService;
 
-        public SearchAllQueryHandler(IUserRepository userRepository, IPostRepository postRepository)
+        // Inject all necessary services
+        public SearchAllQueryHandler(IUserRepository userRepository, IPostRepository postRepository, IFederationService federationService)
         {
             _userRepository = userRepository;
             _postRepository = postRepository;
+            _federationService = federationService;
         }
 
         public async Task<IEnumerable<SearchResultDto>> Handle(SearchAllQuery request, CancellationToken cancellationToken)
         {
-            // Start both searches in parallel for efficiency
-            var userSearchTask = _userRepository.SearchUsersAsync(request.Query, request.Limit);
-            var postSearchTask = _postRepository.SearchPostsAsync(request.Query, request.Limit);
+            var query = request.Query.Trim();
+            var userResults = new List<User>();
+            var postResults = new List<Post>();
 
-            await Task.WhenAll(userSearchTask, postSearchTask);
+            // Regex to check if the query is a remote user handle
+            var remoteUserRegex = new Regex(@"^@?([\w\.\-]+)@([\w\.\-]+)$");
+            var match = remoteUserRegex.Match(query);
 
-            var userResults = await userSearchTask;
-            var postResults = await postSearchTask;
+            if (match.Success)
+            {
+                var discoveredUser = await _federationService.DiscoverAndCacheUserAsync(match.Value.TrimStart('@'));
+                if (discoveredUser != null)
+                {
+                    userResults.Add(discoveredUser);
+                }
+            }
+            else
+            {
+                var userSearchTask = _userRepository.SearchUsersAsync(query, request.Limit);
+                var postSearchTask = _postRepository.SearchPostsAsync(query, request.Limit);
+
+                await Task.WhenAll(userSearchTask, postSearchTask);
+
+                userResults.AddRange(await userSearchTask);
+                postResults.AddRange(await postSearchTask);
+            }
+
 
             var combinedResults = new List<SearchResultDto>();
 
-            // Map user results
             combinedResults.AddRange(userResults.Select(u => new SearchResultDto
             {
-                ResultType = "User",
+                ResultType = "User", 
                 UserId = u.UserId,
-                Username = u.Username,
+                Username = u.IsRemote ? $"{u.Username}@{new Uri(u.ActorUrl!).Host}" : u.Username,
                 FullName = u.FullName,
                 ProfilePictureUrl = u.ProfilePictureUrl,
                 CreatedAt = u.CreatedAt
             }));
-
 
             combinedResults.AddRange(postResults.Select(p => new SearchResultDto
             {

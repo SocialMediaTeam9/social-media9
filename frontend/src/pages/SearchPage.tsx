@@ -14,7 +14,6 @@ interface SearchResult {
 
 const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [searchType, setSearchType] = useState<'users' | 'all'>('users');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +29,7 @@ const SearchPage: React.FC = () => {
     setResults([]);
 
     try {
-        const endpoint = `/api/search/${searchType}?q=${encodeURIComponent(query)}`;
+        const endpoint = `/api/search?q=${encodeURIComponent(query)}`;
         const data = await fetcher<SearchResult[]>(endpoint, { method: 'GET' });
         setResults(data);
     } catch (err: any) {
@@ -39,10 +38,10 @@ const SearchPage: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [query, searchType]);
+  }, [query]);
 
   const renderUser = (user: SearchResult) => (
-    <div key={user.userId || user.username} className="flex items-center p-3 bg-gray-800 rounded-lg">
+    <div key={`user-${user.userId}`} className="flex items-center p-3 bg-gray-800 rounded-lg">
       <img src={user.profilePictureUrl || 'https://via.placeholder.com/50'} alt={user.username} className="w-12 h-12 rounded-full mr-4" />
       <div>
         <p className="font-bold text-white">{user.fullName}</p>
@@ -52,7 +51,7 @@ const SearchPage: React.FC = () => {
   );
 
   const renderPost = (post: SearchResult) => (
-    <div key={post.postId} className="p-4 bg-gray-800 rounded-lg">
+    <div key={`post-${post.postId}`} className="p-4 bg-gray-800 rounded-lg">
       <p className="font-semibold text-white">@{post.username}</p>
       <p className="text-gray-300 mt-2 whitespace-pre-wrap">{post.content}</p>
       <p className="text-xs text-gray-500 mt-2">{new Date(post.createdAt).toLocaleString()}</p>
@@ -67,6 +66,7 @@ const SearchPage: React.FC = () => {
     return (
       <div className="space-y-4">
         {results.map((item) => {
+
           if (item.resultType === 'User') {
             return renderUser(item);
           }
@@ -89,7 +89,7 @@ const SearchPage: React.FC = () => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchType === 'users' ? 'Search for user@server.com...' : 'Search for users or content...'}
+            placeholder="Search for anything..."
             className="w-full bg-transparent p-3 text-white focus:outline-none"
           />
           <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full">
@@ -98,10 +98,6 @@ const SearchPage: React.FC = () => {
         </div>
       </form>
       
-      <div className="flex space-x-2 mb-6 border-b border-gray-700">
-        <button onClick={() => setSearchType('users')} className={`px-4 py-2 font-semibold ${searchType === 'users' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}>Users</button>
-        <button onClick={() => setSearchType('all')} className={`px-4 py-2 font-semibold ${searchType === 'all' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400'}`}>Search</button>
-      </div>
 
       <div>
         {renderResults()}

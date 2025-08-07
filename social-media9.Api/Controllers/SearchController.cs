@@ -2,7 +2,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using social_media9.Api.Queries.SearchUsers;
 using social_media9.Api.Queries.SearchAll;
 
 namespace social_media9.Api.Controllers
@@ -20,31 +19,12 @@ namespace social_media9.Api.Controllers
         }
 
         /// <summary>
-        /// Searches specifically for users (local and federated).
-        /// Used by the "Users" tab on the search page.
+        /// Performs a unified search for local users, remote users (via federation), and local posts.
         /// </summary>
-        /// <param name="q">The search query (e.g., "alice" or "bob@anotherserver.com").</param>
+        /// <param name="q">The search query.</param>
         /// <param name="limit">The maximum number of results to return.</param>
-        [HttpGet("users")]
-        public async Task<IActionResult> SearchUsers([FromQuery] string q, [FromQuery] int limit = 20)
-        {
-            if (string.IsNullOrWhiteSpace(q))
-            {
-                return BadRequest("Search query 'q' cannot be empty.");
-            }
-            var query = new SearchUsersQuery(q, limit);
-            var results = await _mediator.Send(query);
-            return Ok(results);
-        }
-        
-        /// <summary>
-        /// Performs a general search for users, posts, and hashtags.
-        /// Used by the main "Search" tab on the search page.
-        /// </summary>
-        /// <param name="q">The search query (e.g., "alice", "#fediverse", "hello world").</param>
-        /// <param name="limit">The maximum number of results to return.</param>
-        [HttpGet("all")]
-        public async Task<IActionResult> SearchAll([FromQuery] string q, [FromQuery] int limit = 20)
+        [HttpGet] // This is now the main endpoint: /api/search
+        public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] int limit = 20)
         {
             if (string.IsNullOrWhiteSpace(q))
             {

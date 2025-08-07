@@ -89,7 +89,7 @@ const CreatePostPage: React.FC = () => {
             <div className="textarea-wrapper">
               <textarea
                 value={content}
-                onChange={handleContentChange} // <-- THIS IS THE FIX
+                onChange={handleContentChange} 
                 placeholder="What's on your mind?"
                 className="post-textarea"
                 rows={5}
@@ -118,7 +118,6 @@ const CreatePostPage: React.FC = () => {
                 />
                 <button 
                   type="button" 
-                  // THIS IS THE FIX FOR THE ICON
                   // This onClick handler programmatically clicks the hidden input.
                   onClick={() => fileInputRef.current?.click()} 
                   className="icon-button" 
