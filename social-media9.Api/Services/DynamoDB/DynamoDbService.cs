@@ -206,8 +206,19 @@ public class DynamoDbService
         {
             TransactItems = new List<TransactWriteItem>
                 {
-                    new() { Delete = new Delete { TableName = _tableName, Key = new Dictionary<string, AttributeValue> { { "PK", new AttributeValue($"USER#{followerUsername}") }, { "SK", new AttributeValue($"FOLLOWS#{followedUsername}") } } } },
-                    new() { Update = CreateUpdateCountRequest($"USER#{followerUsername}", "METADATA", "FollowingCount", -1) },
+
+                    new() {
+                    Delete = new Delete
+                    {
+                        TableName = _tableName,
+                        Key = new Dictionary<string, AttributeValue>
+                        {
+                            { "PK", new AttributeValue($"USER#{followerUsername}") },
+                            { "SK", new AttributeValue($"FOLLOWS#{followedUsername}") }
+                        },
+                        ConditionExpression = "attribute_exists(PK)"
+                    }
+                },
                     new() { Update = CreateUpdateCountRequest($"USER#{followedUsername}", "METADATA", "FollowersCount", -1) }
                 }
         };

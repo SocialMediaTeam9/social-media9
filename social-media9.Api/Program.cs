@@ -199,7 +199,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient("FederationClient", client =>
 {
-    client.DefaultRequestHeaders.Add("User-Agent", "Peerspace/1.0");
+    client.DefaultRequestHeaders.Add("User-Agent", $"Peerspace/1.0 (+https://{builder.Configuration["DomainName"]})");
 });
 
 // === Controllers & Swagger ===

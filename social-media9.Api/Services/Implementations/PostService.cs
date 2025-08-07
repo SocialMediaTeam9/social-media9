@@ -27,8 +27,18 @@ namespace social_media9.Api.Services.Implementations
         private readonly IAmazonSQS _sqsClient;
         private readonly IConfiguration _config;
 
+        private readonly ILogger<PostService> _logger;
 
-        public PostService(IPostRepository postRepository, IAmazonSQS sqsClient, IStorageService storageService, DynamoDbService dbService, IUserRepository userRepository, IConfiguration config)
+        private readonly IHttpClientFactory _httpClientFactory;
+
+
+        public PostService(
+            IPostRepository postRepository,
+            IAmazonSQS sqsClient,
+            IStorageService storageService,
+            DynamoDbService dbService,
+            IUserRepository userRepository,
+            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory)
         {
             _postRepository = postRepository;
             _storageService = storageService;
@@ -36,6 +46,8 @@ namespace social_media9.Api.Services.Implementations
             _sqsClient = sqsClient;
             _config = config;
             _userRepository = userRepository;
+            _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
         // public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId)
@@ -153,6 +165,13 @@ namespace social_media9.Api.Services.Implementations
 
         public async Task<Post?> CreateAndFederatePostAsync(string authorUsername, string content, List<string>? attachmentUrls)
         {
+            var author = await _dbService.GetUserProfileByUsernameAsync(authorUsername);
+            if (author == null || string.IsNullOrEmpty(author.PrivateKeyPem))
+            {
+                _logger.LogError("Cannot federate post for user {Username} because they do not exist or have no private key.", authorUsername);
+                return null;
+            }
+
             var postId = Ulid.NewUlid().ToString();
             var domain = _config["DomainName"];
             var authorActorUrl = $"https://fed.{domain}/users/{authorUsername}";
@@ -176,20 +195,44 @@ namespace social_media9.Api.Services.Implementations
                 Attachments = attachmentUrls ?? new List<string>()
             };
 
+            var activityDoc = JsonDocument.Parse(activityJson);
+
             bool dbSuccess = await _dbService.CreatePostAsync(newPost);
             if (!dbSuccess)
             {
                 return null;
             }
 
-            await _sqsClient.SendMessageAsync(new SendMessageRequest
-            {
-                QueueUrl = _config["AWS:OutboundSqsQueueUrl"],
-                MessageBody = activityJson
-            });
+            _ = DeliverPostToFollowersAsync(activityDoc, author);
 
             return newPost;
         }
+
+        private async Task DeliverPostToFollowersAsync(JsonDocument activityDoc, User author)
+        {
+            var followers = await _dbService.GetFollowersAsync(author.Username);
+            if (!followers.Any()) return;
+
+            _logger.LogInformation("Starting outbound delivery of post by {Username} to {FollowerCount} followers.", author.Username, followers.Count);
+
+
+            var httpClient = _httpClientFactory.CreateClient("FederationClient");
+
+            var domain = _config["DomainName"];
+            var actorUrl = $"https://{domain}/users/{author.Username}";
+            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem);
+
+            var deliveryTasks = followers.Select(follower =>
+            {
+                var targetInbox = $"{follower.FollowerInfo.ActorUrl}/inbox";
+                return deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
+            });
+
+            await Task.WhenAll(deliveryTasks);
+
+            _logger.LogInformation("Completed outbound delivery for post by {Username}", author.Username);
+        }
+
 
         private string BuildCreateNoteActivityJson(string authorActorUrl, string postUrl, string content, List<string>? attachmentUrls)
         {

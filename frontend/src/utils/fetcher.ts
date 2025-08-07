@@ -35,6 +35,7 @@ const endpointMapping: Record<string, string> = {
   '/search/users': '/api/search/users',
   '/search/posts': '/api/search/posts',
   '/search/hashtags': '/api/search/hashtags',
+  '/posts/create': '/api/posts',
 };
 
 export async function fetcher<T>(
@@ -62,11 +63,11 @@ export async function fetcher<T>(
 
     const token = localStorage.getItem('token');
     const headers = new Headers(options?.headers);
-    
+
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    
+
     let requestBody: BodyInit | null = null;
     if (options?.body != null) {
       if (
@@ -159,7 +160,13 @@ function transformData(endpoint: string, data: any): any {
         username: data.username,
         token: data.token,
       };
-
+    case '/posts/create':
+      return {
+        id: data.postId,
+        author: data.authorUsername,
+        text: data.content,
+        created: formatDate(data.createdAt),
+      };
     default:
       return data;
   }
