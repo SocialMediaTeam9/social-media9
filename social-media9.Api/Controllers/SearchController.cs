@@ -2,15 +2,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using social_media9.Api.Queries.SearchContent;
 using social_media9.Api.Queries.SearchUsers;
-using social_media9.Api.Queries.SearchHashtags;
+using social_media9.Api.Queries.SearchAll;
 
 namespace social_media9.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // It's good practice to protect search endpoints
+    [Authorize]
     public class SearchController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -20,6 +19,12 @@ namespace social_media9.Api.Controllers
             _mediator = mediator;
         }
 
+        /// <summary>
+        /// Searches specifically for users (local and federated).
+        /// Used by the "Users" tab on the search page.
+        /// </summary>
+        /// <param name="q">The search query (e.g., "alice" or "bob@anotherserver.com").</param>
+        /// <param name="limit">The maximum number of results to return.</param>
         [HttpGet("users")]
         public async Task<IActionResult> SearchUsers([FromQuery] string q, [FromQuery] int limit = 20)
         {
@@ -32,26 +37,20 @@ namespace social_media9.Api.Controllers
             return Ok(results);
         }
         
-        [HttpGet("posts")]
-        public async Task<IActionResult> SearchPosts([FromQuery] string q, [FromQuery] int limit = 20)
+        /// <summary>
+        /// Performs a general search for users, posts, and hashtags.
+        /// Used by the main "Search" tab on the search page.
+        /// </summary>
+        /// <param name="q">The search query (e.g., "alice", "#fediverse", "hello world").</param>
+        /// <param name="limit">The maximum number of results to return.</param>
+        [HttpGet("all")]
+        public async Task<IActionResult> SearchAll([FromQuery] string q, [FromQuery] int limit = 20)
         {
             if (string.IsNullOrWhiteSpace(q))
             {
                 return BadRequest("Search query 'q' cannot be empty.");
             }
-            var query = new SearchContentQuery(q, limit); // Reusing the content query
-            var results = await _mediator.Send(query);
-            return Ok(results);
-        }
-
-        [HttpGet("hashtags")]
-        public async Task<IActionResult> SearchHashtags([FromQuery] string q, [FromQuery] int limit = 20)
-        {
-            if (string.IsNullOrWhiteSpace(q))
-            {
-                return BadRequest("Search query 'q' cannot be empty.");
-            }
-            var query = new SearchHashtagsQuery(q, limit);
+            var query = new SearchAllQuery(q, limit);
             var results = await _mediator.Send(query);
             return Ok(results);
         }
