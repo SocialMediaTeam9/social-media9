@@ -78,6 +78,7 @@ public class SqsWorkerService : BackgroundService
 
     private async Task ProcessMessageAsync(Message message, DynamoDbService dbService)
     {
+        _logger.LogInformation("--- RAW SQS MESSAGE BODY ---\n{MessageBody}\n--- END RAW BODY ---", message.Body);
         _logger.LogInformation("Processing SQS message ID: {MessageId}", message.MessageId);
 
         var activity = JsonDocument.Parse(message.Body).RootElement;
