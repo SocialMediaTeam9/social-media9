@@ -294,33 +294,6 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        // === FOLLOWERS & FOLLOWING ===
-
-        // [HttpPost("followers")]
-        // public async Task<IActionResult> GetFollowers([FromBody] GtsCollectionRequest request)
-        // {
-        //     var query = new GetUserFollowersQuery { Username = request.Username };
-        //     var followers = await _mediator.Send(query);
-        //     return Ok(followers);
-        //     // var response = new GtsCollectionResponse(followerUrls);
-        //     // return Ok(response);
-        // }
-
-        // [HttpPost("following")]
-        // public async Task<IActionResult> GetFollowing([FromBody] GtsCollectionRequest request)
-        // {
-        //     var query = new GetUserFollowingQuery { Username = request.Username };
-        //     var following = await _mediator.Send(query);
-        //     return Ok(following);
-        //     // var followingEntities = await _dbService.GetFollowingAsync(request.Username);
-        //     // var followingUrls = followingEntities
-        //     //     .Select(entity => entity.FollowingInfo.ActorUrl)
-        //     //     .ToList();
-
-        //     // var response = new GtsCollectionResponse(followingUrls);
-        //     // return Ok(response);
-        // }
-
         [HttpGet("{username}/followers")]
         [AllowAnonymous]
         public async Task<IActionResult> GetUserFollowers(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
