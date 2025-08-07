@@ -13,12 +13,10 @@ namespace social_media9.Api.Models
         public string Username { get; set; } = string.Empty;
 
         [DynamoDBProperty("Content")]
-        public string Text { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
 
         [DynamoDBProperty("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        
     }
 
 }
