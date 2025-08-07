@@ -7,19 +7,19 @@ namespace social_media9.Api.Dtos
         public string PostId { get; set; }
         public string UserId { get; set; }
         public string Username { get; set; }
-        public string Text { get; set; }
+        public string Content { get; set; }
         public DateTime CreatedAt { get; set; }
 
         public CommentDto() { }
 
-        // public CommentDto(Comment comment)
-        // {
-        //     CommentId = comment.CommentId;
-        //     PostId = comment.PostId;
-        //     UserId = comment.UserId;
-        //     Username = comment.Username;
-        //     Text = comment.Content;
-        //     CreatedAt = comment.CreatedAt;
-        // }
+        public CommentDto(Comment comment)
+        {
+            CommentId = comment.SK.Split('#')[1];
+            PostId = comment.PK.Split('#')[1];
+            UserId = comment.UserId;
+            Username = comment.Username;
+            Content = comment.Content;
+            CreatedAt = comment.CreatedAt;
+        }
     }
 }
