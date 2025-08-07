@@ -30,7 +30,9 @@ namespace social_media9.Api.Repositories.Interfaces
 
         // Added to efficiently get a list of users by their IDs
         Task<IEnumerable<User>> GetUsersByIdsAsync(IEnumerable<string> ids);
-        
+
         Task<UserSummary?> GetUserSummaryAsync(string username);
+        
+        Task<IEnumerable<User>> SearchUsersAsync(string query, int limit);
     }
 }
