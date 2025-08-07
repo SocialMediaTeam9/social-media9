@@ -346,7 +346,7 @@ public class DynamoDbService
             TransactItems = new List<TransactWriteItem>
                 {
                     new() { Put = new Put { TableName = _tableName, Item = _dbContext.ToDocument(post).ToAttributeMap(), ConditionExpression = "attribute_not_exists(PK)" } },
-                    new() { Update = CreateUpdateCountRequest(post.AuthorUsername, "METADATA", "PostCount", 1) }
+                    new() { Update = CreateUpdateCountRequest($"USER{post.AuthorUsername}", "METADATA", "PostCount", 1) }
                 }
         };
         try
@@ -357,7 +357,7 @@ public class DynamoDbService
         }
         catch (TransactionCanceledException ex)
         {
-            _logger.LogWarning(ex, "Transaction failed for post creation by {Username}", post.AuthorUsername);
+            _logger.LogWarning(ex, "Transaction failed for post creation by {Username}", ex);
             return false;
         }
     }
