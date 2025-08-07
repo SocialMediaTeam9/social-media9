@@ -1,35 +1,57 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+// File: Api/Queries/SearchContent/SearchContentQueryHandler.cs
+// <<< THIS FILE IS UPDATED >>>
+
 using MediatR;
 using social_media9.Api.Dtos;
-using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Repositories.Interfaces; // Using the main repository interface
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace social_media9.Api.Queries.SearchContent
 {
     public class SearchContentQueryHandler : IRequestHandler<SearchContentQuery, IEnumerable<PostSearchResultDto>>
     {
-        private readonly ISearchRepository _repository;
+        // <<< CHANGE: Inject IPostRepository instead of ISearchRepository >>>
+        private readonly IPostRepository _postRepository;
 
-        public SearchContentQueryHandler(ISearchRepository repository)
+        public SearchContentQueryHandler(IPostRepository postRepository)
         {
-            _repository = repository;
+            _postRepository = postRepository;
         }
 
         public async Task<IEnumerable<PostSearchResultDto>> Handle(SearchContentQuery request, CancellationToken cancellationToken)
         {
-            var results = await _repository.SearchPostsAsync(request.Query, request.Limit, cancellationToken);
+            // <<< CHANGE: Call the new search method on the post repository >>>
+            var results = await _postRepository.SearchPostsAsync(request.Query, request.Limit);
 
+            // The mapping logic is updated to handle the DynamoDB 'Post' model.
             return results.Select(post => new PostSearchResultDto
             {
-                PostId = post.PostId,
-                UserId = post.UserId,
-                Username = post.Username,
+                // Assuming Post model has these properties. Adjust if necessary.
+                PostId = post.SK.Replace("POST#", ""), // Get ID from Sort Key
+                UserId = post.PK.Replace("USER#", ""), // Get ID from Partition Key
+                Username = post.AuthorUsername,
                 Content = post.Content,
-                Hashtags = post.Hashtags,
+                Hashtags = ExtractHashtags(post.Content), // Extract hashtags from content
                 CreatedAt = post.CreatedAt
             });
+        }
+        
+        // Helper function to extract hashtags from post content
+        private List<string> ExtractHashtags(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return new List<string>();
+            }
+            return Regex.Matches(content, @"#(\w+)")
+                        .Cast<Match>()
+                        .Select(m => m.Groups[1].Value)
+                        .Distinct()
+                        .ToList();
         }
     }
 }
