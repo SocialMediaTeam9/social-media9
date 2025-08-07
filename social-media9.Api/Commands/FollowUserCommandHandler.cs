@@ -2,7 +2,7 @@ using MediatR;
 using social_media9.Api.Data;
 using System; // For ApplicationException
 using System.Threading; // For CancellationToken
-using System.Threading.Tasks; 
+using System.Threading.Tasks;
 using social_media9.Api.Models;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Services.Interfaces;
@@ -11,37 +11,20 @@ namespace social_media9.Api.Commands
 {
     public class FollowUserCommandHandler : IRequestHandler<FollowUserCommand, Unit>
     {
-        private readonly IFollowRepository _followRepository;
-        private readonly IUserRepository _userRepository;
 
-        public FollowUserCommandHandler(IFollowRepository followRepository, IUserRepository userRepository)
+        private readonly FollowService _followService;
+
+        public FollowUserCommandHandler(FollowService followService)
         {
-            _followRepository = followRepository;
-            _userRepository = userRepository;
+            _followService = followService;
         }
 
         public async Task<Unit> Handle(FollowUserCommand request, CancellationToken cancellationToken)
         {
-            if (request.FollowerId == request.FollowingId)
-            {
-                throw new ApplicationException("Cannot follow yourself.");
-            }
-
-            var followingUserExists = await _userRepository.ExistsAsync(request.FollowingId);
-            if (!followingUserExists)
-            {
-                throw new ApplicationException("User to follow not found.");
-            }
-
-            var isAlreadyFollowing = await _followRepository.IsFollowingAsync(request.FollowerId, request.FollowingId);
-            if (isAlreadyFollowing)
-            {
-                throw new ApplicationException("Already following this user.");
-            }
-
-            // await _followRepository.AddFollowAsync(request.FollowerId, request.FollowingId);
+            await _followService.FollowUserAsync(request.FollowerUsername, request.FollowingUsername);
 
             return Unit.Value;
+
         }
     }
 }

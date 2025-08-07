@@ -346,7 +346,7 @@ public class DynamoDbService
             TransactItems = new List<TransactWriteItem>
                 {
                     new() { Put = new Put { TableName = _tableName, Item = _dbContext.ToDocument(post).ToAttributeMap(), ConditionExpression = "attribute_not_exists(PK)" } },
-                    new() { Update = CreateUpdateCountRequest($"USER{post.AuthorUsername}", "METADATA", "PostCount", 1) }
+                    new() { Update = CreateUpdateCountRequest($"USER#{post.AuthorUsername}", "METADATA", "PostCount", 1) }
                 }
         };
         try

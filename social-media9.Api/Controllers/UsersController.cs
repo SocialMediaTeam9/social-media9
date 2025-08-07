@@ -91,7 +91,7 @@ namespace social_media9.Api.Controllers
             if (user == null)
             {
                 (string publicKey, string privateKey) = _cryptoService.GenerateRsaKeyPair();
-                var username = email?.Split('@')[0]  ?? Ulid.NewUlid().ToString();
+                var username = email?.Split('@')[0] ?? Ulid.NewUlid().ToString();
                 user = new User
                 {
                     UserId = Guid.NewGuid().ToString(),
@@ -109,7 +109,6 @@ namespace social_media9.Api.Controllers
                     CreatedAt = DateTime.UtcNow,
                 };
                 await _dbService.CreateUserAsync(user);
-                // await _userRepository.AddUserAsync(user);
             }
 
             var jwt = _jwtGenerator.GenerateToken(user.UserId, user.Username);
@@ -233,16 +232,26 @@ namespace social_media9.Api.Controllers
 
         // === FOLLOWING ===
 
-        [HttpPost("{userId}/follow")]
+        [HttpPost("{username}/follow")]
         [Authorize]
-        public async Task<IActionResult> FollowUser(string userId)
+        public async Task<IActionResult> FollowUser(string username)
         {
             try
             {
-                var currentUserId = GetCurrentUserId();
-                var command = new FollowUserCommand { FollowerId = currentUserId, FollowingId = userId };
+                var currentUserUsername = User.FindFirstValue(ClaimTypes.Name);
+                if (string.IsNullOrEmpty(currentUserUsername))
+                {
+                    return Unauthorized();
+                }
+
+                var command = new FollowUserCommand
+                {
+                    FollowerUsername = currentUserUsername,
+                    FollowingUsername = username
+                };
+
                 await _mediator.Send(command);
-                return Ok(new { message = "User followed." });
+                return Ok(new { message = "Successfully followed user." });
             }
             catch (ApplicationException ex)
             {
@@ -267,7 +276,7 @@ namespace social_media9.Api.Controllers
                 var currentUserId = GetCurrentUserId();
                 var command = new UnfollowUserCommand { FollowerId = currentUserId, UnfollowedActorUrl = request.ActorUrl };
                 await _mediator.Send(command);
-                
+
                 return NoContent();
             }
             catch (ApplicationException ex)

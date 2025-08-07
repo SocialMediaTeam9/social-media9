@@ -183,7 +183,7 @@ namespace social_media9.Api.Repositories.Implementations
 
             return results.Take(limit);
         }
-        
+
         public async Task<User?> GetUserByActorUrl(string actorUrl)
         {
             if (string.IsNullOrEmpty(actorUrl))
@@ -193,14 +193,14 @@ namespace social_media9.Api.Repositories.Implementations
 
             var config = new QueryOperationConfig
             {
-                IndexName = "ActorUrl-index", 
+                IndexName = "ActorUrl-index",
                 Filter = new QueryFilter("ActorUrl", QueryOperator.Equal, actorUrl),
                 Limit = 1
             };
 
             var search = _dbContext.FromQueryAsync<User>(config);
             var users = await search.GetNextSetAsync();
-            
+
             return users.FirstOrDefault();
         }
     }

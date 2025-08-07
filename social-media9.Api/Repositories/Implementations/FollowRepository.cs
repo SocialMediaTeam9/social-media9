@@ -25,34 +25,6 @@ namespace social_media9.Api.Repositories.Implementations
             _settings = clientFactory.GetSettings();
             _userRepository = userRepository;
         }
-
-        // public async Task AddFollowAsync(string followerId, string followingId)
-        // {
-        //     var existingFollow = await IsFollowingAsync(followerId, followingId);
-        //     if (!existingFollow)
-        //     {
-        //         var follow = new Follow { FollowerId = followerId, FollowingId = followingId, CreatedAt = DateTime.UtcNow };
-        //         await _context.SaveAsync(follow);
-
-        //         // Update counts on User documents
-        //         await IncrementFollowingCountAsync(followerId);
-        //         await IncrementFollowersCountAsync(followingId);
-        //     }
-        // }
-
-        // public async Task RemoveFollowAsync(string followerId, string followingId)
-        // {
-        //     var isFollowing = await IsFollowingAsync(followerId, followingId);
-        //     if (isFollowing)
-        //     {
-        //         await _context.DeleteAsync<Follow>(followerId, followingId);
-
-        //         // Update counts on User documents
-        //         await DecrementFollowingCountAsync(followerId);
-        //         await DecrementFollowersCountAsync(followingId);
-        //     }
-        // }
-
         public async Task<bool> IsFollowingAsync(string followerUsername, string followedUsername)
         {
             var result = await _context.LoadAsync<Follow>($"USER#{followerUsername}", $"FOLLOWS#{followedUsername}");
