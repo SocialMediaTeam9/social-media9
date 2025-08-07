@@ -106,6 +106,25 @@ public class DynamoDbService
 
     #region Follow Methods
 
+    public async Task<bool> IsFollowingAsync(string followerUsername, string followingUsername)
+    {
+        var pk = $"USER#{followerUsername}";
+        var sk = $"FOLLOWS#{followingUsername}";
+
+        try
+        {
+
+            var followEntity = await _dbContext.LoadAsync<Follow>(pk, sk);
+
+            return followEntity != null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while checking follow status for {Follower} -> {Following}", followerUsername, followingUsername);
+            return false;
+        }
+    }
+
     public async Task<bool> ProcessFollowActivityAsync(string followerActorUrl, string followedUsername)
     {
         var followerUsername = followerActorUrl.Split('/').Last();

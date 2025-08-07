@@ -44,4 +44,4 @@ public record GenerateUploadUrlResponse(
 public record FollowUserRequest(string ActorUrl);
 
 // DTO to represent a post in an API response
-public record PostResponse(string PostId, string AuthorUsername, string Content, DateTime CreatedAt, int CommentCount);
+public record PostResponse(string PostId, string AuthorUsername, string Content, DateTime CreatedAt, int CommentCount, List<string> Attachments);

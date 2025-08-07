@@ -26,6 +26,9 @@ namespace social_media9.Api.Repositories.Interfaces
         /// <param name="userId">The ID of the user whose following list is being retrieved.</param>
         /// <returns>A task that returns an enumerable collection of user IDs being followed.</returns>
         Task<IEnumerable<Follow>> GetFollowingAsync(string userId);
+
+        Task<bool> IsFollowingAsync(string followerId, string followingId);
+
     }
 }
 

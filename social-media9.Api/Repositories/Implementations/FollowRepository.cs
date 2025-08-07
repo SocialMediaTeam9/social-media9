@@ -8,27 +8,39 @@ using System.Linq;
 using System.Threading.Tasks;
 using System;
 using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Services.DynamoDB;
 
 namespace social_media9.Api.Repositories.Implementations
 {
     public class FollowRepository : IFollowRepository
     {
         private readonly IDynamoDBContext _context;
-        private readonly IAmazonDynamoDB _dynamoDbClient; // For low-level updates
+        private readonly IAmazonDynamoDB _dynamoDbClient;
         private readonly DynamoDbSettings _settings;
-        private readonly IUserRepository _userRepository; // To update user counts
+        private readonly IUserRepository _userRepository;
 
-        public FollowRepository(DynamoDbClientFactory clientFactory, IUserRepository userRepository)
+        private readonly DynamoDbService _dbService;
+
+        public FollowRepository(DynamoDbClientFactory clientFactory, IUserRepository userRepository, DynamoDbService dbService)
         {
             _context = clientFactory.GetContext();
             _dynamoDbClient = clientFactory.GetClient();
             _settings = clientFactory.GetSettings();
             _userRepository = userRepository;
+            _dbService = dbService;
         }
-        public async Task<bool> IsFollowingAsync(string followerUsername, string followedUsername)
+        public async Task<bool> IsFollowingAsync(string followerId, string followingId)
         {
-            var result = await _context.LoadAsync<Follow>($"USER#{followerUsername}", $"FOLLOWS#{followedUsername}");
-            return result != null;
+           
+            var follower = await _userRepository.GetUserByIdAsync(followerId);
+            var following = await _userRepository.GetUserByIdAsync(followingId);
+
+            if (follower == null || following == null)
+            {
+                return false;
+            }
+
+            return await _dbService.IsFollowingAsync(follower.Username, following.Username);
         }
 
         public async Task<IEnumerable<Follow>> GetFollowersAsync(string username)
