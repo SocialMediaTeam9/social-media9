@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
-import { PostResponse, UserProfile } from '../types/types';
+import { Post, PostResponse, UserProfile } from '../types/types';
 import { fetcher, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
 import PostCardAlt from '../components/PostCardAlt';
 
@@ -19,30 +19,47 @@ const ProfilePage: React.FC = () => {
 
     const usernameToFetch = handle || loggedInUsername; 
 
+    const navigate = useNavigate();
 
-    const fetchProfileData = useCallback(async () => {
-        if (!handle) return;
-        setIsLoading(true);
-        setError(null);
-        try {
-            const profileData = await lookupProfile(usernameToFetch ?? '');
-            setProfile(profileData);
-            if (!handle.includes('@')) {
-                const postsData = await getPostsByUsername(handle);
-                setPosts(postsData);
-            } else {
-                setPosts([]);
-            }
-        } catch (err: any) {
-            setError(err.message || 'Failed to load profile.');
-        } finally {
-            setIsLoading(false);
+ useEffect(() => {
+    const fetchProfileData = async () => {
+      
+      if (!usernameToFetch) {
+        setError("No user to display. Please log in or specify a user in the URL.");
+        setIsLoading(false);
+        if (!loggedInUsername) {
+            navigate('/');
         }
-    }, [handle]);
+        return;
+      }
 
-    useEffect(() => {
-        fetchProfileData();
-    }, [fetchProfileData]);
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log(`Fetching data for: ${usernameToFetch}`);
+
+        // 5. Use the definitive usernameToFetch variable for the API calls.
+        const profilePromise = lookupProfile(usernameToFetch);
+        
+        let postsPromise: Promise<PostResponse[]> = Promise.resolve([]);
+        if (!usernameToFetch.includes('@')) {
+            postsPromise = getPostsByUsername(usernameToFetch);
+        }
+        
+        const [profileData, postsData] = await Promise.all([profilePromise, postsPromise]);
+
+        setProfile(profileData);
+        setPosts(postsData);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+
+    }, [usernameToFetch, loggedInUsername, navigate]); 
 
     const handleFollowToggle = async () => {
         if (!profile || isFollowLoading || isOwnProfile) return;
@@ -209,3 +226,7 @@ const EditProfileForm: React.FC<{
 };
 
 export default ProfilePage;
+
+function fetchProfileData() {
+    throw new Error('Function not implemented.');
+}
