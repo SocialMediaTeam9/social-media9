@@ -21,14 +21,19 @@ public class PostsController : ControllerBase
     [HttpPost]
     // [Authorize]
     [AllowAnonymous]
-    public async Task<IActionResult> CreatePost([FromForm] CreatePostRequest request)
+    public async Task<IActionResult> CreatePost(
+        [FromForm] CreatePostRequest request,
+        [FromForm] IFormFile? mediaFile)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        {
+            var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+            return BadRequest(new { message = "Validation failed", errors });
+        }
 
-        // Allow anonymous: use a test user ID for now
         var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        var postId = await _postService.CreatePostAsync(request, userId);
+        var postId = await _postService.CreatePostAsync(request, userId, mediaFile);
+
         return Ok(new { PostId = postId });
     }
 
@@ -45,8 +50,12 @@ public class PostsController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetPost(Guid postId)
     {
-        // TODO: Implement get post logic
-        return Ok();
+        var post = await _postService.GetPostAsync(postId);
+
+        if (post == null)
+            return NotFound(new { message = "Post not found." });
+
+        return Ok(post);
     }
 
     // GET /api/users/{userId}/posts
@@ -83,7 +92,7 @@ public class PostsController : ControllerBase
 
     // POST /api/posts/{postId}/comments
     [HttpPost("{postId}/comments")]
-    [Authorize]
+    // [Authorize]
     public async Task<IActionResult> AddComment(Guid postId, [FromBody] AddCommentRequest request)
     {
         // TODO: Implement add comment logic
