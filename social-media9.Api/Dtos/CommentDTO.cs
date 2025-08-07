@@ -10,12 +10,10 @@ namespace social_media9.Api.Dtos
         public string Content { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        public CommentDto() { }
-
         public CommentDto(Comment comment)
         {
-            CommentId = comment.SK.Split('#')[1];
-            PostId = comment.PK.Split('#')[1];
+            CommentId = comment.SK.Replace("COMMENT#", "");
+            PostId = comment.PK.Replace("POST#", "");
             UserId = comment.UserId;
             Username = comment.Username;
             Content = comment.Content;
