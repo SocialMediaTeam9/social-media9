@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Services.DynamoDB;
+using System.Net;
 
 namespace social_media9.Api.Controllers
 {
@@ -321,25 +322,43 @@ namespace social_media9.Api.Controllers
         // }
 
         [HttpGet("{username}/followers")]
-        public async Task<IActionResult> GetUserFollowers(string username)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserFollowers(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
         {
             try
             {
                 var user = await _dbService.GetUserProfileByUsernameAsync(username);
                 if (user == null) return NotFound();
 
-                var domain = _config["DomainName"];
-                var followersUrl = $"https://{domain}/users/{username}/followers";
+                var followersUrl = $"https://{_config["DomainName"]}/users/{username}/followers";
 
-                var response = new OrderedCollection
+                if (page)
                 {
-                    Id = followersUrl,
-                    Type = "OrderedCollection",
-                    TotalItems = user.FollowersCount,
-                    First = $"{followersUrl}?page=true"
-                };
+                    var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
+                    var pageResponse = new OrderedCollectionPage
+                    {
+                        Id = $"{followersUrl}?page=true",
+                        PartOf = followersUrl,
+                        OrderedItems = followers.Select(f => (object)f.FollowerInfo.ActorUrl).ToList()
+                    };
 
-                return Ok(response);
+                    if (!string.IsNullOrEmpty(nextToken))
+                    {
+                        pageResponse.Next = $"{followersUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}";
+                    }
+
+                    return Ok(pageResponse);
+                }
+                else
+                {
+                    var collectionResponse = new OrderedCollection
+                    {
+                        Id = followersUrl,
+                        TotalItems = user.FollowersCount,
+                        First = $"{followersUrl}?page=true"
+                    };
+                    return Ok(collectionResponse);
+                }
             }
             catch (ApplicationException ex)
             {
@@ -352,26 +371,52 @@ namespace social_media9.Api.Controllers
         }
 
         [HttpGet("{username}/following")]
-        public async Task<IActionResult> GetUserFollowing(string username)
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserFollowing(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
         {
             try
             {
 
                 var user = await _dbService.GetUserProfileByUsernameAsync(username);
-                if (user == null) return NotFound();
+                if (user == null)
+                {
+                    return NotFound($"User '{username}' not found.");
+                }
 
                 var domain = _config["DomainName"];
                 var followingUrl = $"https://{domain}/users/{username}/following";
 
-                var response = new OrderedCollection
+                if (page)
                 {
-                    Id = followingUrl,
-                    Type = "OrderedCollection",
-                    TotalItems = user.FollowingCount,
-                    First = $"{followingUrl}?page=true"
-                };
 
-                return Ok(response);
+                    var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
+
+                    var pageResponse = new OrderedCollectionPage
+                    {
+                        Id = $"{followingUrl}?page=true" + (!string.IsNullOrEmpty(cursor) ? $"&cursor={cursor}" : ""),
+                        PartOf = followingUrl,
+                        OrderedItems = following.Select(f => (object)f.FollowingInfo.ActorUrl).ToList()
+                    };
+
+                    if (!string.IsNullOrEmpty(nextToken))
+                    {
+                        pageResponse.Next = $"{followingUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}";
+                    }
+
+                    return Ok(pageResponse);
+                }
+                else
+                {
+                    var collectionResponse = new OrderedCollection
+                    {
+                        Id = followingUrl,
+                        Type = "OrderedCollection",
+                        TotalItems = user.FollowingCount,
+                        First = $"{followingUrl}?page=true"
+                    };
+
+                    return Ok(collectionResponse);
+                }
             }
             catch (ApplicationException ex)
             {
@@ -382,6 +427,7 @@ namespace social_media9.Api.Controllers
                 return StatusCode(500, new { message = "Error retrieving following list." });
             }
         }
+
 
 
         [HttpPost("{userId}/profile-picture")]
