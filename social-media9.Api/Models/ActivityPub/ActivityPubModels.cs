@@ -23,15 +23,15 @@ public record ActorPublicKey(
 
 // Model for the Actor JSON response
 public record ActorResponse(
-    [property: JsonPropertyName("@context")] List<string> Context,
-    [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("type")] string Type,
-    [property: JsonPropertyName("preferredUsername")] string PreferredUsername,
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("inbox")] string Inbox,
-    [property: JsonPropertyName("outbox")] string Outbox,
-    [property: JsonPropertyName("followers")] string Followers,
-    [property: JsonPropertyName("following")] string Following,
+    [property: JsonPropertyName("@context")] object Context,
+    [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("type")] string? Type,
+    [property: JsonPropertyName("preferredUsername")] string? PreferredUsername,
+    [property: JsonPropertyName("name")] string? Name,
+    [property: JsonPropertyName("inbox")] string? Inbox,
+    [property: JsonPropertyName("outbox")] string? Outbox,
+    [property: JsonPropertyName("followers")] string? Followers,
+    [property: JsonPropertyName("following")] string? Following,
     [property: JsonPropertyName("publicKey")] ActorPublicKey PublicKey
 );
 
