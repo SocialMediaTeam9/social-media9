@@ -31,10 +31,6 @@ namespace social_media9.Api.Controllers
         [HttpGet("{postId}")]
         public async Task<IActionResult> GetComments(Guid postId)
         {
-            
-            string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
-            
             var result = await _mediator.Send(new GetCommentsByContentQuery(postId));
             return Ok(result);
         }
@@ -59,5 +55,22 @@ namespace social_media9.Api.Controllers
             var result = await _mediator.Send(command);
             return result ? Ok("Updated") : BadRequest("Update failed");
         }
+        public bool IsUserAuthorized(Guid commentId)
+        {
+                        
+            string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
+            var comment = _commentRepository.GetCommentByIdAsync(commentId).Result;
+            if (comment == null)
+            {
+                return false; 
+            }
+            else
+            {
+                return comment.UserId == userId ;
+            }
+
+        }
     }
+
 }
