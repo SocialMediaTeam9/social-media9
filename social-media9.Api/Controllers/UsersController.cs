@@ -325,9 +325,21 @@ namespace social_media9.Api.Controllers
         {
             try
             {
-                var query = new GetUserFollowersQuery { Username = username };
-                var followers = await _mediator.Send(query);
-                return Ok(followers);
+                var user = await _dbService.GetUserProfileByUsernameAsync(username);
+                if (user == null) return NotFound();
+
+                var domain = _config["DomainName"];
+                var followersUrl = $"https://{domain}/users/{username}/followers";
+
+                var response = new OrderedCollection
+                {
+                    Id = followersUrl,
+                    Type = "OrderedCollection",
+                    TotalItems = user.FollowersCount,
+                    First = $"{followersUrl}?page=true"
+                };
+
+                return Ok(response);
             }
             catch (ApplicationException ex)
             {
@@ -344,9 +356,22 @@ namespace social_media9.Api.Controllers
         {
             try
             {
-                var query = new GetUserFollowingQuery { Username = username };
-                var following = await _mediator.Send(query);
-                return Ok(following);
+
+                var user = await _dbService.GetUserProfileByUsernameAsync(username);
+                if (user == null) return NotFound();
+
+                var domain = _config["DomainName"];
+                var followingUrl = $"https://{domain}/users/{username}/following";
+
+                var response = new OrderedCollection
+                {
+                    Id = followingUrl,
+                    Type = "OrderedCollection",
+                    TotalItems = user.FollowingCount,
+                    First = $"{followingUrl}?page=true"
+                };
+
+                return Ok(response);
             }
             catch (ApplicationException ex)
             {
