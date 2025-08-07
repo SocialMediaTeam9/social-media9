@@ -35,13 +35,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   aliases = [
     var.domain,
     var.domain_name,
-    # "api.peerspace.online",
-    # "federation.peerspace.online"
   ]
-  #
-  # aliases = [
-  #   "social.peerspace.online",
-  # ]
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -71,7 +65,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     cached_methods = ["GET", "HEAD"]
     target_origin_id = "S3-${aws_s3_bucket.frontend.bucket}"
 
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
+
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
@@ -85,6 +83,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     target_origin_id = "ALB-Peerspace-API"
 
     viewer_protocol_policy = "https-only"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
 
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
@@ -97,6 +96,8 @@ resource "aws_cloudfront_distribution" "frontend" {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
 
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
+
     viewer_protocol_policy = "https-only"
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
@@ -106,8 +107,10 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern     = "/users/*"
     target_origin_id = "ALB-Peerspace-API"
 
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods   = ["GET", "HEAD"]
+
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors_with_credentials.id
 
     viewer_protocol_policy = "https-only"
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
@@ -229,6 +232,43 @@ resource "aws_s3_bucket_policy" "frontend" {
       }
     }
   })
+}
+
+resource "aws_cloudfront_response_headers_policy" "cors_with_credentials" {
+  name = "AllowPeerspaceCORS"
+
+  cors_config {
+    access_control_allow_credentials = true
+
+    access_control_allow_headers {
+      items = [
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin"
+      ]
+    }
+
+    access_control_allow_methods {
+      items = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    }
+
+    access_control_allow_origins {
+      items = ["https://peerspace.online"]
+    }
+
+    origin_override = true
+  }
+
+  custom_headers_config {
+
+    items {
+      header   = "Vary"
+      override = true
+      value    = "Origin"
+    }
+  }
 }
 
 # resource "aws_cloudfront_function" "redirect_well_known" {

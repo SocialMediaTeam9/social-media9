@@ -45,11 +45,11 @@ resource "aws_ecs_task_definition" "app_service" {
         { name = "REDIS_ENDPOINT", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
         {
           name  = "GoogleAuthSettings__RedirectUri"
-          value = "https://www.peerspace.online/login-success"
+          value = "https://peerspace.online/login-success"
         },
         {
           name  = "GoogleAuthSettings__FrontendRedirectUri"
-          value = "https://www.peerspace.online/login-success"
+          value = "https://peerspace.online/login-success"
         },
         {
           "name" : "JwtSettings__Issuer",
@@ -97,7 +97,7 @@ resource "aws_ecs_task_definition" "app_service" {
         },
         {
           name  = "WebAppDomain",
-          value = "https://www.peerspace.online"
+          value = "https://peerspace.online"
         },
         {
           name  = "FederationDomain",
