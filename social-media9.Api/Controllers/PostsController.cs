@@ -24,7 +24,7 @@ namespace social_media9.Api.Controllers
 
         [HttpPost]
         [Authorize]
-        public async Task<IActionResult> CreatePost([FromForm] CreatePostRequest request)
+        public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);

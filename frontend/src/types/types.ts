@@ -53,3 +53,15 @@ export interface PostSearchResult {
   hashtags: string[];
   createdAt: string;
 }
+
+
+export interface GenerateUploadUrlPayload {
+  fileName: string;
+  contentType: string;
+}
+
+export interface GenerateUploadUrlResponse {
+  uploadUrl: string;
+  finalUrl: string; 
+}
+
