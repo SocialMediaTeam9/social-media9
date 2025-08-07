@@ -73,13 +73,14 @@ namespace social_media9.Api.Controllers
             string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
             var comment = _commentRepository.GetCommentByIdAsync(postId,commentId).Result;
+            
             if (comment == null)
             {
-                return false; 
+                return false;
             }
             else
             {
-                return comment.UserId == userId ;
+                return comment.UserId == userId;
             }
 
         }
