@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("https://peerspace.online")
               .AllowAnyMethod()
-              .AllowAnyHeader()
+              .WithHeaders("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin")
               .AllowCredentials();
     });
 });
@@ -126,7 +126,7 @@ builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddCookie(options =>
 {
@@ -242,7 +242,8 @@ app.Use(async (context, next) =>
 
     await next();
 });
-app.UseStaticFiles(); 
+app.UseStaticFiles();
+app.UseCors("AllowPeerspace");
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
 {
     appBuilder.UseAuthentication();
@@ -250,7 +251,7 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger"), app
 });
 
 app.UseMiddleware<HttpSignatureValidationMiddleware>();
-app.UseCors("AllowPeerspace");
+
 app.MapControllers();
 
 app.MapGet("/health", () =>
