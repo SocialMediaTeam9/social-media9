@@ -3,8 +3,8 @@ using MediatR;
 using social_media9.Api.Models;
 using social_media9.Api.Commands;
 using social_media9.Api.Dtos;
-
-
+using System.Security.Claims;
+using social_media9.Api.Repositories.Interfaces;
 
 namespace social_media9.Api.Controllers
 {
@@ -13,10 +13,12 @@ namespace social_media9.Api.Controllers
     public class CommentsController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly IUserRepository _userRepository;
 
-        public CommentsController(IMediator mediator)
+        public CommentsController(IMediator mediator, IUserRepository userRepository)
         {
             _mediator = mediator;
+            _userRepository = userRepository;
         }
 
         [HttpPost]
@@ -29,6 +31,10 @@ namespace social_media9.Api.Controllers
         [HttpGet("{postId}")]
         public async Task<IActionResult> GetComments(Guid postId)
         {
+            
+            string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
+            
             var result = await _mediator.Send(new GetCommentsByContentQuery(postId));
             return Ok(result);
         }
