@@ -13,13 +13,10 @@ namespace social_media9.Api.Repositories.Implementations
 {
     public class PostRepository : IPostRepository
     {
-        private readonly DynamoDbContext _dbContext;
-
         private readonly IDynamoDBContext _context;
 
-        public PostRepository(DynamoDbContext dbContext, IDynamoDBContext context)
+        public PostRepository(IDynamoDBContext context)
         {
-            _dbContext = dbContext;
             _context = context;
         }
 
@@ -48,13 +45,13 @@ namespace social_media9.Api.Repositories.Implementations
 
         public async Task AddAsync(Post post)
         {
-            await _dbContext.Context.SaveAsync(post);
+            await _context.SaveAsync(post);
         }
 
         public async Task<IEnumerable<Post>> GetAllAsync()
         {
             var conditions = new List<ScanCondition>();
-            var posts = await _dbContext.Context.ScanAsync<Post>(conditions).GetRemainingAsync();
+            var posts = await _context.ScanAsync<Post>(conditions).GetRemainingAsync();
             return posts;
         }
 
@@ -91,7 +88,7 @@ namespace social_media9.Api.Repositories.Implementations
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow
             };
-            await _dbContext.Context.SaveAsync(like);
+            await _context.SaveAsync(like);
             return true;
         }
 
