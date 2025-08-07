@@ -73,5 +73,12 @@ namespace social_media9.Api.Repositories.Implementations
             var results = await search.GetRemainingAsync();
             return results;
         }
+
+        public async Task<Comment?> GetCommentByIdAsync(Guid commentId)
+        {
+            var search = _context.QueryAsync<Comment>(commentId.ToString());
+            var results = await search.GetRemainingAsync();
+            return results.FirstOrDefault();
+        }
     }
 }
