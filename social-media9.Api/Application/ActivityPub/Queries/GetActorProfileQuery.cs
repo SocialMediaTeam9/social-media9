@@ -64,14 +64,14 @@ public class GetOutboxActivitiesQueryHandler : IRequestHandler<GetOutboxActiviti
         var user = await _userRepository.GetUserByUsernameAsync(request.Username);
         if (user == null) return Enumerable.Empty<object>();
 
-        var posts = await _postRepository.GetByUserAsync(Guid.Parse(user.UserId));
+        var posts = await _postRepository.GetPostsByUsernameAsync(request.Username);
         var domain = _config["ActivityPubSettings:Domain"] ?? "localhost";
         var actor = $"https://{domain}/users/{user.Username}";
 
         return posts.Select(post => new
         {
             @context = "https://www.w3.org/ns/activitystreams",
-            id = $"https://{domain}/activities/{post.PostId}",
+            id = $"https://{domain}/activities/{post.PK.Replace("POST#", "")}",
             type = "Create",
             actor = actor,
             published = post.CreatedAt,
@@ -79,9 +79,9 @@ public class GetOutboxActivitiesQueryHandler : IRequestHandler<GetOutboxActiviti
             obj = new
             {
                 type = "Note",
-                id = $"https://{domain}/notes/{post.PostId}",
+                id = $"https://{domain}/notes/{post.PK.Replace("POST#", "")}",
                 attributedTo = actor,
-                content = post.Caption,
+                content = post.Content,
                 published = post.CreatedAt
             }
         });

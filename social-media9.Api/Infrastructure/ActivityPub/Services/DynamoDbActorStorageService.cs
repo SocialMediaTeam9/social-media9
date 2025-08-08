@@ -27,17 +27,17 @@ public class DynamoDbActorStorageService : IActorStorageService
         {
             Id = $"https://yourdomain.com/users/{username}",
             PreferredUsername = username,
-            Name = user.FullName,
-            Summary = user.Bio,
+            // Name = user.FullName,
+            // Summary = user.Bio,
             Inbox = $"https://yourdomain.com/users/{username}/inbox",
             Outbox = $"https://yourdomain.com/users/{username}/outbox",
             PublicKey = new PublicKey
             {
                 Id = $"https://yourdomain.com/users/{username}#main-key",
                 Owner = $"https://yourdomain.com/users/{username}",
-                Pem = user.PublicKeyPem
+                PublicKeyPem = user.PublicKeyPem
             },
-            Type = "Person"
+            // Type = "Person"
         };
     }
 
@@ -46,7 +46,7 @@ public class DynamoDbActorStorageService : IActorStorageService
         var user = await _userRepo.GetUserByUsernameAsync(username);
         if (user == null) return Enumerable.Empty<object>();
 
-        var posts = await _postRepo.GetByUserAsync(Guid.Parse(user.UserId));
+        var posts = await _postRepo.GetPostsByUsernameAsync(username);
         var activities = posts.Select(post => new
         {
             @context = "https://www.w3.org/ns/activitystreams",
@@ -58,7 +58,7 @@ public class DynamoDbActorStorageService : IActorStorageService
             object_ = new
             {
                 type = "Note",
-                id = $"https://yourdomain.com/posts/{post.PostId}",
+                id = $"https://yourdomain.com/posts/{post.PK}",
                 content = post.Content,
                 attributedTo = $"https://yourdomain.com/users/{username}",
                 published = post.CreatedAt,

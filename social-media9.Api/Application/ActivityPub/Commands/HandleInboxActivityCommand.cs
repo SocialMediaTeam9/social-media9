@@ -36,7 +36,7 @@ public class HandleInboxActivityCommandHandler : IRequestHandler<HandleInboxActi
             var remoteActorId = actorUri?.Split("/").Last();
             if (remoteActorId != null)
             {
-                await _followRepo.AddFollowAsync(remoteActorId, targetUser.UserId);
+                // await _followRepo.AddFollowAsync(remoteActorId, targetUser.UserId);
                 _logger.LogInformation("Accepted follow from {Actor} to {LocalUser}", remoteActorId, request.Username);
                 // Optionally: Trigger AcceptActivityCommand here
             }
