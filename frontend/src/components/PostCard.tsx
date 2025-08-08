@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { fetcher } from '../utils/fetcher'; // Assuming you have a fetcher utility
+import { fetcher } from '../utils/fetcher';
+import LikeButton from './LikeButton';
 
-// This interface must match the 'TimelineItemResponse' from your back-end
+// Updated interface to include like information
 interface Post {
     postId: string;
     authorUsername: string;
@@ -9,25 +10,28 @@ interface Post {
     attachmentUrls: string[];
     createdAt: string;
     boostedBy?: string;
+    likeCount: number;
+    isLikedByUser: boolean;
 }
 
 interface PostCardProps {
     post: Post;
-    currentLoggedInUsername: string; // Add this prop to know who is logged in
+    currentLoggedInUsername: string;
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) => {
-    // State to manage whether the logged-in user is following the post author
+    // Existing follow-related state
     const [isFollowing, setIsFollowing] = useState<boolean>(false);
-    // State to handle loading status for follow/unfollow actions
     const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
-    // State to handle errors during follow/unfollow actions
     const [actionError, setActionError] = useState<string | null>(null);
 
-    // Effect to check the follow status when the component mounts or author changes
+    // New like-related state
+    const [likeCount, setLikeCount] = useState(post.likeCount);
+    const [isLiked, setIsLiked] = useState(post.isLikedByUser);
+
+    // Existing follow logic (unchanged)
     useEffect(() => {
         const checkFollowStatus = async () => {
-            // Do not check follow status if the author is the current logged-in user
             if (currentLoggedInUsername === post.authorUsername) {
                 return;
             }
@@ -35,8 +39,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
             setIsActionLoading(true);
             setActionError(null);
             try {
-                // Assuming your backend has an endpoint to check follow status
-                // For example: GET /api/follow/is-following?localUsername={loggedInUser}&targetUsername={author}
                 const response = await fetcher<{ isFollowing: boolean }>(
                     `/api/follow/is-following?localUsername=${encodeURIComponent(currentLoggedInUsername)}&targetUsername=${encodeURIComponent(post.authorUsername)}`
                 );
@@ -49,17 +51,16 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
             }
         };
 
-        if (currentLoggedInUsername) { // Only run if a user is logged in
+        if (currentLoggedInUsername) {
             checkFollowStatus();
         }
-    }, [post.authorUsername, currentLoggedInUsername]); // Re-run if author or logged-in user changes
+    }, [post.authorUsername, currentLoggedInUsername]);
 
-    // Handler for the follow action
+    // Existing follow handlers (unchanged)
     const handleFollow = async () => {
         setIsActionLoading(true);
         setActionError(null);
         try {
-            // Assuming your backend has a follow endpoint like POST /api/follow
             const response = await fetcher('/api/follow', {
                 method: 'POST',
                 headers: {
@@ -70,7 +71,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
                     targetUsername: post.authorUsername,
                 }),
             });
-            if (response) { // Assuming fetcher throws on non-OK status
+            if (response) {
                 setIsFollowing(true);
             }
         } catch (err: any) {
@@ -81,12 +82,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
         }
     };
 
-    // Handler for the unfollow action
     const handleUnfollow = async () => {
         setIsActionLoading(true);
         setActionError(null);
         try {
-            // Assuming your backend has an unfollow endpoint like DELETE /api/follow
             const response = await fetcher('/api/unfollow', {
                 method: 'DELETE',
                 headers: {
@@ -94,10 +93,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
                 },
                 body: JSON.stringify({
                     localUsername: currentLoggedInUsername,
-                    unfollowedActorUrl: `https://your-domain.com/users/${post.authorUsername}`, // Construct actor URL based on your backend's expectation
+                    unfollowedActorUrl: `https://your-domain.com/users/${post.authorUsername}`,
                 }),
             });
-            if (response) { // Assuming fetcher throws on non-OK status
+            if (response) {
                 setIsFollowing(false);
             }
         } catch (err: any) {
@@ -108,11 +107,16 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
         }
     };
 
-    // Do not render the follow/unfollow button if the author is the current logged-in user
+    // New like handler
+    const handleLikeChange = (newIsLiked: boolean, newLikeCount: number) => {
+        setIsLiked(newIsLiked);
+        setLikeCount(newLikeCount);
+    };
+
     const showFollowButton = currentLoggedInUsername && currentLoggedInUsername !== post.authorUsername;
 
     return (
-        <div className="post-container"> {/* Changed to use .post-container from app.css */}
+        <div className="post-container">
             {post.boostedBy && (
                 <div className="text-xs text-gray-400 mb-2 font-semibold">
                     Boosted by {post.boostedBy}
@@ -153,7 +157,18 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
                         <img src={post.attachmentUrls[0]} alt="Post attachment" className="post-image" />
                     </div>
                 )}
-                <p className="text-xs text-gray-500 mt-4">{new Date(post.createdAt).toLocaleString()}</p>
+
+                {/* New interaction section with like button */}
+                <div className="flex items-center justify-between mt-4 max-w-md">
+                    <LikeButton
+                        postId={post.postId}
+                        isLiked={isLiked}
+                        likeCount={likeCount}
+                        onLikeChange={handleLikeChange}
+                    />
+                </div>
+
+                <p className="text-xs text-gray-500 mt-2">{new Date(post.createdAt).toLocaleString()}</p>
                 {actionError && <p className="text-red-500 text-sm mt-2">{actionError}</p>}
             </div>
         </div>
