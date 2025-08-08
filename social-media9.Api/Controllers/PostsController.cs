@@ -183,11 +183,11 @@ namespace social_media9.Api.Controllers
         [HttpPut("update")]
         public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
         {
-            if (!IsUserAuthorized(dto.PostId,dto.CommentId))
+            if (!IsUserAuthorized(dto.PostId, dto.CommentId))
             {
                 return Unauthorized("You are not authorized to update this comment.");
             }
-            
+
             var command = new UpdateCommentCommand
             {
                 CommentId = dto.CommentId,
@@ -197,6 +197,24 @@ namespace social_media9.Api.Controllers
 
             var result = await _mediator.Send(command);
             return result ? Ok("Updated") : BadRequest("Update failed");
+        }
+        
+                 public bool IsUserAuthorized(Guid postId, Guid commentId)
+        {
+
+            string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
+            var comment = _commentRepository.GetCommentByIdAsync(postId, commentId).Result;
+
+            if (comment == null)
+            {
+                return false;
+            }
+            else
+            {
+                return comment.UserId == userId;
+            }
+
         }
     }
 }
