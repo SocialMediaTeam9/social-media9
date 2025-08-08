@@ -21,7 +21,7 @@ const ProfilePage: React.FC = () => {
 
     const navigate = useNavigate();
 
- useEffect(() => {
+    useEffect(() => {
     const fetchProfileData = async () => {
       
       if (!usernameToFetch) {

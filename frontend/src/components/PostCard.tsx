@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 // This interface must match the 'TimelineItemResponse' from your back-end
 interface Post {
@@ -25,7 +26,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <div className="flex items-center mb-3">
                 <div className="w-12 h-12 rounded-full bg-gray-600 mr-4 flex-shrink-0" />
                 <div>
-                    <p className="font-bold text-white">{post.authorUsername}</p>
+                    <Link to={`/dashboard/profile/${post.authorUsername}`}><p className="font-bold text-white">{post.authorUsername}</p></Link>
                     <p className="text-sm text-gray-400">@{post.authorUsername}</p>
                 </div>
             </div>
