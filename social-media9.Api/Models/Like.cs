@@ -4,7 +4,7 @@ using Amazon.DynamoDBv2.DataModel;
 namespace social_media9.Api.Models
 {
     [DynamoDBTable("nexusphere-mvp-main-table")]
-    public class Like
+    public class Like : BaseEntity
     {
         [DynamoDBHashKey]
         public string PostId { get; set; } = string.Empty;
