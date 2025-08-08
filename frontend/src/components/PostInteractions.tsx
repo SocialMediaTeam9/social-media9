@@ -86,7 +86,7 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
 
             const addedComment: Comment = await response.json();
             setComments((prevComments) => [...prevComments, addedComment]);
-            setNewCommentContent(''); // Clear the input field
+            setNewCommentContent(''); 
         } catch (error: any) {
             console.error("Error adding comment:", error);
             setErrorComments(error.message);
