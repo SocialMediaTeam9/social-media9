@@ -407,35 +407,33 @@ button {
 
 
 .profile-page .page-header {
-  /* This reuses your existing page-header style for the top bar */
-  font-size: 1.25rem; /* Slightly smaller for profile name */
+  font-size: 1.25rem;
   font-weight: 800;
 }
 
 .profile-header {
   position: relative;
   padding: 1.5rem;
-  padding-top: 5rem; /* Make space for the avatar to overlap the top */
+  padding-top: 5rem;
   border-bottom: 1px solid #374151;
 }
 
 .profile-avatar {
   position: absolute;
-  /* Pull the avatar up to sit half in the header, half out */
   top: -48px; 
   left: 1.5rem;
   width: 128px;
   height: 128px;
-  border-radius: 9999px; /* Fully rounded */
-  border: 4px solid #0f172a; /* Border matches the page background for a "cutout" look */
-  background-color: #334155; /* Fallback color */
-  object-fit: cover; /* Ensures non-square images look good */
+  border-radius: 9999px; 
+  border: 4px solid #0f172a;
+  background-color: #334155;
+  object-fit: cover;
 }
 
 .profile-actions {
   display: flex;
   justify-content: flex-end;
-  height: 40px; /* Reserve space for the button */
+  height: 40px;
 }
 
 .profile-button-primary, .profile-button-secondary {
@@ -487,7 +485,7 @@ button {
   color: #e2e8f0;
   margin-bottom: 1rem;
   line-height: 1.6;
-  white-space: pre-wrap; /* Respects line breaks in the bio */
+  white-space: pre-wrap;
 }
 
 .profile-stats {
@@ -514,10 +512,6 @@ button {
   border-bottom: 1px solid #374151;
   color: #f8fafc;
 }
-
-/* ---
---- Edit Profile Form ---
---- */
 
 .edit-profile-form {
   padding: 1.5rem;
@@ -560,7 +554,6 @@ button {
   color: #94a3b8;
 }
 
-/* Custom file input button styling */
 .edit-profile-form input[type="file"]::file-selector-button {
   margin-right: 1rem;
   padding: 0.5rem 1rem;
