@@ -69,15 +69,8 @@ const ProfilePage: React.FC = () => {
         
         setProfile(p => p ? { ...p, isFollowing: !isCurrentlyFollowing, followersCount: newFollowerCount } : null);
         try {
-
-            var userHandle = usernameToFetch!;
-
-            if (!usernameToFetch!.includes('@')) {
-                userHandle = usernameToFetch + "@peerspace.online";
-            }
-
             const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
-            await fetcher(`/api/users/${userHandle}/follow`, { method });
+            await fetcher(`/api/users/${usernameToFetch}/follow`, { method });
         } catch (err) {
             setProfile(p => p ? { ...p, isFollowing: isCurrentlyFollowing, followersCount: profile.followersCount } : null);
             alert(`Failed to ${isCurrentlyFollowing ? 'unfollow' : 'follow'} user.`);

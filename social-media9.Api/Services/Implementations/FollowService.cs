@@ -47,8 +47,12 @@ public class FollowService
             throw new ApplicationException("Current user not found.");
         }
 
-        
-        var targetUser = await _federationService.DiscoverAndCacheUserAsync(targetHandle);
+        var targetUser = await _dbService.GetUserProfileByUsernameAsync(localFollowerUsername);
+
+        if (targetUser == null) {
+            targetUser = await _federationService.DiscoverAndCacheUserAsync(targetHandle);
+        }
+
         if (targetUser == null)
         {
             throw new ApplicationException($"User '{targetHandle}' could not be found.");
