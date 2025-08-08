@@ -154,10 +154,10 @@ namespace social_media9.Api.Controllers
         // POST /api/posts/{postId}/comments
         [HttpPost("{postId}/comments")]
         // [Authorize]
-        public async Task<IActionResult> AddComment(Guid postId, [FromBody] AddCommentRequest request)
+        public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
         {
-            // TODO: Implement add comment logic in service and call here
-            return StatusCode(201);
+            var result = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetComments), new { result.PostId }, result);
         }
 
         // GET /api/posts/{postId}/comments
