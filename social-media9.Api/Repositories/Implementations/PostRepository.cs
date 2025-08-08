@@ -125,7 +125,7 @@ namespace social_media9.Api.Repositories.Implementations
             return await search.GetNextSetAsync();
         }
 
-        public async Task<IEnumerable<Post>> SearchPostsAsync(string searchText, int limit)
+        public async Task<IEnumerable<Post>> SearchUserPostsAsync(string searchText, int limit)
         {
             if (string.IsNullOrWhiteSpace(searchText)) return Enumerable.Empty<Post>();
 
@@ -152,8 +152,30 @@ namespace social_media9.Api.Repositories.Implementations
             var cleanTag = tag.TrimStart('#');
             if (string.IsNullOrWhiteSpace(cleanTag)) return Enumerable.Empty<Post>();
 
-            return await SearchPostsAsync("#" + cleanTag, limit);
+            return await SearchUserPostsAsync("#" + cleanTag, limit);
         }
 
+        public async Task<IEnumerable<Post>> SearchPostsAsync(string searchText, int limit)
+        {
+            if (string.IsNullOrWhiteSpace(searchText)) return Enumerable.Empty<Post>();
+
+            var filter = new ScanFilter();
+            filter.AddCondition("Content", ScanOperator.Contains, searchText);
+
+            var scanConfig = new ScanOperationConfig { Filter = filter };
+
+            var search = _context.FromScanAsync<Post>(scanConfig);
+            var results = new List<Post>();
+            do
+            {
+                var page = await search.GetNextSetAsync();
+                results.AddRange(page.Where(p =>
+                    p.Content?.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0));
+
+            } while (!search.IsDone && results.Count < limit);
+
+            return results.OrderByDescending(p => p.CreatedAt).Take(limit);
+        }
+        
     }
 }

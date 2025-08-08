@@ -92,3 +92,25 @@ resource "aws_s3_bucket_policy" "media" {
     }
   })
 }
+
+resource "aws_s3_bucket_cors_configuration" "media_cors_conf" {
+  bucket = aws_s3_bucket.media.id
+
+  cors_rule {
+    # This MUST match the origin of your React frontend.
+    # It must include the protocol and have NO trailing slash.
+    allowed_origins = ["https://peerspace.online", "https://www.peerspace.online"]
+
+    # PUT is required for pre-signed URL uploads.
+    # GET is useful for some scenarios.
+    allowed_methods = ["PUT", "GET"]
+
+    # The browser will send these headers. A wildcard is simplest.
+    allowed_headers = ["*"]
+
+    # Allow the browser to access the ETag header in the response to verify the upload.
+    expose_headers  = ["ETag"]
+
+    max_age_seconds = 3000
+  }
+}

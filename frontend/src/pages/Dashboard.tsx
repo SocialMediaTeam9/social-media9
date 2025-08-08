@@ -20,7 +20,6 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           <Route path="search" element={<SearchPage />} />
         </Routes>
       </main>
-
     </div>
   );
 };

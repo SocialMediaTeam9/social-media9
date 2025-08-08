@@ -45,27 +45,27 @@ public class FederationController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("followers")]
-    public async Task<IActionResult> GetFollowers([FromBody] GtsCollectionRequest request)
-    {
-        var followerEntities = await _dbService.GetFollowersAsync(request.Username);
-        var followerUrls = followerEntities
-            .Select(entity => entity.FollowerInfo.ActorUrl)
-            .ToList();
+    // [HttpPost("followers")]
+    // public async Task<IActionResult> GetFollowers([FromBody] GtsCollectionRequest request)
+    // {
+    //     var followerEntities = await _dbService.GetFollowersAsync(request.Username);
+    //     var followerUrls = followerEntities
+    //         .Select(entity => entity.FollowerInfo.ActorUrl)
+    //         .ToList();
 
-        var response = new GtsCollectionResponse(followerUrls);
-        return Ok(response);
-    }
+    //     var response = new GtsCollectionResponse(followerUrls);
+    //     return Ok(response);
+    // }
 
-    [HttpPost("following")]
-    public async Task<IActionResult> GetFollowing([FromBody] GtsCollectionRequest request)
-    {
-        var followingEntities = await _dbService.GetFollowingAsync(request.Username);
-        var followingUrls = followingEntities
-            .Select(entity => entity.FollowingInfo.ActorUrl)
-            .ToList();
+    // [HttpPost("following")]
+    // public async Task<IActionResult> GetFollowing([FromBody] GtsCollectionRequest request)
+    // {
+    //     var followingEntities = await _dbService.GetFollowingAsync(request.Username);
+    //     var followingUrls = followingEntities
+    //         .Select(entity => entity.FollowingInfo.ActorUrl)
+    //         .ToList();
 
-        var response = new GtsCollectionResponse(followingUrls);
-        return Ok(response);
-    }
+    //     var response = new GtsCollectionResponse(followingUrls);
+    //     return Ok(response);
+    // }
 }
