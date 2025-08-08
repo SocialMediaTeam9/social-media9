@@ -8,6 +8,7 @@ using social_media9.Api.Repositories.Interfaces;
 using System.Security.Claims;
 using MediatR;
 using social_media9.Api.Queries.Posts;
+using social_media9.Api.Commands;
 
 namespace social_media9.Api.Controllers
 {
@@ -21,10 +22,13 @@ namespace social_media9.Api.Controllers
 
         private readonly IMediator _mediator;
 
-        public PostsController(PostService postService, IUserRepository userRepository, IMediator mediator)
+        private readonly ICommentRepository _commentRepository;
+
+        public PostsController(PostService postService, IUserRepository userRepository, IMediator mediator, ICommentRepository commentRepository)
         {
             _postService = postService;
             _userRepository = userRepository;
+            _commentRepository = commentRepository;
             _mediator = mediator;
         }
 
