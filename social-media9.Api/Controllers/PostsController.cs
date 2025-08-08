@@ -199,7 +199,7 @@ namespace social_media9.Api.Controllers
             return result ? Ok("Updated") : BadRequest("Update failed");
         }
         
-                 public bool IsUserAuthorized(Guid postId, Guid commentId)
+        public bool IsUserAuthorized(Guid postId, Guid commentId)
         {
 
             string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
