@@ -59,7 +59,7 @@ namespace social_media9.Api.Controllers
             return userIdClaim;
         }
 
-        
+
 
         [HttpGet("signin-google")]
         [AllowAnonymous]
@@ -146,7 +146,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-       
+
 
         [HttpGet("{userId}")]
         [Authorize]
@@ -297,48 +297,46 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetUserFollowers(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
         {
-            try
+            var user = await _dbService.GetUserProfileByUsernameAsync(username);
+            if (user == null) return NotFound();
+
+            var domain = _config["DomainName"];
+            var followersUrl = $"https://{domain}/users/{username}/followers";
+
+            if (page)
             {
-                var user = await _dbService.GetUserProfileByUsernameAsync(username);
-                if (user == null) return NotFound();
+                var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
 
-                var followersUrl = $"https://{_config["DomainName"]}/users/{username}/followers";
-
-                if (page)
+                var pageResponse = new
                 {
-                    var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
-                    var pageResponse = new OrderedCollectionPage
-                    {
-                        Id = $"{followersUrl}?page=true",
-                        PartOf = followersUrl,
-                        OrderedItems = followers.Select(f => (object)f.FollowerInfo.ActorUrl).ToList()
-                    };
+                    @context = "https://www.w3.org/ns/activitystreams",
+                    id = $"{followersUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={cursor}"),
+                    type = "OrderedCollectionPage",
+                    partOf = followersUrl,
+                    orderedItems = followers.Select(f => (object)f.FollowerInfo.ActorUrl).ToList(),
+                    next = string.IsNullOrEmpty(nextToken) ? null : $"{followersUrl}?page=true&cursor={nextToken}"
+                };
 
-                    if (!string.IsNullOrEmpty(nextToken))
-                    {
-                        pageResponse.Next = $"{followersUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}";
-                    }
-
-                    return Ok(pageResponse);
-                }
-                else
+                return new JsonResult(pageResponse)
                 {
-                    var collectionResponse = new OrderedCollection
-                    {
-                        Id = followersUrl,
-                        TotalItems = user.FollowersCount,
-                        First = $"{followersUrl}?page=true"
-                    };
-                    return Ok(collectionResponse);
-                }
+                    ContentType = "application/activity+json"
+                };
             }
-            catch (ApplicationException ex)
+            else
             {
-                return NotFound(new { message = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { message = "Error retrieving followers." });
+                var collectionResponse = new
+                {
+                    @context = "https://www.w3.org/ns/activitystreams",
+                    id = followersUrl,
+                    type = "OrderedCollection",
+                    totalItems = user.FollowersCount,
+                    first = $"{followersUrl}?page=true"
+                };
+
+                return new JsonResult(collectionResponse)
+                {
+                    ContentType = "application/activity+json"
+                };
             }
         }
 
@@ -346,57 +344,46 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetUserFollowing(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
         {
-            try
+            var user = await _dbService.GetUserProfileByUsernameAsync(username);
+            if (user == null) return NotFound();
+
+            var domain = _config["DomainName"];
+            var followingUrl = $"https://{domain}/users/{username}/following";
+
+            if (page)
             {
+                var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
 
-                var user = await _dbService.GetUserProfileByUsernameAsync(username);
-                if (user == null)
+                var pageResponse = new
                 {
-                    return NotFound($"User '{username}' not found.");
-                }
+                    @context = "https://www.w3.org/ns/activitystreams",
+                    id = $"{followingUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={cursor}"),
+                    type = "OrderedCollectionPage",
+                    partOf = followingUrl,
+                    orderedItems = following.Select(f => (object)f.FollowingInfo.ActorUrl).ToList(),
+                    next = string.IsNullOrEmpty(nextToken) ? null : $"{followingUrl}?page=true&cursor={nextToken}"
+                };
 
-                var domain = _config["DomainName"];
-                var followingUrl = $"https://{domain}/users/{username}/following";
-
-                if (page)
+                return new JsonResult(pageResponse)
                 {
-
-                    var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
-
-                    var pageResponse = new OrderedCollectionPage
-                    {
-                        Id = $"{followingUrl}?page=true" + (!string.IsNullOrEmpty(cursor) ? $"&cursor={cursor}" : ""),
-                        PartOf = followingUrl,
-                        OrderedItems = following.Select(f => (object)f.FollowingInfo.ActorUrl).ToList()
-                    };
-
-                    if (!string.IsNullOrEmpty(nextToken))
-                    {
-                        pageResponse.Next = $"{followingUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}";
-                    }
-
-                    return Ok(pageResponse);
-                }
-                else
-                {
-                    var collectionResponse = new OrderedCollection
-                    {
-                        Id = followingUrl,
-                        Type = "OrderedCollection",
-                        TotalItems = user.FollowingCount,
-                        First = $"{followingUrl}?page=true"
-                    };
-
-                    return Ok(collectionResponse);
-                }
+                    ContentType = "application/activity+json"
+                };
             }
-            catch (ApplicationException ex)
+            else
             {
-                return NotFound(new { message = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { message = "Error retrieving following list." });
+                var collectionResponse = new
+                {
+                    @context = "https://www.w3.org/ns/activitystreams",
+                    id = followingUrl,
+                    type = "OrderedCollection",
+                    totalItems = user.FollowingCount,
+                    first = $"{followingUrl}?page=true"
+                };
+
+                return new JsonResult(collectionResponse)
+                {
+                    ContentType = "application/activity+json"
+                };
             }
         }
 
