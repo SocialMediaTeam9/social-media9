@@ -143,13 +143,13 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
       <p className="post-text" dangerouslySetInnerHTML={{ __html: post.content }} />
       {post.attachments?.length > 0 && (
         <div className="post-attachments">
+          <img src={post.attachments[0]} alt="Post attachment" className="post-image" />
           <LikeButton
             postId={post.postId}
             isLiked={isLiked}
             likeCount={likeCount}
             onLikeChange={handleLikeChange}
           />
-          <img src={post.attachments[0]} alt="Post attachment" className="post-image" />
         </div>
       )}
     </div>
