@@ -1,4 +1,3 @@
-// Program.cs
 
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,6 +23,10 @@ using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Repositories.Implementations;
 using social_media9.Api.Services.Implementations;
 using social_media9.Api.Configurations;
+using social_media9.Api.Infrastructure.ActivityPub.Services;
+using social_media9.Api.Domain.ActivityPub.Entities;
+
+using Nest;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
 using Amazon.Runtime;
 
@@ -106,6 +109,8 @@ builder.Services.AddHostedService<SqsWorkerService>();
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
