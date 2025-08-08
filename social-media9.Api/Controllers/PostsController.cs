@@ -168,5 +168,16 @@ namespace social_media9.Api.Controllers
             var result = await _mediator.Send(new GetCommentsByContentQuery(postId.ToString()));
             return Ok(result);
         }
+
+        [HttpDelete("{postId}/{commentId}")]
+        public async Task<IActionResult> DeleteComment(Guid postId, Guid commentId)
+        {
+            if (!IsUserAuthorized(postId, commentId))
+            {
+                return Unauthorized("You are not authorized to delete this comment.");
+            }
+            await _mediator.Send(new DeleteCommentCommand(commentId, postId));
+            return NoContent();
+        }
     }
 }
