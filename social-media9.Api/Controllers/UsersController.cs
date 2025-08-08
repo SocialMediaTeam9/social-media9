@@ -388,7 +388,6 @@ namespace social_media9.Api.Controllers
         }
 
 
-
         [HttpPost("{userId}/profile-picture")]
         [Authorize]
         public async Task<IActionResult> UploadProfilePicture(string userId, IFormFile file)

@@ -17,8 +17,8 @@ public class TimelineItemEntity : BaseEntity
 public record TimelineItemResponse(
     string PostId,
     string AuthorUsername,
-    string PostContent,
-    List<string> AttachmentUrls,
+    string Content,
+    List<string> Attachments,
     DateTime CreatedAt,
     string? BoostedBy
 );

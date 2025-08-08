@@ -81,3 +81,4 @@ export interface PostResponse {
   attachments: string[];
   boostedBy?: string;
 }
+
