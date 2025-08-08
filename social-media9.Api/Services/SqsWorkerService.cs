@@ -83,7 +83,8 @@ public class SqsWorkerService : BackgroundService
         _logger.LogInformation("--- RAW SQS MESSAGE BODY ---\n{MessageBody}\n--- END RAW BODY ---", message.Body);
         _logger.LogInformation("Processing SQS message ID: {MessageId}", message.MessageId);
 
-        var activity = JsonDocument.Parse(message.Body).RootElement;
+        using var activityDoc = JsonDocument.Parse(message.Body);
+        var activity = activityDoc.RootElement;
 
         var activityType = activity.TryGetProperty("type", out var type) ? type.GetString() : null;
         var actorUrl = activity.TryGetProperty("actor", out var actor) ? actor.GetString() : null;
