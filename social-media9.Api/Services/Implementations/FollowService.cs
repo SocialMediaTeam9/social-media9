@@ -15,7 +15,8 @@ public class FollowService
     private readonly IAmazonSQS _sqsClient;
     private readonly IConfiguration _config;
     private readonly IFederationService _federationService;
-    private readonly ActivityPubService _activityPubService;
+
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public FollowService(
         DynamoDbService dbService,
@@ -24,7 +25,8 @@ public class FollowService
         IAmazonSQS sqsClient,
         IConfiguration config,
         IFederationService federationService,
-        ActivityPubService activityPubService)
+        IHttpClientFactory httpClient
+        )
     {
         _dbService = dbService;
         _httpClient = httpClientFactory.CreateClient("FederationClient");
@@ -32,7 +34,8 @@ public class FollowService
         _sqsClient = sqsClient;
         _config = config;
         _federationService = federationService;
-        _activityPubService = activityPubService;
+        _httpClientFactory = httpClient;
+
     }
 
 
@@ -71,8 +74,11 @@ public class FollowService
         {
             string followActivityJson = BuildFollowActivityJson(localFollower.ActorUrl, targetUser.ActorUrl);
             var activityDoc = JsonDocument.Parse(followActivityJson);
+            var httpClient = _httpClientFactory.CreateClient("FederationClient");
 
-            _ = await _activityPubService.DeliverActivityAsync(targetUser.InboxUrl, activityDoc);
+            var deliveryService = new ActivityPubService(httpClient, localFollower.ActorUrl, localFollower.PrivateKeyPem);
+
+           await deliveryService.DeliverActivityAsync(targetUser.InboxUrl, activityDoc);
         }
 
         return true;
