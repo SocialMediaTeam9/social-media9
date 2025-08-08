@@ -159,7 +159,6 @@ namespace social_media9.Api.Controllers
             command.PostId = postId;
             var result = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetComments), new { postId = result.PostId }, result);
-            return CreatedAtAction(nameof(GetComments), new { postId = result.PostId }, result);
         }
 
 
