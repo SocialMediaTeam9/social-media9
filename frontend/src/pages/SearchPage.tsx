@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { fetcher } from '../utils/fetcher';
+import { Link } from 'react-router-dom';
 
 interface SearchResult {
   resultType: 'User' | 'Post';
@@ -41,6 +42,7 @@ const SearchPage: React.FC = () => {
   }, [query]);
 
   const renderUser = (user: SearchResult) => (
+    <Link to={`/dashboard/profile/${encodeURIComponent(user.username)}`} key={user.userId || user.username} className="user-result-link">
     <div key={`user-${user.userId}`} className="flex items-center p-3 bg-gray-800 rounded-lg">
       <img src={user.profilePictureUrl || 'https://via.placeholder.com/50'} alt={user.username} className="w-12 h-12 rounded-full mr-4" />
       <div>
@@ -48,6 +50,7 @@ const SearchPage: React.FC = () => {
         <p className="text-gray-400">@{user.username}</p>
       </div>
     </div>
+    </Link>
   );
 
   const renderPost = (post: SearchResult) => (

@@ -32,11 +32,6 @@ const AppRoutes: React.FC = () => {
     setIsAuthenticated(false);
   };
 
-  console.log("--- App.tsx Render Cycle ---");
-  console.log("Current Path:", location.pathname);
-  console.log("Is Authenticated (from state):", isAuthenticated);
-  console.log("----------------------------");
-
   return (
     <Routes>
       <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />

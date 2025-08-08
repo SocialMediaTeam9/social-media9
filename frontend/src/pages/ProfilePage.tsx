@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
-import { PostResponse, UserProfile } from '../types/types';
+import { PaginatedPostResponse, Post, PostResponse, UserProfile } from '../types/types';
 import { fetcher, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
 import PostCardAlt from '../components/PostCardAlt';
 
@@ -17,29 +17,44 @@ const ProfilePage: React.FC = () => {
     const loggedInUsername = useMemo(() => localStorage.getItem('username'), []);
     const isOwnProfile = profile?.username === loggedInUsername;
 
-    const fetchProfileData = useCallback(async () => {
-        if (!handle) return;
-        setIsLoading(true);
-        setError(null);
-        try {
-            const profileData = await lookupProfile(handle);
-            setProfile(profileData);
-            if (!handle.includes('@')) {
-                const postsData = await getPostsByUsername(handle);
-                setPosts(postsData);
-            } else {
-                setPosts([]); // Fetching remote posts is a future feature
-            }
-        } catch (err: any) {
-            setError(err.message || 'Failed to load profile.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [handle]);
+    const usernameToFetch = handle || loggedInUsername; 
+
+    const navigate = useNavigate();
 
     useEffect(() => {
-        fetchProfileData();
-    }, [fetchProfileData]);
+    const fetchProfileData = async () => {
+      
+      if (!usernameToFetch) {
+        setError("No user to display. Please log in or specify a user in the URL.");
+        setIsLoading(false);
+        if (!loggedInUsername) {
+            navigate('/');
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      try {
+
+        const profilePromise = lookupProfile(usernameToFetch);
+        
+        let postsPromise: Promise<PaginatedPostResponse> = getPostsByUsername(usernameToFetch);
+       
+        const [profileData, postsData] = await Promise.all([profilePromise, postsPromise]);
+
+        setProfile(profileData);
+        setPosts(postsData.items);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+
+    }, [usernameToFetch, loggedInUsername, navigate]); 
 
     const handleFollowToggle = async () => {
         if (!profile || isFollowLoading || isOwnProfile) return;
@@ -50,7 +65,7 @@ const ProfilePage: React.FC = () => {
         setProfile(p => p ? { ...p, isFollowing: !isCurrentlyFollowing, followersCount: newFollowerCount } : null);
         try {
             const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
-            await fetcher(`/api/v1/profiles/${profile.username}/follow`, { method });
+            await fetcher(`/api/users/${usernameToFetch}/follow`, { method });
         } catch (err) {
             setProfile(p => p ? { ...p, isFollowing: isCurrentlyFollowing, followersCount: profile.followersCount } : null);
             alert(`Failed to ${isCurrentlyFollowing ? 'unfollow' : 'follow'} user.`);
@@ -95,7 +110,7 @@ const ProfilePage: React.FC = () => {
             <div className="profile-posts-feed">
                 <h3 className="feed-title">Posts</h3>
                 {posts.length > 0 ? (
-                    posts.map(post => <PostCardAlt key={post.postId} post={post} />)
+                    posts.map(post => <PostCardAlt key={post.postId} post={post} currentLoggedInUsername={loggedInUsername ?? ''} />)
                 ) : (
                    <p className="p-4 text-gray-400">{!handle?.includes('@') ? "This user hasn't posted anything yet." : "Viewing posts from remote users is not yet supported."}</p>
                 )}
@@ -140,7 +155,6 @@ const ProfileHeader: React.FC<{
 );
 
 
-// --- Sub-Component: Edit Profile Form ---
 const EditProfileForm: React.FC<{
     initialProfile: UserProfile,
     onCancel: () => void,
@@ -207,3 +221,7 @@ const EditProfileForm: React.FC<{
 };
 
 export default ProfilePage;
+
+function fetchProfileData() {
+    throw new Error('Function not implemented.');
+}

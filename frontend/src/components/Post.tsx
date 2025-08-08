@@ -1,4 +1,4 @@
-
+import { PostResponse } from '../types/types';
 import React, { useState } from 'react';
 import LikeButton from './LikeButton';
 
@@ -13,7 +13,6 @@ interface PostData {
   likeCount: number;
   isLikedByUser: boolean;
 }
-
 
 interface PostProps {
   post: PostData;
@@ -46,7 +45,8 @@ const Post: React.FC<PostProps> = ({ post }) => {
         </div>
         <p className="text-gray-300 mt-1 whitespace-pre-wrap break-words">{post.postContent}</p>
 
-        
+      {/* ADDED: Conditionally render images if they exist in the data */}
+        {/* Conditionally render images if they exist in the data */}
         {post.attachmentUrls?.length > 0 && (
           <div className="mt-4 rounded-lg overflow-hidden border border-gray-600">
             <img src={post.attachmentUrls[0]} alt="Post attachment" className="w-full h-auto object-cover" />
