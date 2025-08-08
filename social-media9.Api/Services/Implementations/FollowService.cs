@@ -3,6 +3,7 @@ using Amazon.SQS.Model;
 using social_media9.Api.Models;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Services.DynamoDB;
+using social_media9.Api.Services.Interfaces;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -13,52 +14,85 @@ public class FollowService
     private readonly DynamoDbService _dbService;
     private readonly IAmazonSQS _sqsClient;
     private readonly IConfiguration _config;
+    private readonly IFederationService _federationService;
+    private readonly ActivityPubService _activityPubService;
 
     public FollowService(
         DynamoDbService dbService,
         IHttpClientFactory httpClientFactory,
         IFollowRepository followRepository,
         IAmazonSQS sqsClient,
-        IConfiguration config)
+        IConfiguration config,
+        IFederationService federationService,
+        ActivityPubService activityPubService)
     {
         _dbService = dbService;
         _httpClient = httpClientFactory.CreateClient("FederationClient");
         _followRepository = followRepository;
         _sqsClient = sqsClient;
         _config = config;
+        _federationService = federationService;
+        _activityPubService = activityPubService;
     }
 
 
-    public async Task<bool> FollowUserAsync(string localUsername, string targetUsername)
+    public async Task<bool> FollowUserAsync(string localFollowerUsername, string targetHandle)
     {
-        var localUser = await _dbService.GetUserSummaryAsync(localUsername);
-        if (localUser == null) return false;
-
-        var targetUserSummary = await _dbService.GetUserSummaryAsync(targetUsername);
-
-        if (targetUserSummary == null)
+        var localFollower = await _dbService.GetUserProfileByUsernameAsync(localFollowerUsername);
+        if (localFollower == null)
         {
-            var targetUser = targetUsername.TrimStart('@');
+            throw new ApplicationException("Current user not found.");
+        }
 
-            var remoteActorUrl = $"https://{targetUser.Split('@')[1]}/users/{targetUser.Split('@')[0]}";
-            targetUserSummary = await GetRemoteUserSummaryAsync(remoteActorUrl);
+        
+        var targetUser = await _federationService.DiscoverAndCacheUserAsync(targetHandle);
+        if (targetUser == null)
+        {
+            throw new ApplicationException($"User '{targetHandle}' could not be found.");
         }
         
-        if (targetUserSummary == null)
+        if (localFollower.UserId == targetUser.UserId)
         {
-            throw new ApplicationException("User to follow not found.");
+            throw new ApplicationException("You cannot follow yourself.");
         }
 
-         var success = await _dbService.ProcessLocalUserFollowAsync(localUser, targetUserSummary);
+        var localFollowerSummary = new UserSummary("",localFollower.Username, localFollower.ActorUrl, localFollower.ProfilePictureUrl);
+        var targetUserSummary = new UserSummary("", targetUser.Username, targetUser.ActorUrl, targetUser.ProfilePictureUrl);
+        
+        var dbSuccess = await _dbService.ProcessLocalUserFollowAsync(localFollowerSummary, targetUserSummary);
 
-        if (success)
+        if (!dbSuccess)
         {
-            // 4. If the database was updated, queue the outbound 'Follow' activity for federation.
-            // (This would be in a separate method, called from here)
-            // await QueueOutboundFollowActivityAsync(localFollowerSummary.ActorUrl, targetUserSummary.ActorUrl);
+            throw new ApplicationException("You are already following this user.");
         }
 
-        return success;
+       
+        if (targetUser.IsRemote)
+        {
+            string followActivityJson = BuildFollowActivityJson(localFollower.ActorUrl, targetUser.ActorUrl);
+            var activityDoc = JsonDocument.Parse(followActivityJson);
+
+            _ = await _activityPubService.DeliverActivityAsync(targetUser.InboxUrl, activityDoc);
+        }
+
+        return true;
+    }
+
+    private string BuildFollowActivityJson(string followerActorUrl, string followingActorUrl)
+    {
+        var activity = new
+        {
+            type = "Follow",
+            actor = followerActorUrl,
+            to = new[] { followingActorUrl },
+            @object = followingActorUrl
+        };
+
+        var jsonObject = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(activity));
+        jsonObject["@context"] = "https://www.w3.org/ns/activitystreams";
+        jsonObject["id"] = $"{followerActorUrl}/follows/{Ulid.NewUlid()}";
+
+        return JsonSerializer.Serialize(jsonObject);
     }
 
     public async Task<bool> UnfollowUserAsync(string localUsername, string unfollowedActorUrl)
