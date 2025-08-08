@@ -12,11 +12,10 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     <div className="dashboard-container">
       <Sidebar onLogout={onLogout} />
 
-      {/* Main Content */}
       <main className="main-content">
         <Routes>
           <Route index element={<ExplorePage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="profile/:handle" element={<ProfilePage />} />
           <Route path="create" element={<CreatePostPage />} />
           <Route path="search" element={<SearchPage />} />
         </Routes>

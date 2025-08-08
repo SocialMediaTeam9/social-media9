@@ -1,6 +1,5 @@
 using MediatR;
 using FluentValidation;
-// using social_media9.Api.Data;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Services.Interfaces;
 using social_media9.Api.Services;
@@ -60,7 +59,7 @@ namespace social_media9.Api.Controllers
             return userIdClaim;
         }
 
-        // === GOOGLE LOGIN FLOW ===
+        
 
         [HttpGet("signin-google")]
         [AllowAnonymous]
@@ -147,7 +146,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        // === PROFILE ===
+       
 
         [HttpGet("{userId}")]
         [Authorize]

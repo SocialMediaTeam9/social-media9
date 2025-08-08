@@ -28,4 +28,12 @@ public class TimelineController : ControllerBase
 
         return Ok(timeline);
     }
+
+    [HttpGet("public")]
+    [AllowAnonymous] // Allow anyone to see the public feed
+    public async Task<IActionResult> GetPublicTimeline([FromQuery] int limit = 20, [FromQuery] string? cursor = null)
+    {
+        var timeline = await _timelineService.GetPublicTimelineAsync(limit, cursor);
+        return Ok(timeline);
+    }
 }

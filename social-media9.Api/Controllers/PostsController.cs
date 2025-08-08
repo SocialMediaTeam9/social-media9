@@ -159,6 +159,7 @@ namespace social_media9.Api.Controllers
             command.PostId = postId;
             var result = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetComments), new { postId = result.PostId }, result);
+            return CreatedAtAction(nameof(GetComments), new { postId = result.PostId }, result);
         }
 
 
@@ -201,7 +202,7 @@ namespace social_media9.Api.Controllers
             return result ? Ok("Updated") : BadRequest("Update failed");
         }
         
-                 public bool IsUserAuthorized(Guid postId, Guid commentId)
+        public bool IsUserAuthorized(Guid postId, Guid commentId)
         {
 
             string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

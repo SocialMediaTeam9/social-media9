@@ -80,7 +80,7 @@ namespace social_media9.Api.Repositories.Implementations
         }
 
 
-        public async Task<bool> LikeAsync(Guid postId, Guid userId)
+        public async Task<bool> LikeAsync(string postId, string userId)
         {
             var like = new Like
             {
@@ -92,7 +92,7 @@ namespace social_media9.Api.Repositories.Implementations
             return true;
         }
 
-        public Task<bool> UnlikeAsync(Guid postId, Guid userId)
+        public Task<bool> UnlikeAsync(string postId, string userId)
         {
             throw new NotImplementedException();
         }

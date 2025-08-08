@@ -64,7 +64,12 @@ export interface GenerateUploadUrlPayload {
 
 export interface GenerateUploadUrlResponse {
   uploadUrl: string;
-  finalUrl: string; 
+  finalUrl: string;
+}
+
+export interface PaginatedPostResponse {
+  items: PostResponse[],
+  nextCursor?: string
 }
 
 export interface PostResponse {
@@ -74,4 +79,7 @@ export interface PostResponse {
   createdAt: string;
   commentCount: number;
   attachments: string[];
+  boostedBy?: string;
+  likeCount: number;
+  isLikedByUser: boolean;
 }
