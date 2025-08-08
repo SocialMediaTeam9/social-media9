@@ -106,7 +106,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
 
-// builder.Services.AddHostedService<SqsWorkerService>();
+builder.Services.AddHostedService<SqsWorkerService>();
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
