@@ -56,7 +56,7 @@ const ExplorePage: React.FC = () => {
 
         try {
             // This endpoint calls your TimelineController
-            let endpoint = '/api/timeline/home?limit=20';
+            let endpoint = '/api/timeline/public?limit=20';
             if (cursor) {
                 endpoint += `&cursor=${encodeURIComponent(cursor)}`;
             }
