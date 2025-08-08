@@ -79,4 +79,5 @@ export interface PostResponse {
   createdAt: string;
   commentCount: number;
   attachments: string[];
+  boostedBy?: string;
 }

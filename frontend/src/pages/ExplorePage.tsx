@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetcher } from '../utils/fetcher'; // Assuming you have a fetcher utility
 import PostCard from '../components/PostCard'; // Using your existing PostCard component
+import PostCardAlt from '../components/PostCardAlt';
+import { PostResponse } from '../types/types';
 
 // --- These types match your C# DTOs from TimelineService ---
 interface PostData {
@@ -13,13 +15,13 @@ interface PostData {
 }
 
 interface PaginatedTimelineResponse {
-    items: PostData[];
+    items: PostResponse[];
     nextCursor?: string;
 }
 
 const ExplorePage: React.FC = () => {
     // --- State management for the dynamic feed ---
-    const [posts, setPosts] = useState<PostData[]>([]);
+    const [posts, setPosts] = useState<PostResponse[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -28,7 +30,7 @@ const ExplorePage: React.FC = () => {
     // Placeholder for the currently logged-in user's username.
     // In a real application, this would come from an authentication context (e.g., React Context, Redux, Zustand).
     // For demonstration, I'm setting a static value. Please replace this with your actual user context.
-    const currentLoggedInUsername = "yourLoggedInUsername"; // <<< IMPORTANT: Replace with actual logged-in username
+    const currentLoggedInUsername = localStorage.getItem("username");
 
     const observer = useRef<IntersectionObserver | null>(null);
 
@@ -85,10 +87,9 @@ const ExplorePage: React.FC = () => {
             </h1>
             <div className="feed-content space-y-4">
                 {posts.map((post, index) => (
-                    // Pass the currentLoggedInUsername to the PostCard component
                     posts.length === index + 1
-                        ? <div ref={lastPostElementRef} key={post.postId}><PostCard post={post} currentLoggedInUsername={currentLoggedInUsername} /></div>
-                        : <PostCard key={post.postId} post={post} currentLoggedInUsername={currentLoggedInUsername} />
+                        ? <div ref={lastPostElementRef} key={post.postId}><PostCardAlt post={post} currentLoggedInUsername={currentLoggedInUsername ?? ''} /></div>
+                        : <PostCardAlt key={post.postId} post={post} currentLoggedInUsername={currentLoggedInUsername ?? ''} />
                 ))}
             </div>
 

@@ -110,7 +110,7 @@ const ProfilePage: React.FC = () => {
             <div className="profile-posts-feed">
                 <h3 className="feed-title">Posts</h3>
                 {posts.length > 0 ? (
-                    posts.map(post => <PostCardAlt key={post.postId} post={post} />)
+                    posts.map(post => <PostCardAlt key={post.postId} post={post} currentLoggedInUsername={loggedInUsername ?? ''} />)
                 ) : (
                    <p className="p-4 text-gray-400">{!handle?.includes('@') ? "This user hasn't posted anything yet." : "Viewing posts from remote users is not yet supported."}</p>
                 )}
