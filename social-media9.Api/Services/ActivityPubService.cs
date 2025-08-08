@@ -12,6 +12,7 @@ public class ActivityPubService
     private readonly HttpClient _httpClient;
     private readonly string _keyId;
     private readonly RSA _privateKey;
+    private IConfiguration _config;
 
     /// <summary>
     /// Creates a service to deliver a signed activity on behalf of a single user.
@@ -19,13 +20,29 @@ public class ActivityPubService
     /// <param name="httpClient">An HttpClient for making the request.</param>
     /// <param name="actorUrl">The full Actor URL of the signing user (e.g., https://peerspace.online/users/alice).</param>
     /// <param name="privateKeyPem">The user's PEM-encoded private key.</param>
-    public ActivityPubService(HttpClient httpClient, string actorUrl, string privateKeyPem)
+    public ActivityPubService(HttpClient httpClient, string actorUrl, string privateKeyPem, IConfiguration config)
     {
         _httpClient = httpClient;
         _keyId = $"{actorUrl}#main-key";
-        
+
         _privateKey = RSA.Create();
+        _config = config;
         _privateKey.ImportFromPem(privateKeyPem.ToCharArray());
+    }
+    
+    public string BuildActivityJson(string actorUrl, object activityPayload)
+    {
+        var domain = _config["DomainName"];
+        var activityId = $"https://{domain}/users/{actorUrl.Split('/').Last()}/activities/{Ulid.NewUlid()}";
+
+        var jsonObject = JsonSerializer.Deserialize<Dictionary<string, object>>(
+            JsonSerializer.Serialize(activityPayload)
+        );
+        jsonObject["@context"] = "https://www.w3.org/ns/activitystreams";
+        jsonObject["id"] = activityId;
+        jsonObject["actor"] = actorUrl;
+
+        return JsonSerializer.Serialize(jsonObject);
     }
 
     /// <summary>
@@ -47,7 +64,7 @@ public class ActivityPubService
 
         string signatureHeaderValue = BuildSignatureHeader(request, digest);
         request.Headers.Authorization = new AuthenticationHeaderValue("Signature", signatureHeaderValue);
-        
+
         return await _httpClient.SendAsync(request);
     }
 

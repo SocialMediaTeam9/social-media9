@@ -14,8 +14,6 @@ namespace social_media9.Api.Models
         public string? MediaUrl { get; set; }
         public string MediaType { get; set; }
         public Guid UserId { get; set; }
-        // public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
 
         [DynamoDBProperty("AuthorUsername")]
         public string AuthorUsername { get; set; } = string.Empty;
