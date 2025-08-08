@@ -107,14 +107,17 @@ public class SqsWorkerService : BackgroundService
 
             case "Follow":
                 var followTargetUrl = activity.TryGetProperty("object", out var obj) ? obj.GetString() : null;
-                if (string.IsNullOrEmpty(followTargetUrl)) break;
+                if (string.IsNullOrEmpty(followTargetUrl))
+                    break;
 
                 var followedUsername = ExtractUsernameFromActorUrl(followTargetUrl);
                 var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
 
+                // Already following? Ignore
                 if (await dbService.IsFollowingAsync(followerUsername, followedUsername))
                     break;
 
+                // Save relationship
                 if (!await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername))
                     break;
 
@@ -122,19 +125,44 @@ public class SqsWorkerService : BackgroundService
                 if (followedUserEntity == null || string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
                     break;
 
-                // ✅ Resolve inbox
-                var targetInbox = await ResolveInboxUrlAsync(actorUrl, httpClientFactory);
+                // 1️⃣ Discover follower inbox
+                var targetInbox = await ResolveInboxFromActorAsync(actorUrl, httpClientFactory);
                 if (string.IsNullOrEmpty(targetInbox))
                     break;
 
-                // ✅ Build Accept
-                var acceptJson = BuildAcceptActivity(followedUserEntity.ActorUrl, activity, actorUrl);
-                var activityDoc = JsonDocument.Parse(acceptJson);
+                // 2️⃣ Build Accept activity
+                var acceptActivity = new
+                {
+                    @context = "https://www.w3.org/ns/activitystreams",
+                    id = $"https://{_config["DomainName"]}/activities/{Ulid.NewUlid()}",
+                    type = "Accept",
+                    actor = followedUserEntity.ActorUrl,
+                    @object = activity, // The original Follow activity
+                    to = new[] { actorUrl }
+                };
 
-                // ✅ Deliver signed Accept
+                var acceptJson = JsonSerializer.Serialize(acceptActivity);
+                var acceptDoc = JsonDocument.Parse(acceptJson);
+
                 var httpClient = httpClientFactory.CreateClient("FederationClient");
-                var deliveryService = new ActivityPubService(httpClient, followedUserEntity.ActorUrl, followedUserEntity.PrivateKeyPem, _config);
-                await deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
+                var deliveryService = new ActivityPubService(
+                    httpClient,
+                    followedUserEntity.ActorUrl,
+                    followedUserEntity.PrivateKeyPem,
+                    _config
+                );
+
+                // 3️⃣ Deliver signed Accept
+                await deliveryService.DeliverActivityAsync(targetInbox, acceptDoc);
+
+                // 4️⃣ OPTIONAL — Push recent posts to new follower's inbox
+                var (recentPosts, _) = await dbService.GetPostsByUserAsync(followedUsername, 5, null);
+                foreach (var post in recentPosts)
+                {
+                    using var postDoc = JsonDocument.Parse(post.ActivityJson);
+                    await deliveryService.DeliverActivityAsync(targetInbox, postDoc);
+                }
+
                 break;
             case "Undo":
                 if (activity.TryGetProperty("object", out var objectToUndo) &&
@@ -178,6 +206,26 @@ public class SqsWorkerService : BackgroundService
                 break;
 
         }
+    }
+
+    private static async Task<string?> ResolveInboxFromActorAsync(string actorUrl, IHttpClientFactory httpClientFactory)
+    {
+        var http = httpClientFactory.CreateClient();
+        http.DefaultRequestHeaders.Accept.Clear();
+        http.DefaultRequestHeaders.Accept.Add(
+            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/activity+json")
+        );
+
+        using var resp = await http.GetAsync(actorUrl);
+        if (!resp.IsSuccessStatusCode)
+            return null;
+
+        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        if (doc.RootElement.TryGetProperty("inbox", out var inboxElement))
+        {
+            return inboxElement.GetString();
+        }
+        return null;
     }
 
     private async Task<string?> ResolveInboxUrlAsync(string actorUrl, IHttpClientFactory httpClientFactory)
