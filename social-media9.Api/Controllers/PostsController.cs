@@ -165,8 +165,8 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetComments(Guid postId)
         {
-            // TODO: Implement get comments logic in service and call here
-            return Ok();
+            var result = await _mediator.Send(new GetCommentsByContentQuery(postId.ToString()));
+            return Ok(result);
         }
     }
 }
