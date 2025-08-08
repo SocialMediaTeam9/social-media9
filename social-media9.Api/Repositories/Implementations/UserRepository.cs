@@ -153,7 +153,7 @@ namespace social_media9.Api.Repositories.Implementations
             return new UserSummary(
                 "",
                 Username: user.Username,
-                ActorUrl: $"https://fed.{domain}/users/{user.Username}",
+                ActorUrl: $"https:/{domain}/users/{user.Username}",
                 ProfilePictureUrl: user.ProfilePictureUrl
             );
         }

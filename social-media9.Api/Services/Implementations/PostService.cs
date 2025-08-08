@@ -29,13 +29,20 @@ namespace social_media9.Api.Services.Implementations
 
         private readonly IHttpClientFactory _httpClientFactory;
 
+        private readonly IFollowRepository _followRepository;
+        private readonly Amazon.DynamoDBv2.DataModel.IDynamoDBContext _dbContext;
+
+        private readonly IFederationService _federationService;
 
         public PostService(
             IPostRepository postRepository,
             IAmazonSQS sqsClient,
             DynamoDbService dbService,
             IUserRepository userRepository,
-            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory)
+            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory,
+            IFollowRepository followRepository,
+            Amazon.DynamoDBv2.DataModel.IDynamoDBContext dbContext,
+            IFederationService federationService)
         {
             _postRepository = postRepository;
             _dbService = dbService;
@@ -44,6 +51,9 @@ namespace social_media9.Api.Services.Implementations
             _userRepository = userRepository;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _followRepository = followRepository;
+            _dbContext = dbContext;
+            _federationService = federationService;
         }
 
         // public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId)
@@ -151,8 +161,8 @@ namespace social_media9.Api.Services.Implementations
 
             var postId = Ulid.NewUlid().ToString();
             var domain = _config["DomainName"];
-            var authorActorUrl = $"https://fed.{domain}/users/{authorUsername}";
-            var postUrl = $"https://fed.{domain}/users/{authorUsername}/posts/{postId}";
+            var authorActorUrl = $"https://{domain}/users/{authorUsername}";
+            var postUrl = $"https://{domain}/users/{authorUsername}/posts/{postId}";
 
 
             string activityJson = BuildCreateNoteActivityJson(authorActorUrl, postUrl, content, attachmentUrls);
@@ -181,8 +191,46 @@ namespace social_media9.Api.Services.Implementations
             }
 
             _ = DeliverPostToFollowersAsync(activityDoc, author);
+            _ = FanoutPostToLocalFollowersAsync(newPost);
+            _ = FanoutPostToPublicTimelineAsync(newPost);
 
             return newPost;
+        }
+
+        public async Task IngestRemotePostAsync(JsonElement createActivity)
+        {
+            try
+            {
+                // 1. Extract the post object from the "Create" activity
+                if (!createActivity.TryGetProperty("object", out var postObject)) return;
+                if (postObject.TryGetProperty("type", out var type) && type.GetString() != "Note") return; // We only care about text posts for now
+
+                var authorActorUrl = postObject.GetProperty("attributedTo").GetString();
+                if (authorActorUrl == null) return;
+
+                // 2. Discover and cache the author if we've never seen them before
+                var author = await _userRepository.GetUserByActorUrl(authorActorUrl);
+                if (author == null)
+                {
+                    // This is a simplified discovery, a real app might need a dedicated FederationService call
+                    var handle = $"{authorActorUrl.Split('/')[4]}@{new Uri(authorActorUrl).Host}";
+                    author = await _federationService.DiscoverAndCacheUserAsync(handle);
+                }
+                if (author == null) return; // Could not find the author, skip post
+
+                // 3. Create a Post object from the incoming data and save it
+                // You will need to add a static helper method to your Post model for this.
+                var newPost = Post.FromActivityPub(postObject, author.Username);
+                await _postRepository.AddAsync(newPost); // Save to your Posts table
+
+                // 4. Fan the post out to your public timeline
+                await FanoutPostToPublicTimelineAsync(newPost);
+                _logger.LogInformation("Successfully ingested and fanned out a remote post from {Author}", author.Username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to ingest remote post.");
+            }
         }
 
         private async Task DeliverPostToFollowersAsync(JsonDocument activityDoc, User author)
@@ -194,7 +242,7 @@ namespace social_media9.Api.Services.Implementations
             var httpClient = _httpClientFactory.CreateClient("FederationClient");
             var domain = _config["DomainName"];
             var actorUrl = $"https://{domain}/users/{author.Username}";
-            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem);
+            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem, _config);
             // var activityDoc = JsonDocument.Parse(activityJson);
 
             do
@@ -227,6 +275,86 @@ namespace social_media9.Api.Services.Implementations
             } while (!string.IsNullOrEmpty(paginationToken));
 
             _logger.LogInformation("Completed outbound delivery for post by {Username}. Total followers reached: {TotalDelivered}", author.Username, totalDelivered);
+        }
+        
+        private async Task FanoutPostToLocalFollowersAsync(Post post)
+        {
+            try
+            {
+                var followers = await _followRepository.GetFollowersAsync(post.AuthorUsername);
+                var timelineBatch = _dbContext.CreateBatchWrite<TimelineItemEntity>();
+                bool itemsAdded = false;
+
+                string postId = post.SK.Replace("POST#", "");
+                var appDomain = _config["DomainName"];
+
+                if (followers.Any())
+                {
+                    foreach (var followRelationship in followers)
+                    {
+                        var followerDomain = new Uri(followRelationship.FollowerInfo.ActorUrl).Host;
+                        if (followerDomain.Equals(appDomain, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var followerUsername = followRelationship.FollowerInfo.ActorUrl.Split('/').Last();
+                            timelineBatch.AddPutItem(new TimelineItemEntity
+                            {
+                                PK = $"TIMELINE#{followerUsername}",
+                                SK = $"NOTE#{postId}",
+                                AuthorUsername = post.AuthorUsername,
+                                PostContent = post.Content,
+                                AttachmentUrls = post.Attachments,
+                                CreatedAt = post.CreatedAt
+                            });
+                            itemsAdded = true;
+                        }
+                    }
+                }
+
+                timelineBatch.AddPutItem(new TimelineItemEntity
+                {
+                    PK = $"TIMELINE#{post.AuthorUsername}",
+                    SK = $"NOTE#{postId}",
+                    AuthorUsername = post.AuthorUsername,
+                    PostContent = post.Content,
+                    AttachmentUrls = post.Attachments,
+                    CreatedAt = post.CreatedAt
+                });
+                itemsAdded = true;
+
+                if (!itemsAdded) return;
+
+                _logger.LogInformation("Fanning out post {PostId} to local timelines.", postId);
+                await timelineBatch.ExecuteAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fan-out post {PostId} to local timelines.", post.SK);
+            }
+        }
+
+        private async Task FanoutPostToPublicTimelineAsync(Post post)
+        {
+            try
+            {
+                var timelineItem = new TimelineItemEntity
+                {
+                    PK = "TIMELINE#PUBLIC",
+                    // The SK format includes a timestamp to ensure chronological order
+                    SK = $"NOTE#{post.CreatedAt:o}#{post.SK.Replace("POST#", "")}",
+                    AuthorUsername = post.AuthorUsername,
+                    PostContent = post.Content,
+                    AttachmentUrls = post.Attachments,
+                    CreatedAt = post.CreatedAt
+                };
+
+                // Note: This requires injecting IDynamoDBContext into PostService
+                await _dbContext.SaveAsync(timelineItem);
+                _logger.LogInformation("Added post {PostId} to the public timeline.", post.SK);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add post {PostId} to the public timeline.", post.SK);
+            }
         }
 
 

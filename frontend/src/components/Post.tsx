@@ -1,9 +1,8 @@
-// <<< THIS IS THE UPDATED Post.tsx FILE >>>
+import { PostResponse } from '../types/types';
 import React, { useState } from 'react';
 import LikeButton from './LikeButton';
 
-// Step 1: Define an interface that EXACTLY matches the data from your API.
-// This corresponds to the 'TimelineItemResponse' C# record.
+
 interface PostData {
   postId: string;
   authorUsername: string;
@@ -15,7 +14,6 @@ interface PostData {
   isLikedByUser: boolean;
 }
 
-// Step 2: Update the component's props to accept a single 'post' object of the new type.
 interface PostProps {
   post: PostData;
 }
@@ -49,6 +47,7 @@ const Post: React.FC<PostProps> = ({ post }) => {
         {/* Use the postContent from the post object */}
         <p className="text-gray-300 mt-1 whitespace-pre-wrap break-words">{post.postContent}</p>
 
+      {/* ADDED: Conditionally render images if they exist in the data */}
         {/* Conditionally render images if they exist in the data */}
         {post.attachmentUrls?.length > 0 && (
           <div className="mt-4 rounded-lg overflow-hidden border border-gray-600">

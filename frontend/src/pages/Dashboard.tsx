@@ -15,7 +15,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       <main className="main-content">
         <Routes>
           <Route index element={<ExplorePage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="profile/:handle" element={<ProfilePage />} />
           <Route path="create" element={<CreatePostPage />} />
           <Route path="search" element={<SearchPage />} />
         </Routes>

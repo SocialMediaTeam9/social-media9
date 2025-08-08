@@ -6,9 +6,6 @@ const LoginPage: React.FC = () => {
     const api_url = process.env.REACT_APP_API_URL;
     const redirect_target = `${api_url}/api/users/signin-google`;
 
-    console.log("API URL configured:", api_url);
-    console.log("Attempting to redirect to:", redirect_target);
-
     window.location.href = redirect_target;
   };
 

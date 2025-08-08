@@ -100,7 +100,7 @@ const CreatePostPage: React.FC = () => {
 
             {previewUrl && (
               <div className="image-preview-container">
-                <img src={previewUrl} alt="Upload preview" className="image-preview" />
+                <img src={previewUrl}   alt="Upload preview" className="image-preview" />
                 {isUploading && <div className="upload-spinner"></div>}
               </div>
             )}
@@ -122,8 +122,7 @@ const CreatePostPage: React.FC = () => {
                   onClick={() => fileInputRef.current?.click()} 
                   className="icon-button" 
                   disabled={isUploading || isSubmitting}
-                  title="Add image"
-                >
+                  title="Add image">
                   <PhotoIcon />
                 </button>
               </div>

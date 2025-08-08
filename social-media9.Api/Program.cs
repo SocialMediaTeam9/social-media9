@@ -96,6 +96,7 @@ builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<IFederationService, FederationService>();
 builder.Services.AddScoped<HttpSignatureService>();
 
 builder.Services.AddScoped<ITimelineService, TimelineService>();
@@ -105,6 +106,7 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
+builder.Services.AddScoped<ActivityPubService>();
 
 builder.Services.AddHostedService<SqsWorkerService>();
 
