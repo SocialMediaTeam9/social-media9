@@ -8,6 +8,7 @@ using social_media9.Api.Repositories.Interfaces;
 using System.Security.Claims;
 using MediatR;
 using social_media9.Api.Queries.Posts;
+using social_media9.Api.Commands;
 
 namespace social_media9.Api.Controllers
 {
@@ -21,10 +22,13 @@ namespace social_media9.Api.Controllers
 
         private readonly IMediator _mediator;
 
-        public PostsController(PostService postService, IUserRepository userRepository, IMediator mediator)
+        private readonly ICommentRepository _commentRepository;
+
+        public PostsController(PostService postService, IUserRepository userRepository, IMediator mediator, ICommentRepository commentRepository)
         {
             _postService = postService;
             _userRepository = userRepository;
+            _commentRepository = commentRepository;
             _mediator = mediator;
         }
 
@@ -150,10 +154,10 @@ namespace social_media9.Api.Controllers
         // POST /api/posts/{postId}/comments
         [HttpPost("{postId}/comments")]
         // [Authorize]
-        public async Task<IActionResult> AddComment(Guid postId, [FromBody] AddCommentRequest request)
+        public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
         {
-            // TODO: Implement add comment logic in service and call here
-            return StatusCode(201);
+            var result = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetComments), new { result.PostId }, result);
         }
 
         // GET /api/posts/{postId}/comments
@@ -161,8 +165,56 @@ namespace social_media9.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetComments(Guid postId)
         {
-            // TODO: Implement get comments logic in service and call here
-            return Ok();
+            var result = await _mediator.Send(new GetCommentsByContentQuery(postId.ToString()));
+            return Ok(result);
+        }
+
+        [HttpDelete("{postId}/{commentId}")]
+        public async Task<IActionResult> DeleteComment(Guid postId, Guid commentId)
+        {
+            if (!IsUserAuthorized(postId, commentId))
+            {
+                return Unauthorized("You are not authorized to delete this comment.");
+            }
+            await _mediator.Send(new DeleteCommentCommand(commentId, postId));
+            return NoContent();
+        }
+
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
+        {
+            if (!IsUserAuthorized(dto.PostId, dto.CommentId))
+            {
+                return Unauthorized("You are not authorized to update this comment.");
+            }
+
+            var command = new UpdateCommentCommand
+            {
+                CommentId = dto.CommentId,
+                PostId = dto.PostId,
+                NewContent = dto.NewContent
+            };
+
+            var result = await _mediator.Send(command);
+            return result ? Ok("Updated") : BadRequest("Update failed");
+        }
+        
+        public bool IsUserAuthorized(Guid postId, Guid commentId)
+        {
+
+            string? googleId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            string userId = _userRepository.GetUserByGoogleIdAsync(googleId).Result?.UserId ?? string.Empty;
+            var comment = _commentRepository.GetCommentByIdAsync(postId, commentId).Result;
+
+            if (comment == null)
+            {
+                return false;
+            }
+            else
+            {
+                return comment.UserId == userId;
+            }
+
         }
     }
 }
