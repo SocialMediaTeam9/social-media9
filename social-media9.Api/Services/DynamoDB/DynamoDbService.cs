@@ -155,12 +155,12 @@ public class DynamoDbService
             }
         });
 
-        transaction.TransactItems.Add(new() { Update = CreateUpdateCountRequest(localFollower.Username, "METADATA", "FollowingCount", 1) });
+        transaction.TransactItems.Add(new() { Update = CreateUpdateCountRequest($"USER#{localFollower.Username}", "METADATA", "FollowingCount", 1) });
 
         var followedIsLocal = await GetUserProfileByUsernameAsync(userToFollow.Username);
         if (followedIsLocal != null)
         {
-            transaction.TransactItems.Add(new() { Update = CreateUpdateCountRequest(userToFollow.Username, "METADATA", "FollowersCount", 1) });
+            transaction.TransactItems.Add(new() { Update = CreateUpdateCountRequest($"USER#{userToFollow.Username}", "METADATA", "FollowersCount", 1) });
         }
 
         try { await _dynamoDbClient.TransactWriteItemsAsync(transaction); return true; }
