@@ -1,5 +1,6 @@
 using System;
 using Amazon.DynamoDBv2.DataModel;
+using social_media9.Api.Models.DynamoDb;
 
 namespace social_media9.Api.Models
 {
