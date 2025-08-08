@@ -1,10 +1,11 @@
 using System;
 using Amazon.DynamoDBv2.DataModel;
+using social_media9.Api.Models.DynamoDb;
 
 namespace social_media9.Api.Models
 {
-    [DynamoDBTable("Likes")]
-    public class Like
+    [DynamoDBTable("nexusphere-mvp-main-table")]
+    public class Like : BaseEntity
     {
         [DynamoDBHashKey]
         public string PostId { get; set; } = string.Empty;

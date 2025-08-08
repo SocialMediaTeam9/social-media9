@@ -29,6 +29,8 @@ const Sidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const myUsername = localStorage.getItem('username');
+
   return (
     <nav className="bg-gray-900 w-64 p-6 flex flex-col h-screen sticky top-0 border-r border-gray-700">
       <h2 className="text-3xl font-extrabold text-blue-500 mb-8">SM App</h2>
@@ -42,7 +44,7 @@ const Sidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         <span className="font-semibold">Explore</span>
       </Link>
       <Link
-        to="/dashboard/profile"
+        to={`/dashboard/profile/${myUsername}`}
         className={`flex items-center space-x-4 p-3 rounded-full ${
           isActive('/dashboard/profile') ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'
         }`}

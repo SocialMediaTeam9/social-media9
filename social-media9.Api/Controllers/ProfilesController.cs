@@ -6,7 +6,7 @@ using social_media9.Api.Dtos;
 using social_media9.Api.Models;
 using social_media9.Api.Repositories.Interfaces;
 using social_media9.Api.Services.DynamoDB;
-using social_media9.Api.Services.Implementations;
+using social_media9.Api.Services.Interfaces;
 
 namespace social_media9.Api.Controllers;
 
@@ -14,11 +14,11 @@ namespace social_media9.Api.Controllers;
 [Route("/api/[controller]")]
 public class ProfilesController : ControllerBase
 {
-    private readonly FederationService _federationService;
+    private readonly IFederationService _federationService;
     private readonly DynamoDbService _dbService;
     private readonly IFollowRepository _followRepository;
 
-    public ProfilesController(FederationService federationService, DynamoDbService dbService, IFollowRepository followRepository)
+    public ProfilesController(IFederationService federationService, DynamoDbService dbService, IFollowRepository followRepository)
     {
         _federationService = federationService;
         _dbService = dbService;
