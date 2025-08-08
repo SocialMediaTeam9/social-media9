@@ -29,7 +29,7 @@ public class ActivityPubService
         _config = config;
         _privateKey.ImportFromPem(privateKeyPem.ToCharArray());
     }
-    
+
     public string BuildActivityJson(string actorUrl, object activityPayload)
     {
         var domain = _config["DomainName"];
@@ -58,12 +58,15 @@ public class ActivityPubService
             Content = new StringContent(body, Encoding.UTF8, "application/activity+json")
         };
 
-        request.Headers.Date = DateTimeOffset.UtcNow;
+        string dateString = DateTime.UtcNow.ToString("R");
+        request.Headers.Date = DateTimeOffset.Parse(dateString);
         request.Headers.TryAddWithoutValidation("Digest", digest);
         request.Headers.Host = new Uri(targetInboxUrl).Host;
 
-        string signatureHeaderValue = BuildSignatureHeader(request, digest);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Signature", signatureHeaderValue);
+        string signatureHeaderValue = BuildSignatureHeader(request, digest, dateString);
+
+        // Use TryAddWithoutValidation to ensure the exact header string is preserved
+        request.Headers.TryAddWithoutValidation("Signature", signatureHeaderValue);
 
         return await _httpClient.SendAsync(request);
     }
@@ -75,12 +78,12 @@ public class ActivityPubService
         return "SHA-256=" + Convert.ToBase64String(hash);
     }
 
-    private string BuildSignatureHeader(HttpRequestMessage request, string digest)
+    private string BuildSignatureHeader(HttpRequestMessage request, string digest, string dateString)
     {
         var signingString = new StringBuilder();
         signingString.Append("(request-target): post " + request.RequestUri.AbsolutePath + "\n");
         signingString.Append("host: " + request.Headers.Host + "\n");
-        signingString.Append("date: " + request.Headers.Date?.ToString("R") + "\n");
+        signingString.Append("date: " + dateString + "\n"); // Use the exact same date string
         signingString.Append("digest: " + digest);
 
         var signatureBytes = _privateKey.SignData(

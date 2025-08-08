@@ -134,7 +134,11 @@ public class SqsWorkerService : BackgroundService
                         break;
                     }
 
-                    var acceptPayload = new { type = "Accept", @object = activity.Deserialize<object>() };
+                    var acceptPayload = new { 
+                        type = "Accept", 
+                        @object = activity.Deserialize<object>() 
+                    };
+
                     var activityJson = BuildAcceptActivityJson(followedUserEntity.ActorUrl, acceptPayload, actorUrl);
                     var activityDoc = JsonDocument.Parse(activityJson);
 
