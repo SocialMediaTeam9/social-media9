@@ -14,14 +14,55 @@ namespace social_media9.Api.Services.Implementations
     {
         private readonly HttpClient _httpClient;
         private readonly IUserRepository _userRepository;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<FederationService> _logger;
 
-        public FederationService(IHttpClientFactory httpClientFactory, IUserRepository userRepository)
+        public FederationService(IHttpClientFactory httpClient, IUserRepository userRepository, IHttpClientFactory httpClientFactory, ILogger<FederationService> logger)
         {
-            _httpClient = httpClientFactory.CreateClient();
+            _httpClient = httpClient.CreateClient();
             _userRepository = userRepository;
+            _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
-        
+
         private string ExtractUsernameFromActorUrl(string url) => url.Split('/').Last();
+
+        private async Task<string?> ResolveInboxUrlAsync(string actorUrl)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient("FederationClient");
+                var res = await client.GetAsync(actorUrl).ConfigureAwait(false);
+                if (!res.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to fetch actor document {ActorUrl}: {Status}", actorUrl, res.StatusCode);
+                    return null;
+                }
+
+                var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(body);
+
+                if (doc.RootElement.TryGetProperty("inbox", out var inboxProp) && inboxProp.ValueKind == JsonValueKind.String)
+                {
+                    return inboxProp.GetString();
+                }
+
+                if (doc.RootElement.TryGetProperty("endpoints", out var endpoints) &&
+                    endpoints.ValueKind == JsonValueKind.Object &&
+                    endpoints.TryGetProperty("inbox", out var inbox2) &&
+                    inbox2.ValueKind == JsonValueKind.String)
+                {
+                    return inbox2.GetString();
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not resolve inbox for actor {Actor}", actorUrl);
+                return null;
+            }
+        }
 
         public async Task<User?> DiscoverAndCacheUserAsync(string userHandle)
         {
@@ -91,6 +132,11 @@ namespace social_media9.Api.Services.Implementations
                 Console.WriteLine($"[FederationService] Failed to discover user {userHandle}: {ex.Message}");
                 return null;
             }
+        }
+
+        Task<string?> IFederationService.ResolveInboxUrlAsync(string actorUrl)
+        {
+            return ResolveInboxUrlAsync(actorUrl);
         }
     }
 }

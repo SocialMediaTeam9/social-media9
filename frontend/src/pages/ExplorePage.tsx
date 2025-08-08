@@ -1,22 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetcher } from '../utils/fetcher'; 
 import PostCardAlt from '../components/PostCardAlt';
-import { PostResponse } from '../types/types';
+import { PaginatedPostResponse, PostResponse } from '../types/types';
 
 // --- These types match your C# DTOs from TimelineService ---
-interface PostData {
-    postId: string;
-    authorUsername: string;
-    postContent: string;
-    attachmentUrls: string[];
-    createdAt: string;
-    boostedBy?: string;
-}
 
-interface PaginatedTimelineResponse {
-    items: PostResponse[];
-    nextCursor?: string;
-}
 
 const ExplorePage: React.FC = () => {
     // --- State management for the dynamic feed ---
@@ -26,9 +14,6 @@ const ExplorePage: React.FC = () => {
     const [cursor, setCursor] = useState<string | undefined>(undefined);
     const [hasMore, setHasMore] = useState(true);
 
-    // Placeholder for the currently logged-in user's username.
-    // In a real application, this would come from an authentication context (e.g., React Context, Redux, Zustand).
-    // For demonstration, I'm setting a static value. Please replace this with your actual user context.
     const currentLoggedInUsername = localStorage.getItem("username");
 
     const observer = useRef<IntersectionObserver | null>(null);
@@ -60,7 +45,7 @@ const ExplorePage: React.FC = () => {
                 endpoint += `&cursor=${encodeURIComponent(cursor)}`;
             }
 
-            const data = await fetcher<PaginatedTimelineResponse>(endpoint);
+            const data = await fetcher<PaginatedPostResponse>(endpoint);
             setPosts(prevPosts => [...prevPosts, ...data.items]);
             setCursor(data.nextCursor);
             if (!data.nextCursor) {

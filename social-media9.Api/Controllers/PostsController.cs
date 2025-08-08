@@ -200,7 +200,7 @@ namespace social_media9.Api.Controllers
             var result = await _mediator.Send(command);
             return result ? Ok("Updated") : BadRequest("Update failed");
         }
-        
+
         public bool IsUserAuthorized(Guid postId, Guid commentId)
         {
 
