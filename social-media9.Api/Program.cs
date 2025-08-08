@@ -96,7 +96,7 @@ builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
-
+builder.Services.AddScoped<IFederationService, FederationService>();
 builder.Services.AddScoped<ITimelineService, TimelineService>();
 
 builder.Services.AddScoped<PostService>();

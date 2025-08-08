@@ -32,6 +32,7 @@ namespace social_media9.Api.Services.Implementations
         private readonly IFollowRepository _followRepository;
         private readonly Amazon.DynamoDBv2.DataModel.IDynamoDBContext _dbContext;
 
+        private readonly IFederationService _federationService;
 
         public PostService(
             IPostRepository postRepository,
@@ -40,7 +41,8 @@ namespace social_media9.Api.Services.Implementations
             IUserRepository userRepository,
             IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory,
             IFollowRepository followRepository,
-            Amazon.DynamoDBv2.DataModel.IDynamoDBContext dbContext)
+            Amazon.DynamoDBv2.DataModel.IDynamoDBContext dbContext,
+            IFederationService federationService)
         {
             _postRepository = postRepository;
             _dbService = dbService;
@@ -51,6 +53,7 @@ namespace social_media9.Api.Services.Implementations
             _httpClientFactory = httpClientFactory;
             _followRepository = followRepository;
             _dbContext = dbContext;
+            _federationService = federationService;
         }
 
         // public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId)
@@ -192,6 +195,42 @@ namespace social_media9.Api.Services.Implementations
             _ = FanoutPostToPublicTimelineAsync(newPost);
 
             return newPost;
+        }
+
+        public async Task IngestRemotePostAsync(JsonElement createActivity)
+        {
+            try
+            {
+                // 1. Extract the post object from the "Create" activity
+                if (!createActivity.TryGetProperty("object", out var postObject)) return;
+                if (postObject.TryGetProperty("type", out var type) && type.GetString() != "Note") return; // We only care about text posts for now
+
+                var authorActorUrl = postObject.GetProperty("attributedTo").GetString();
+                if (authorActorUrl == null) return;
+
+                // 2. Discover and cache the author if we've never seen them before
+                var author = await _userRepository.GetUserByActorUrl(authorActorUrl);
+                if (author == null)
+                {
+                    // This is a simplified discovery, a real app might need a dedicated FederationService call
+                    var handle = $"{authorActorUrl.Split('/')[4]}@{new Uri(authorActorUrl).Host}";
+                    author = await _federationService.DiscoverAndCacheUserAsync(handle);
+                }
+                if (author == null) return; // Could not find the author, skip post
+
+                // 3. Create a Post object from the incoming data and save it
+                // You will need to add a static helper method to your Post model for this.
+                var newPost = Post.FromActivityPub(postObject, author.Username);
+                await _postRepository.AddAsync(newPost); // Save to your Posts table
+
+                // 4. Fan the post out to your public timeline
+                await FanoutPostToPublicTimelineAsync(newPost);
+                _logger.LogInformation("Successfully ingested and fanned out a remote post from {Author}", author.Username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to ingest remote post.");
+            }
         }
 
         private async Task DeliverPostToFollowersAsync(JsonDocument activityDoc, User author)
