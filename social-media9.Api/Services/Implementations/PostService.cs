@@ -203,7 +203,7 @@ namespace social_media9.Api.Services.Implementations
             var httpClient = _httpClientFactory.CreateClient("FederationClient");
             var domain = _config["DomainName"];
             var actorUrl = $"https://{domain}/users/{author.Username}";
-            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem);
+            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem, _config);
             // var activityDoc = JsonDocument.Parse(activityJson);
 
             do

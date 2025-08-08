@@ -80,7 +80,7 @@ public class FollowService
             var activityDoc = JsonDocument.Parse(followActivityJson);
             var httpClient = _httpClientFactory.CreateClient("FederationClient");
 
-            var deliveryService = new ActivityPubService(httpClient, localFollower.ActorUrl, localFollower.PrivateKeyPem);
+            var deliveryService = new ActivityPubService(httpClient, localFollower.ActorUrl, localFollower.PrivateKeyPem, _config);
 
            await deliveryService.DeliverActivityAsync(targetUser.InboxUrl, activityDoc);
         }
