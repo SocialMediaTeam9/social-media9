@@ -179,5 +179,24 @@ namespace social_media9.Api.Controllers
             await _mediator.Send(new DeleteCommentCommand(commentId, postId));
             return NoContent();
         }
+
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateComment([FromBody] UpdateCommentDto dto)
+        {
+            if (!IsUserAuthorized(dto.PostId,dto.CommentId))
+            {
+                return Unauthorized("You are not authorized to update this comment.");
+            }
+            
+            var command = new UpdateCommentCommand
+            {
+                CommentId = dto.CommentId,
+                PostId = dto.PostId,
+                NewContent = dto.NewContent
+            };
+
+            var result = await _mediator.Send(command);
+            return result ? Ok("Updated") : BadRequest("Update failed");
+        }
     }
 }
