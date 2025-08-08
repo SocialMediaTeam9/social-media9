@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { fetcher } from '../utils/fetcher'; // Assuming you have a fetcher utility
-import PostCard from '../components/PostCard'; // Using your existing PostCard component
+import { fetcher } from '../utils/fetcher'; 
 import PostCardAlt from '../components/PostCardAlt';
 import { PostResponse } from '../types/types';
 

@@ -1,6 +1,4 @@
-import React from 'react';
 import { PostResponse } from '../types/types';
-// <<< THIS IS THE UPDATED Post.tsx FILE >>>
 import React, { useState } from 'react';
 import LikeButton from './LikeButton';
 
@@ -17,7 +15,7 @@ interface PostData {
 }
 
 interface PostProps {
-  post: PostResponse;
+  post: PostData;
 }
 
 // Step 3: Update the component to use the properties from the 'post' object.
