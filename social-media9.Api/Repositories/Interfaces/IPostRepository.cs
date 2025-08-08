@@ -16,9 +16,9 @@ namespace social_media9.Api.Repositories.Interfaces
 
         Task<IEnumerable<LikeEntity>> GetLikesAsync(string postId, int limit = 20);
 
-        Task<bool> LikeAsync(Guid postId, Guid userId);
+        Task<bool> LikeAsync(string postId, string userId);
 
-        Task<bool> UnlikeAsync(Guid postId, Guid userId);
+        Task<bool> UnlikeAsync(string postId, string userId);
 
         Task<IEnumerable<Comment>> GetCommentsAsync(string postId, int limit = 50);
 

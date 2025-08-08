@@ -1,4 +1,3 @@
-
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -82,6 +81,7 @@ builder.Services.AddScoped<IFederationService, FederationService>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<DynamoDbContext>();
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFollowRepository, FollowRepository>();
@@ -96,6 +96,7 @@ builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<HttpSignatureService>();
 
 builder.Services.AddScoped<ITimelineService, TimelineService>();
 
@@ -105,7 +106,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
 
-builder.Services.AddHostedService<SqsWorkerService>();
+// builder.Services.AddHostedService<SqsWorkerService>();
 
 // === MediatR & FluentValidation ===
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
