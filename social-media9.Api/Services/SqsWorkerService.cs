@@ -4,6 +4,7 @@ using Amazon.SQS.Model;
 using Microsoft.Extensions.DependencyInjection;
 using social_media9.Api.Models;
 using social_media9.Api.Services.DynamoDB;
+using social_media9.Api.Services.Interfaces;
 
 public class SqsWorkerService : BackgroundService
 {
@@ -212,10 +213,30 @@ public class SqsWorkerService : BackgroundService
     private async Task HandleCreateActivityAsync(JsonElement createActivity, DynamoDbService dbService)
     {
         if (!createActivity.TryGetProperty("object", out var postObject) ||
-            !postObject.TryGetProperty("attributedTo", out var authorActorUrlElement))
+        !postObject.TryGetProperty("attributedTo", out var authorActorUrlElement))
         {
             _logger.LogWarning("Received 'Create' activity with missing 'object' or 'attributedTo' fields.");
             return;
+        }
+        
+        var authorActorUrl = authorActorUrlElement.GetString();
+        if (string.IsNullOrEmpty(authorActorUrl)) return;
+        var author = ExtractUsernameFromActorUrl(authorActorUrl);
+        if (author == null)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var federationService = scope.ServiceProvider.GetRequiredService<IFederationService>();
+                var handle = $"{new Uri(authorActorUrl).Segments.Last()}@{new Uri(authorActorUrl).Host}";
+                author = await federationService.DiscoverAndCacheUserAsync(handle);
+            }
+        }
+        
+        if (author == null)
+        {
+            _logger.LogWarning("Could not find or discover author for remote post: {ActorUrl}", authorActorUrl);
+            return;
+            
         }
 
         var post = new Post
@@ -232,6 +253,7 @@ public class SqsWorkerService : BackgroundService
 
         if (!followerUsernames.Any())
         {
+            await dbService.PopulateTimelinesAsync(post, new List<string> { "PUBLIC" });
             _logger.LogInformation("Post by {Author} has no followers to deliver to.", post.AuthorUsername);
             return;
         }
