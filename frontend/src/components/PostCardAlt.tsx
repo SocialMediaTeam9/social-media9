@@ -106,8 +106,6 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
     <div className="post-avatar">{/* Avatar placeholder */}</div>
     <div className="post-content">
       <div className="user-info">
-                    <p className="author-name">{post.authorUsername}</p>
-                    <p className="username-tag">@{post.authorUsername}</p>
                     {showFollowButton && (
                         <div className="follow-button-wrapper">
                             {isFollowing ? (
@@ -131,7 +129,6 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
                     )}
                 </div>
       <div className="post-header">
-        <span className="post-author">{post.authorUsername}</span>
         <span className="post-username">@{post.authorUsername}</span>
         <span className="text-gray-500 mx-2">·</span>
         <span className="text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</span>
