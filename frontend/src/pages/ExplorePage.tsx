@@ -86,11 +86,9 @@ const ExplorePage: React.FC = () => {
                 Home
             </h1>
             <div className="feed-content space-y-4">
-                {posts.map((post, index) => (
-                    posts.length === index + 1
-                        ? <div ref={lastPostElementRef} key={post.postId}><PostCardAlt post={post} currentLoggedInUsername={currentLoggedInUsername ?? ''} /></div>
-                        : <PostCardAlt key={post.postId} post={post} currentLoggedInUsername={currentLoggedInUsername ?? ''} />
-                ))}
+                {
+                    posts.map(post => <PostCardAlt key={post.postId} post={post} currentLoggedInUsername={currentLoggedInUsername ?? ''} />
+                ) }
             </div>
 
             {/* Loading, error, and end-of-feed messages */}
