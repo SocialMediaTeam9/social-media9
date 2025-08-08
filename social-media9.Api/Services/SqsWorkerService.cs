@@ -131,6 +131,9 @@ public class SqsWorkerService : BackgroundService
                 if (string.IsNullOrEmpty(targetInbox))
                     break;
 
+                var activityObj = JsonSerializer.Deserialize<object>(message.Body);
+
+
                 // 2️⃣ Build Accept activity
                 var acceptActivity = new
                 {
@@ -138,7 +141,7 @@ public class SqsWorkerService : BackgroundService
                     id = $"https://{_config["DomainName"]}/activities/{Ulid.NewUlid()}",
                     type = "Accept",
                     actor = followedUserEntity.ActorUrl,
-                    @object = activity, // The original Follow activity
+                    @object = activityObj, // The original Follow activity
                     to = new[] { actorUrl }
                 };
 

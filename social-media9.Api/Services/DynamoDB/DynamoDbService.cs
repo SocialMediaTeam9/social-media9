@@ -461,6 +461,7 @@ public class DynamoDbService
         return await _dbContext.LoadAsync<Post>($"POST#{postId}", $"POST#{postId}");
     }
 
+    
     public async Task<bool> LikePostAsync(string postId, UserSummary liker)
     {
         var likeEntity = new LikeEntity
