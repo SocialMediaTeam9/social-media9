@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
-import { Post, PostResponse, UserProfile } from '../types/types';
+import { PaginatedPostResponse, Post, PostResponse, UserProfile } from '../types/types';
 import { fetcher, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
 import PostCardAlt from '../components/PostCardAlt';
 
@@ -36,20 +36,15 @@ const ProfilePage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        console.log(`Fetching data for: ${usernameToFetch}`);
 
-        // 5. Use the definitive usernameToFetch variable for the API calls.
         const profilePromise = lookupProfile(usernameToFetch);
         
-        let postsPromise: Promise<PostResponse[]> = Promise.resolve([]);
-        if (!usernameToFetch.includes('@')) {
-            postsPromise = getPostsByUsername(usernameToFetch);
-        }
-        
+        let postsPromise: Promise<PaginatedPostResponse> = getPostsByUsername(usernameToFetch);
+       
         const [profileData, postsData] = await Promise.all([profilePromise, postsPromise]);
 
         setProfile(profileData);
-        setPosts(postsData);
+        setPosts(postsData.items);
       } catch (err: any) {
         setError(err.message || 'Failed to load profile.');
       } finally {

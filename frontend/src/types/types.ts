@@ -67,6 +67,11 @@ export interface GenerateUploadUrlResponse {
   finalUrl: string; 
 }
 
+export interface PaginatedPostResponse {
+  items: PostResponse[],
+  nextCursor?: string
+}
+
 export interface PostResponse {
   postId: string;
   authorUsername: string;

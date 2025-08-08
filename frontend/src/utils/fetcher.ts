@@ -1,4 +1,4 @@
-import { GenerateUploadUrlPayload, GenerateUploadUrlResponse, PostResponse, UserProfile } from "../types/types";
+import { GenerateUploadUrlPayload, GenerateUploadUrlResponse, PaginatedPostResponse, PostResponse, UserProfile } from "../types/types";
 
 const baseURL = process.env.REACT_APP_API_URL || "http://localhost:5245";
 
@@ -74,8 +74,8 @@ export const lookupProfile = (handle: string): Promise<UserProfile> => {
   return fetcher<UserProfile>(`/api/profiles/lookup?handle=${encodedHandle}`);
 };
 
-export const getPostsByUsername = (username: string): Promise<PostResponse[]> => {
-  return fetcher<PostResponse[]>(`/api/posts/by/${username}`);
+export const getPostsByUsername = (username: string): Promise<PaginatedPostResponse> => {
+  return fetcher<PaginatedPostResponse>(`/api/posts/by/${username}`);
 };
 
 export async function fetcher<T>(
