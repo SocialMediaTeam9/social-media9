@@ -29,13 +29,18 @@ namespace social_media9.Api.Services.Implementations
 
         private readonly IHttpClientFactory _httpClientFactory;
 
+        private readonly IFollowRepository _followRepository;
+        private readonly Amazon.DynamoDBv2.DataModel.IDynamoDBContext _dbContext;
+
 
         public PostService(
             IPostRepository postRepository,
             IAmazonSQS sqsClient,
             DynamoDbService dbService,
             IUserRepository userRepository,
-            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory)
+            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory,
+            IFollowRepository followRepository,
+            Amazon.DynamoDBv2.DataModel.IDynamoDBContext dbContext)
         {
             _postRepository = postRepository;
             _dbService = dbService;
@@ -44,6 +49,8 @@ namespace social_media9.Api.Services.Implementations
             _userRepository = userRepository;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _followRepository = followRepository;
+            _dbContext = dbContext;
         }
 
         // public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId)
@@ -181,6 +188,8 @@ namespace social_media9.Api.Services.Implementations
             }
 
             _ = DeliverPostToFollowersAsync(activityDoc, author);
+            _ = FanoutPostToLocalFollowersAsync(newPost);
+            _ = FanoutPostToPublicTimelineAsync(newPost);
 
             return newPost;
         }
@@ -227,6 +236,86 @@ namespace social_media9.Api.Services.Implementations
             } while (!string.IsNullOrEmpty(paginationToken));
 
             _logger.LogInformation("Completed outbound delivery for post by {Username}. Total followers reached: {TotalDelivered}", author.Username, totalDelivered);
+        }
+        
+        private async Task FanoutPostToLocalFollowersAsync(Post post)
+        {
+            try
+            {
+                var followers = await _followRepository.GetFollowersAsync(post.AuthorUsername);
+                var timelineBatch = _dbContext.CreateBatchWrite<TimelineItemEntity>();
+                bool itemsAdded = false;
+
+                string postId = post.SK.Replace("POST#", "");
+                var appDomain = _config["DomainName"];
+
+                if (followers.Any())
+                {
+                    foreach (var followRelationship in followers)
+                    {
+                        var followerDomain = new Uri(followRelationship.FollowerInfo.ActorUrl).Host;
+                        if (followerDomain.Equals(appDomain, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var followerUsername = followRelationship.FollowerInfo.ActorUrl.Split('/').Last();
+                            timelineBatch.AddPutItem(new TimelineItemEntity
+                            {
+                                PK = $"TIMELINE#{followerUsername}",
+                                SK = $"NOTE#{postId}",
+                                AuthorUsername = post.AuthorUsername,
+                                PostContent = post.Content,
+                                AttachmentUrls = post.Attachments,
+                                CreatedAt = post.CreatedAt
+                            });
+                            itemsAdded = true;
+                        }
+                    }
+                }
+
+                timelineBatch.AddPutItem(new TimelineItemEntity
+                {
+                    PK = $"TIMELINE#{post.AuthorUsername}",
+                    SK = $"NOTE#{postId}",
+                    AuthorUsername = post.AuthorUsername,
+                    PostContent = post.Content,
+                    AttachmentUrls = post.Attachments,
+                    CreatedAt = post.CreatedAt
+                });
+                itemsAdded = true;
+
+                if (!itemsAdded) return;
+
+                _logger.LogInformation("Fanning out post {PostId} to local timelines.", postId);
+                await timelineBatch.ExecuteAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fan-out post {PostId} to local timelines.", post.SK);
+            }
+        }
+
+        private async Task FanoutPostToPublicTimelineAsync(Post post)
+        {
+            try
+            {
+                var timelineItem = new TimelineItemEntity
+                {
+                    PK = "TIMELINE#PUBLIC",
+                    // The SK format includes a timestamp to ensure chronological order
+                    SK = $"NOTE#{post.CreatedAt:o}#{post.SK.Replace("POST#", "")}",
+                    AuthorUsername = post.AuthorUsername,
+                    PostContent = post.Content,
+                    AttachmentUrls = post.Attachments,
+                    CreatedAt = post.CreatedAt
+                };
+
+                // Note: This requires injecting IDynamoDBContext into PostService
+                await _dbContext.SaveAsync(timelineItem);
+                _logger.LogInformation("Added post {PostId} to the public timeline.", post.SK);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add post {PostId} to the public timeline.", post.SK);
+            }
         }
 
 
