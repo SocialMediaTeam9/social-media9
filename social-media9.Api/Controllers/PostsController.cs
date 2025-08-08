@@ -154,10 +154,11 @@ namespace social_media9.Api.Controllers
         // POST /api/posts/{postId}/comments
         [HttpPost("{postId}/comments")]
         // [Authorize]
-        public async Task<IActionResult> AddComment([FromBody] AddCommentCommand command)
+        public async Task<IActionResult> AddComment([FromRoute] Guid postId, [FromBody] AddCommentCommand command)
         {
+            command.PostId = postId.ToString();
             var result = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetComments), new { result.PostId }, result);
+            return CreatedAtAction(nameof(GetComments), new { postId = result.PostId }, result);
         }
 
         // GET /api/posts/{postId}/comments
