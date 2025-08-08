@@ -154,19 +154,20 @@ namespace social_media9.Api.Controllers
         // POST /api/posts/{postId}/comments
         [HttpPost("{postId}/comments")]
         // [Authorize]
-        public async Task<IActionResult> AddComment([FromRoute] Guid postId, [FromBody] AddCommentCommand command)
+        public async Task<IActionResult> AddComment([FromRoute] string postId, [FromBody] AddCommentCommand command)
         {
-            command.PostId = postId.ToString();
+            command.PostId = postId;
             var result = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetComments), new { postId = result.PostId }, result);
         }
 
+
         // GET /api/posts/{postId}/comments
         [HttpGet("{postId}/comments")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetComments(Guid postId)
+        public async Task<IActionResult> GetComments(string postId)
         {
-            var result = await _mediator.Send(new GetCommentsByContentQuery(postId.ToString()));
+            var result = await _mediator.Send(new GetCommentsByContentQuery(postId));
             return Ok(result);
         }
 
