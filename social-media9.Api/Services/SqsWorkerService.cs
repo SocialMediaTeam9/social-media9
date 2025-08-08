@@ -108,7 +108,17 @@ public class SqsWorkerService : BackgroundService
                 if (string.IsNullOrEmpty(followTargetUrl)) break;
 
                 var followedUsername = ExtractUsernameFromActorUrl(followTargetUrl);
+                var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
                 _logger.LogInformation("Processing INBOUND FOLLOW from {Follower} to {Followed}", actorUrl, followedUsername);
+
+                bool isAlreadyFollowing = await dbService.IsFollowingAsync(followerUsername, followedUsername);
+
+                if (isAlreadyFollowing)
+                {
+                    _logger.LogInformation("Follow relationship from {Follower} to {Followed} already exists. Skipping.", actorUrl, followedUsername);
+                    // We don't send back another Accept. We just acknowledge the message is handled.
+                    break; // Exit the case successfully.
+                }
 
                 var success = await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername);
 
