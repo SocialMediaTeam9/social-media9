@@ -16,6 +16,8 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
   // State to handle errors during follow/unfollow actions
   const [actionError, setActionError] = useState<string | null>(null);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [isLiked, setIsLiked] = useState(post.isLikedByUser);
 
   // Effect to check the follow status when the component mounts or author changes
   useEffect(() => {
@@ -99,6 +101,10 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
     } finally {
       setIsActionLoading(false);
     }
+  };
+  const handleLikeChange = (newIsLiked: boolean, newLikeCount: number) => {
+    setIsLiked(newIsLiked);
+    setLikeCount(newLikeCount);
   };
 
   const showFollowButton = currentLoggedInUsername && currentLoggedInUsername !== post.authorUsername;
