@@ -38,7 +38,9 @@ public class FollowService
 
         if (targetUserSummary == null)
         {
-            var remoteActorUrl = $"https://{targetUsername.Split('@')[1]}/users/{targetUsername.Split('@')[0]}";
+            var targetUser = targetUsername.TrimStart('@');
+
+            var remoteActorUrl = $"https://{targetUser.Split('@')[1]}/users/{targetUser.Split('@')[0]}";
             targetUserSummary = await GetRemoteUserSummaryAsync(remoteActorUrl);
         }
         

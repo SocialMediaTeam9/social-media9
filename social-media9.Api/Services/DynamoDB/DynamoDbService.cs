@@ -456,44 +456,6 @@ public class DynamoDbService
         }
     }
 
-    // public async Task<bool> DeletePostAsync(string postId, string authorUsername)
-    // {
-    //     // TODO: In a real app, you would also delete all comments and likes for this post.
-    //     // For now, we will just delete the post and update the counter.
-    //     var transactionRequest = new TransactWriteItemsRequest
-    //     {
-    //         TransactItems = new List<TransactWriteItem>
-    //             {
-    //                 new() { Delete = new Delete { TableName = _tableName, Item = _dbContext.ToDocument(post).ToAttributeMap(), ConditionExpression = "attribute_not_exists(PK)" } },
-    //                 new() { Update = CreateUpdateCountRequest(post.AuthorUsername, "METADATA", "PostCount", 1) }
-    //             }
-    //     };
-
-
-    //     var transaction = _dbContext.CreateTransactWrite();
-
-    //     // Item 1: Delete the PostEntity
-    //     transaction.AddDelete<PostEntity>($"POST#{postId}", $"POST#{postId}");
-
-    //     // Item 2: Decrement the PostCount on the author's UserEntity
-    //     transaction.AddUpdate(CreateUpdateUserCountRequest(authorUsername, "METADATA", "PostCount", -1));
-
-    //     try
-    //     {
-    //         await transaction.ExecuteAsync();
-    //         _logger.LogInformation("Successfully deleted post {PostId} and decremented PostCount for user {Username}", postId, authorUsername);
-    //         return true;
-    //     }
-    //     catch (TransactionCanceledException ex)
-    //     {
-    //         _logger.LogWarning(ex, "Transaction failed for post deletion by {Username}", authorUsername);
-    //         return false;
-    //     }
-    // }
-
-    /// <summary>
-    /// Retrieves a single post by its ID (the ULID part).
-    /// </summary>
     public async Task<Post?> GetPostByIdAsync(string postId)
     {
         return await _dbContext.LoadAsync<Post>($"POST#{postId}", $"POST#{postId}");
@@ -540,7 +502,6 @@ public class DynamoDbService
         {
             TransactItems = new List<TransactWriteItem>
                 {
-                    // Item 1: The new Comment
                     new TransactWriteItem
                     {
                         Put = new Put
@@ -550,20 +511,12 @@ public class DynamoDbService
                             ConditionExpression = "attribute_not_exists(PK)"
                         }
                     },
-                    // Item 2: Increment the parent post's CommentCount
                     new TransactWriteItem
                     {
                         Update = CreateUpdateCountRequest(comment.PK, comment.PK, "CommentCount", 1)
                     }
                 }
         };
-
-        // var transaction = _dbContext.CreateTransactWrite();
-        // transaction.AddPut(comment, new DynamoDBOperationConfig
-        // {
-        //     ConditionalExpression = new Expression { ExpressionStatement = "attribute_not_exists(PK)" }
-        // });
-        // transaction.AddUpdate(CreateUpdatePostCountRequest(comment.PK, "CommentCount", 1));
 
         try
         {
