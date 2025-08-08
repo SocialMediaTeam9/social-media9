@@ -23,6 +23,8 @@ namespace social_media9.Api.Repositories.Implementations
 
         public async Task SaveCommentAsync(Comment comment)
         {
+            comment.PK = $"POST#{comment.PK}";
+            comment.SK = $"COMMENT#{comment.SK}";
             await _context.SaveAsync(comment);
         }
 
@@ -30,7 +32,9 @@ namespace social_media9.Api.Repositories.Implementations
         {
             try
             {
-                await _context.DeleteAsync<Comment>(PostId.ToString(), commentId.ToString());
+                var partitionKey = $"POST#{PostId}";
+                var sortKey = $"COMMENT#{commentId}";
+                await _context.DeleteAsync<Comment>(partitionKey, sortKey);
                 return true;
             }
             catch (Exception ex)
@@ -42,10 +46,10 @@ namespace social_media9.Api.Repositories.Implementations
 
         public async Task<bool> UpdateCommentAsync(Guid commentId, string newContent)
         {
-            // Scan for comment with given CommentId
+            var sortKey = $"COMMENT#{commentId}";
             var scanConditions = new List<ScanCondition>
             {
-                new ScanCondition("CommentId", ScanOperator.Equal, commentId.ToString())
+                new ScanCondition("SK", ScanOperator.Equal, sortKey),
             };
 
             var search = _context.ScanAsync<Comment>(scanConditions);
@@ -64,14 +68,17 @@ namespace social_media9.Api.Repositories.Implementations
 
         public async Task<List<Comment>> GetCommentsByContentAsync(Guid postId)
         {
-            var search = _context.QueryAsync<Comment>(postId.ToString());
+            var partitionKey = $"POST#{postId}";
+            var search = _context.QueryAsync<Comment>(partitionKey);
             var results = await search.GetRemainingAsync();
             return results;
         }
 
         public async Task<Comment?> GetCommentByIdAsync(Guid postId,Guid commentId)
         {
-            return await _context.LoadAsync<Comment>(postId.ToString(),commentId.ToString());
+            var partitionKey = $"POST#{postId}";
+            var sortKey = $"COMMENT#{commentId}";
+            return await _context.LoadAsync<Comment>(partitionKey, sortKey);
         }
     }
 }
