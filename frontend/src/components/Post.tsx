@@ -18,7 +18,7 @@ interface PostProps {
   post: PostData;
 }
 
-// Step 3: Update the component to use the properties from the 'post' object.
+
 const Post: React.FC<PostProps> = ({ post }) => {
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [isLiked, setIsLiked] = useState(post.isLikedByUser);
@@ -30,21 +30,19 @@ const Post: React.FC<PostProps> = ({ post }) => {
 
   return (
     <div className="border-b border-gray-700 p-4 flex gap-4 transition-colors hover:bg-gray-800">
-      {/* Placeholder for a user's profile picture */}
+     
       <div className="w-12 h-12 bg-gray-600 rounded-full flex-shrink-0"></div>
       <div className="flex-1">
-        {/* Optional: Render a "Boosted" message if the data exists */}
+
         {post.boostedBy && (
           <div className="text-xs text-gray-400 mb-2 font-semibold">
             Boosted by {post.boostedBy}
           </div>
         )}
         <div className="flex items-center space-x-2">
-          {/* Use the authorUsername from the post object */}
           <span className="font-bold text-white">{post.authorUsername}</span>
           <span className="text-gray-500">@{post.authorUsername}</span>
         </div>
-        {/* Use the postContent from the post object */}
         <p className="text-gray-300 mt-1 whitespace-pre-wrap break-words">{post.postContent}</p>
 
       {/* ADDED: Conditionally render images if they exist in the data */}
@@ -55,7 +53,6 @@ const Post: React.FC<PostProps> = ({ post }) => {
           </div>
         )}
 
-        {/* Interaction buttons */}
         <div className="flex items-center justify-between mt-4 max-w-md">
           <LikeButton
             postId={post.postId}
@@ -63,10 +60,8 @@ const Post: React.FC<PostProps> = ({ post }) => {
             likeCount={likeCount}
             onLikeChange={handleLikeChange}
           />
-          {/* You can add other interaction buttons here (reply, repost, share) */}
         </div>
 
-        {/* Display the timestamp from the data */}
         <p className="text-xs text-gray-500 mt-2">{new Date(post.createdAt).toLocaleString()}</p>
       </div>
     </div>
