@@ -104,50 +104,37 @@ public class SqsWorkerService : BackgroundService
             case "Create":
                 await HandleCreateActivityAsync(activity, dbService);
                 break;
+
             case "Follow":
                 var followTargetUrl = activity.TryGetProperty("object", out var obj) ? obj.GetString() : null;
                 if (string.IsNullOrEmpty(followTargetUrl)) break;
 
                 var followedUsername = ExtractUsernameFromActorUrl(followTargetUrl);
                 var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
-                _logger.LogInformation("Processing INBOUND FOLLOW from {Follower} to {Followed}", actorUrl, followedUsername);
 
-                bool isAlreadyFollowing = await dbService.IsFollowingAsync(followerUsername, followedUsername);
+                if (await dbService.IsFollowingAsync(followerUsername, followedUsername))
+                    break;
 
-                if (isAlreadyFollowing)
-                {
-                    _logger.LogInformation("Follow relationship from {Follower} to {Followed} already exists. Skipping.", actorUrl, followedUsername);
-                    // We don't send back another Accept. We just acknowledge the message is handled.
-                    break; // Exit the case successfully.
-                }
+                if (!await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername))
+                    break;
 
-                var success = await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername);
+                var followedUserEntity = await dbService.GetUserProfileByUsernameAsync(followedUsername);
+                if (followedUserEntity == null || string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
+                    break;
 
-                if (success)
-                {
-                    _logger.LogInformation("Follow for {Followed} successful. Sending Accept activity back to {Follower}.", followedUsername, actorUrl);
+                // ✅ Resolve inbox
+                var targetInbox = await ResolveInboxUrlAsync(actorUrl, httpClientFactory);
+                if (string.IsNullOrEmpty(targetInbox))
+                    break;
 
-                    var followedUserEntity = await dbService.GetUserProfileByUsernameAsync(followedUsername);
-                    if (followedUserEntity == null || string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
-                    {
-                        _logger.LogError("Could not find local user {Username} or they are missing a private key to sign the Accept activity.", followedUsername);
-                        break;
-                    }
+                // ✅ Build Accept
+                var acceptJson = BuildAcceptActivity(followedUserEntity.ActorUrl, activity, actorUrl);
+                var activityDoc = JsonDocument.Parse(acceptJson);
 
-                    var acceptPayload = new { 
-                        type = "Accept", 
-                        @object = activity.Deserialize<object>() 
-                    };
-
-                    var activityJson = BuildAcceptActivityJson(followedUserEntity.ActorUrl, acceptPayload, actorUrl);
-                    var activityDoc = JsonDocument.Parse(activityJson);
-
-                    var httpClient = httpClientFactory.CreateClient("FederationClient");
-                    var deliveryService = new ActivityPubService(httpClient, followedUserEntity.ActorUrl, followedUserEntity.PrivateKeyPem, _config);
-
-                    var targetInbox = $"{actorUrl}/inbox";
-                    await deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
-                }
+                // ✅ Deliver signed Accept
+                var httpClient = httpClientFactory.CreateClient("FederationClient");
+                var deliveryService = new ActivityPubService(httpClient, followedUserEntity.ActorUrl, followedUserEntity.PrivateKeyPem, _config);
+                await deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
                 break;
             case "Undo":
                 if (activity.TryGetProperty("object", out var objectToUndo) &&
@@ -193,18 +180,32 @@ public class SqsWorkerService : BackgroundService
         }
     }
 
-    private string BuildAcceptActivityJson(string actorUrl, object payload, string recipientActorUrl)
+    private async Task<string?> ResolveInboxUrlAsync(string actorUrl, IHttpClientFactory httpClientFactory)
+    {
+        var client = httpClientFactory.CreateClient("FederationClient");
+        var json = await client.GetStringAsync(actorUrl);
+        var actorDoc = JsonDocument.Parse(json);
+        if (actorDoc.RootElement.TryGetProperty("inbox", out var inboxProp))
+            return inboxProp.GetString();
+        return null;
+    }
+
+    private string BuildAcceptActivity(string actorUrl, JsonElement followActivity, string recipientActorUrl)
     {
         var domain = _config["DomainName"];
-        var activityId = $"https://{domain}/users/{actorUrl.Split('/').Last()}/activities/{Ulid.NewUlid()}";
+        var acceptId = $"https://{domain}/users/{actorUrl.Split('/').Last()}/activities/{Ulid.NewUlid()}";
 
-        var jsonObject = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(payload));
-        jsonObject["@context"] = "https://www.w3.org/ns/activitystreams";
-        jsonObject["id"] = activityId;
-        jsonObject["actor"] = actorUrl;
-        jsonObject["to"] = new[] { recipientActorUrl };
+        var acceptObj = new Dictionary<string, object>
+        {
+            ["@context"] = "https://www.w3.org/ns/activitystreams",
+            ["id"] = acceptId,
+            ["type"] = "Accept",
+            ["actor"] = actorUrl,
+            ["object"] = followActivity,
+            ["to"] = new[] { recipientActorUrl }
+        };
 
-        return JsonSerializer.Serialize(jsonObject);
+        return JsonSerializer.Serialize(acceptObj);
     }
 
     #region Helper Methods
@@ -222,7 +223,7 @@ public class SqsWorkerService : BackgroundService
             _logger.LogWarning("Received 'Create' activity with missing 'object' or 'attributedTo' fields.");
             return;
         }
-        
+
         var authorActorUrl = authorActorUrlElement.GetString();
         if (string.IsNullOrEmpty(authorActorUrl)) return;
         var author = ExtractUsernameFromActorUrl(authorActorUrl);
@@ -235,12 +236,12 @@ public class SqsWorkerService : BackgroundService
                 author = await federationService.DiscoverAndCacheUserAsync(handle);
             }
         }
-        
+
         if (author == null)
         {
             _logger.LogWarning("Could not find or discover author for remote post: {ActorUrl}", authorActorUrl);
             return;
-            
+
         }
 
         var post = new Post
