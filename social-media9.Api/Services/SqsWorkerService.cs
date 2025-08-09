@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Microsoft.Extensions.DependencyInjection;
 using social_media9.Api.Models;
 using social_media9.Api.Services.DynamoDB;
+using social_media9.Api.Services.Interfaces;
 
 public class SqsWorkerService : BackgroundService
 {
@@ -10,6 +12,7 @@ public class SqsWorkerService : BackgroundService
     private readonly IAmazonSQS _sqsClient;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly string? _queueUrl;
+    private readonly IConfiguration _config;
 
     public SqsWorkerService(
        ILogger<SqsWorkerService> logger,
@@ -51,7 +54,7 @@ public class SqsWorkerService : BackgroundService
                         using (var scope = _scopeFactory.CreateScope())
                         {
                             var dbService = scope.ServiceProvider.GetRequiredService<DynamoDbService>();
-                            await ProcessMessageAsync(message, dbService);
+                            await ProcessMessageAsync(message, scope.ServiceProvider);
                         }
 
 
@@ -63,7 +66,6 @@ public class SqsWorkerService : BackgroundService
             }
             catch (OperationCanceledException)
             {
-                // This is expected when the application is shutting down.
                 break;
             }
             catch (Exception ex)
@@ -76,12 +78,13 @@ public class SqsWorkerService : BackgroundService
         _logger.LogInformation("SQS Worker Service is stopping.");
     }
 
-    private async Task ProcessMessageAsync(Message message, DynamoDbService dbService)
+    private async Task ProcessMessageAsync(Message message, IServiceProvider serviceProvider)
     {
         _logger.LogInformation("--- RAW SQS MESSAGE BODY ---\n{MessageBody}\n--- END RAW BODY ---", message.Body);
         _logger.LogInformation("Processing SQS message ID: {MessageId}", message.MessageId);
 
-        var activity = JsonDocument.Parse(message.Body).RootElement;
+        using var activityDoc = JsonDocument.Parse(message.Body);
+        var activity = activityDoc.RootElement;
 
         var activityType = activity.TryGetProperty("type", out var type) ? type.GetString() : null;
         var actorUrl = activity.TryGetProperty("actor", out var actor) ? actor.GetString() : null;
@@ -92,18 +95,78 @@ public class SqsWorkerService : BackgroundService
             return;
         }
 
+        var dbService = serviceProvider.GetRequiredService<DynamoDbService>();
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+
+
 
         switch (activityType)
         {
             case "Create":
                 await HandleCreateActivityAsync(activity, dbService);
                 break;
+
             case "Follow":
-                var followTarget = activity.GetProperty("object").GetString();
-                if (followTarget != null)
+                var followTargetUrl = activity.TryGetProperty("object", out var obj) ? obj.GetString() : null;
+                if (string.IsNullOrEmpty(followTargetUrl))
+                    break;
+
+                var followedUsername = ExtractUsernameFromActorUrl(followTargetUrl);
+                var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
+
+                // Already following? Ignore
+                if (await dbService.IsFollowingAsync(followerUsername, followedUsername))
+                    break;
+
+                // Save relationship
+                if (!await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername))
+                    break;
+
+                var followedUserEntity = await dbService.GetUserProfileByUsernameAsync(followedUsername);
+                if (followedUserEntity == null || string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
+                    break;
+
+                // 1️⃣ Discover follower inbox
+                var targetInbox = await ResolveInboxFromActorAsync(actorUrl, httpClientFactory);
+                if (string.IsNullOrEmpty(targetInbox))
+                    break;
+
+                var activityObj = JsonSerializer.Deserialize<object>(message.Body);
+
+
+                // 2️⃣ Build Accept activity
+                var acceptActivity = new
                 {
-                    await dbService.ProcessFollowActivityAsync(actorUrl, ExtractUsernameFromActorUrl(followTarget));
+                    @context = "https://www.w3.org/ns/activitystreams",
+                    id = $"https://{_config["DomainName"]}/activities/{Ulid.NewUlid()}",
+                    type = "Accept",
+                    actor = followedUserEntity.ActorUrl,
+                    @object = activityObj, // The original Follow activity
+                    to = new[] { actorUrl }
+                };
+
+                var acceptJson = JsonSerializer.Serialize(acceptActivity);
+                var acceptDoc = JsonDocument.Parse(acceptJson);
+
+                var httpClient = httpClientFactory.CreateClient("FederationClient");
+                var deliveryService = new ActivityPubService(
+                    httpClient,
+                    followedUserEntity.ActorUrl,
+                    followedUserEntity.PrivateKeyPem,
+                    _config
+                );
+
+                // 3️⃣ Deliver signed Accept
+                await deliveryService.DeliverActivityAsync(targetInbox, acceptDoc);
+
+                // 4️⃣ OPTIONAL — Push recent posts to new follower's inbox
+                var (recentPosts, _) = await dbService.GetPostsByUserAsync(followedUsername, 5, null);
+                foreach (var post in recentPosts)
+                {
+                    using var postDoc = JsonDocument.Parse(post.ActivityJson);
+                    await deliveryService.DeliverActivityAsync(targetInbox, postDoc);
                 }
+
                 break;
             case "Undo":
                 if (activity.TryGetProperty("object", out var objectToUndo) &&
@@ -149,6 +212,54 @@ public class SqsWorkerService : BackgroundService
         }
     }
 
+    private static async Task<string?> ResolveInboxFromActorAsync(string actorUrl, IHttpClientFactory httpClientFactory)
+    {
+        var http = httpClientFactory.CreateClient();
+        http.DefaultRequestHeaders.Accept.Clear();
+        http.DefaultRequestHeaders.Accept.Add(
+            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/activity+json")
+        );
+
+        using var resp = await http.GetAsync(actorUrl);
+        if (!resp.IsSuccessStatusCode)
+            return null;
+
+        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+        if (doc.RootElement.TryGetProperty("inbox", out var inboxElement))
+        {
+            return inboxElement.GetString();
+        }
+        return null;
+    }
+
+    private async Task<string?> ResolveInboxUrlAsync(string actorUrl, IHttpClientFactory httpClientFactory)
+    {
+        var client = httpClientFactory.CreateClient("FederationClient");
+        var json = await client.GetStringAsync(actorUrl);
+        var actorDoc = JsonDocument.Parse(json);
+        if (actorDoc.RootElement.TryGetProperty("inbox", out var inboxProp))
+            return inboxProp.GetString();
+        return null;
+    }
+
+    private string BuildAcceptActivity(string actorUrl, JsonElement followActivity, string recipientActorUrl)
+    {
+        var domain = _config["DomainName"];
+        var acceptId = $"https://{domain}/users/{actorUrl.Split('/').Last()}/activities/{Ulid.NewUlid()}";
+
+        var acceptObj = new Dictionary<string, object>
+        {
+            ["@context"] = "https://www.w3.org/ns/activitystreams",
+            ["id"] = acceptId,
+            ["type"] = "Accept",
+            ["actor"] = actorUrl,
+            ["object"] = followActivity,
+            ["to"] = new[] { recipientActorUrl }
+        };
+
+        return JsonSerializer.Serialize(acceptObj);
+    }
+
     #region Helper Methods
 
     private string ExtractUsernameFromActorUrl(string url) => url.Split('/').Last();
@@ -159,10 +270,30 @@ public class SqsWorkerService : BackgroundService
     private async Task HandleCreateActivityAsync(JsonElement createActivity, DynamoDbService dbService)
     {
         if (!createActivity.TryGetProperty("object", out var postObject) ||
-            !postObject.TryGetProperty("attributedTo", out var authorActorUrlElement))
+        !postObject.TryGetProperty("attributedTo", out var authorActorUrlElement))
         {
             _logger.LogWarning("Received 'Create' activity with missing 'object' or 'attributedTo' fields.");
             return;
+        }
+
+        var authorActorUrl = authorActorUrlElement.GetString();
+        if (string.IsNullOrEmpty(authorActorUrl)) return;
+        var author = ExtractUsernameFromActorUrl(authorActorUrl);
+        if (author == null)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var federationService = scope.ServiceProvider.GetRequiredService<IFederationService>();
+                var handle = $"{new Uri(authorActorUrl).Segments.Last()}@{new Uri(authorActorUrl).Host}";
+                author = await federationService.DiscoverAndCacheUserAsync(handle);
+            }
+        }
+
+        if (author == null)
+        {
+            _logger.LogWarning("Could not find or discover author for remote post: {ActorUrl}", authorActorUrl);
+            return;
+
         }
 
         var post = new Post
@@ -171,14 +302,15 @@ public class SqsWorkerService : BackgroundService
             SK = $"POST#{ExtractId(postObject)}",
             AuthorUsername = ExtractUsername(authorActorUrlElement),
             Content = postObject.GetProperty("content").GetString() ?? "",
-            // ... map other fields like attachments
+
         };
 
-        var (followers, nextToken)  = await dbService.GetFollowersAsync(post.AuthorUsername);
+        var (followers, nextToken) = await dbService.GetFollowersAsync(post.AuthorUsername);
         var followerUsernames = followers.Select(f => f.FollowerInfo.Username).ToList();
 
         if (!followerUsernames.Any())
         {
+            await dbService.PopulateTimelinesAsync(post, new List<string> { "PUBLIC" });
             _logger.LogInformation("Post by {Author} has no followers to deliver to.", post.AuthorUsername);
             return;
         }

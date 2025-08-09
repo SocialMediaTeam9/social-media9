@@ -80,5 +80,10 @@ namespace social_media9.Api.Models
 
         [DynamoDBProperty("FollowersUrl")]
         public string? FollowersUrl { get; set; }
+
+        public static implicit operator string?(User? v)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

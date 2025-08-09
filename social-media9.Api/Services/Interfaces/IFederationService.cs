@@ -12,5 +12,7 @@ namespace social_media9.Api.Services.Interfaces
         /// <param name="userHandle">The full user handle, e.g., "john@anotherserver.com"</param>
         /// <returns>The cached User object from the local database, or null if not found.</returns>
         Task<User?> DiscoverAndCacheUserAsync(string userHandle);
+
+        Task<string?> ResolveInboxUrlAsync(string actorUrl);
     }
 }

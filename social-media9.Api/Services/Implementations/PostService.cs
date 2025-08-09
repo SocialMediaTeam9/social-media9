@@ -29,13 +29,20 @@ namespace social_media9.Api.Services.Implementations
 
         private readonly IHttpClientFactory _httpClientFactory;
 
+        private readonly IFollowRepository _followRepository;
+        private readonly Amazon.DynamoDBv2.DataModel.IDynamoDBContext _dbContext;
+
+        private readonly IFederationService _federationService;
 
         public PostService(
             IPostRepository postRepository,
             IAmazonSQS sqsClient,
             DynamoDbService dbService,
             IUserRepository userRepository,
-            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory)
+            IConfiguration config, ILogger<PostService> logger, IHttpClientFactory httpClientFactory,
+            IFollowRepository followRepository,
+            Amazon.DynamoDBv2.DataModel.IDynamoDBContext dbContext,
+            IFederationService federationService)
         {
             _postRepository = postRepository;
             _dbService = dbService;
@@ -44,6 +51,9 @@ namespace social_media9.Api.Services.Implementations
             _userRepository = userRepository;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _followRepository = followRepository;
+            _dbContext = dbContext;
+            _federationService = federationService;
         }
 
         // public async Task<Guid> CreatePostAsync(CreatePostRequest request, Guid userId)
@@ -139,6 +149,44 @@ namespace social_media9.Api.Services.Implementations
             return await _dbService.GetPostByIdAsync(postId);
         }
 
+
+
+        public async Task IngestRemotePostAsync(JsonElement createActivity)
+        {
+            try
+            {
+                // 1. Extract the post object from the "Create" activity
+                if (!createActivity.TryGetProperty("object", out var postObject)) return;
+                if (postObject.TryGetProperty("type", out var type) && type.GetString() != "Note") return;
+
+                var authorActorUrl = postObject.GetProperty("attributedTo").GetString();
+                if (authorActorUrl == null) return;
+
+                // 2. Discover and cache the author if we've never seen them before
+                var author = await _userRepository.GetUserByActorUrl(authorActorUrl);
+                if (author == null)
+                {
+                    // This is a simplified discovery, a real app might need a dedicated FederationService call
+                    var handle = $"{authorActorUrl.Split('/')[4]}@{new Uri(authorActorUrl).Host}";
+                    author = await _federationService.DiscoverAndCacheUserAsync(handle);
+                }
+                if (author == null) return; // Could not find the author, skip post
+
+                // 3. Create a Post object from the incoming data and save it
+                // You will need to add a static helper method to your Post model for this.
+                var newPost = Post.FromActivityPub(postObject, author.Username);
+                await _postRepository.AddAsync(newPost); // Save to your Posts table
+
+                // 4. Fan the post out to your public timeline
+                await FanoutPostToPublicTimelineAsync(newPost);
+                _logger.LogInformation("Successfully ingested and fanned out a remote post from {Author}", author.Username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to ingest remote post.");
+            }
+        }
+
         public async Task<Post?> CreateAndFederatePostAsync(string authorUsername, string content, List<string>? attachmentUrls)
         {
             var author = await _dbService.GetUserProfileByUsernameAsync(authorUsername);
@@ -151,10 +199,10 @@ namespace social_media9.Api.Services.Implementations
 
             var postId = Ulid.NewUlid().ToString();
             var domain = _config["DomainName"];
-            var authorActorUrl = $"https://fed.{domain}/users/{authorUsername}";
-            var postUrl = $"https://fed.{domain}/users/{authorUsername}/posts/{postId}";
+            var authorActorUrl = $"https://{domain}/users/{authorUsername}";
+            var postUrl = $"https://{domain}/users/{authorUsername}/posts/{postId}";
 
-
+            // Build ActivityPub Create Note JSON
             string activityJson = BuildCreateNoteActivityJson(authorActorUrl, postUrl, content, attachmentUrls);
 
             var newPost = new Post
@@ -163,7 +211,6 @@ namespace social_media9.Api.Services.Implementations
                 SK = $"POST#{postId}",
                 GSI1PK = $"USER#{authorUsername}",
                 GSI1SK = $"POST#{postId}",
-
                 AuthorUsername = authorUsername,
                 Content = content,
                 ActivityJson = activityJson,
@@ -177,13 +224,20 @@ namespace social_media9.Api.Services.Implementations
             bool dbSuccess = await _dbService.CreatePostAsync(newPost);
             if (!dbSuccess)
             {
+                _logger.LogError("Failed to save post {PostId} for user {Username}", postId, authorUsername);
                 return null;
             }
 
+            // Fan-out locally (immediate UI updates)
+            _ = FanoutPostToLocalFollowersAsync(newPost);
+            _ = FanoutPostToPublicTimelineAsync(newPost);
+
+            // Deliver instantly to remote followers
             _ = DeliverPostToFollowersAsync(activityDoc, author);
 
             return newPost;
         }
+
 
         private async Task DeliverPostToFollowersAsync(JsonDocument activityDoc, User author)
         {
@@ -191,11 +245,11 @@ namespace social_media9.Api.Services.Implementations
             int pageNumber = 1;
             int totalDelivered = 0;
             const int pageSize = 50;
+
             var httpClient = _httpClientFactory.CreateClient("FederationClient");
             var domain = _config["DomainName"];
             var actorUrl = $"https://{domain}/users/{author.Username}";
-            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem);
-            // var activityDoc = JsonDocument.Parse(activityJson);
+            var deliveryService = new ActivityPubService(httpClient, actorUrl, author.PrivateKeyPem, _config);
 
             do
             {
@@ -204,67 +258,197 @@ namespace social_media9.Api.Services.Implementations
                 var (followers, nextToken) = await _dbService.GetFollowersAsync(author.Username, pageSize, paginationToken);
 
                 if (!followers.Any())
-                {
                     break;
+
+                foreach (var follower in followers)
+                {
+                    var inboxUrl = await ResolveInboxUrlAsync(follower.FollowerInfo.ActorUrl);
+                    if (string.IsNullOrEmpty(inboxUrl))
+                    {
+                        _logger.LogWarning("Could not resolve inbox for {ActorUrl}", follower.FollowerInfo.ActorUrl);
+                        continue;
+                    }
+
+                    await deliveryService.DeliverActivityAsync(inboxUrl, activityDoc);
                 }
 
-                var deliveryTasks = followers.Select(follower =>
-                {
-                    var targetInbox = $"{follower.FollowerInfo.ActorUrl}/inbox";
-                    return deliveryService.DeliverActivityAsync(targetInbox, activityDoc);
-                });
-
-                await Task.WhenAll(deliveryTasks);
-
                 totalDelivered += followers.Count;
-                _logger.LogInformation("Completed delivery to batch {PageNumber} for {Username}. Total delivered so far: {Total}", pageNumber, author.Username, totalDelivered);
+                _logger.LogInformation("Delivered batch {PageNumber} for {Username}. Total so far: {Total}",
+                    pageNumber, author.Username, totalDelivered);
 
                 paginationToken = nextToken;
                 pageNumber++;
 
-                if (paginationToken != null) await Task.Delay(1000);
+                if (paginationToken != null)
+                    await Task.Delay(1000);
 
             } while (!string.IsNullOrEmpty(paginationToken));
 
-            _logger.LogInformation("Completed outbound delivery for post by {Username}. Total followers reached: {TotalDelivered}", author.Username, totalDelivered);
+            _logger.LogInformation("Completed outbound delivery for post by {Username}. Total followers reached: {TotalDelivered}",
+                author.Username, totalDelivered);
+        }
+        private async Task<string?> ResolveInboxUrlAsync(string actorUrl)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient("FederationClient");
+                var res = await client.GetAsync(actorUrl);
+                if (!res.IsSuccessStatusCode)
+                    return null;
+
+                var body = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+
+                if (doc.RootElement.TryGetProperty("inbox", out var inboxProp) &&
+                    inboxProp.ValueKind == JsonValueKind.String)
+                {
+                    return inboxProp.GetString();
+                }
+
+                if (doc.RootElement.TryGetProperty("endpoints", out var endpoints) &&
+                    endpoints.ValueKind == JsonValueKind.Object &&
+                    endpoints.TryGetProperty("sharedInbox", out var sharedInbox) &&
+                    sharedInbox.ValueKind == JsonValueKind.String)
+                {
+                    return sharedInbox.GetString();
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not resolve inbox for actor {Actor}", actorUrl);
+                return null;
+            }
+        }
+
+        private string GuessMediaType(string url)
+        {
+            if (url.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) return "image/png";
+            if (url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)) return "image/gif";
+            if (url.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) return "image/webp";
+            if (url.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)) return "video/mp4";
+            return "image/jpeg";
+        }
+        private async Task FanoutPostToLocalFollowersAsync(Post post)
+        {
+            try
+            {
+                var followers = await _followRepository.GetFollowersAsync(post.AuthorUsername);
+                var timelineBatch = _dbContext.CreateBatchWrite<TimelineItemEntity>();
+                bool itemsAdded = false;
+
+                string postId = post.SK.Replace("POST#", "");
+                var appDomain = _config["DomainName"];
+
+                if (followers.Any())
+                {
+                    foreach (var followRelationship in followers)
+                    {
+                        var followerDomain = new Uri(followRelationship.FollowerInfo.ActorUrl).Host;
+                        if (followerDomain.Equals(appDomain, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var followerUsername = followRelationship.FollowerInfo.ActorUrl.Split('/').Last();
+                            timelineBatch.AddPutItem(new TimelineItemEntity
+                            {
+                                PK = $"TIMELINE#{followerUsername}",
+                                SK = $"NOTE#{postId}",
+                                AuthorUsername = post.AuthorUsername,
+                                PostContent = post.Content,
+                                AttachmentUrls = post.Attachments,
+                                CreatedAt = post.CreatedAt
+                            });
+                            itemsAdded = true;
+                        }
+                    }
+                }
+
+                timelineBatch.AddPutItem(new TimelineItemEntity
+                {
+                    PK = $"TIMELINE#{post.AuthorUsername}",
+                    SK = $"NOTE#{postId}",
+                    AuthorUsername = post.AuthorUsername,
+                    PostContent = post.Content,
+                    AttachmentUrls = post.Attachments,
+                    CreatedAt = post.CreatedAt
+                });
+                itemsAdded = true;
+
+                if (!itemsAdded) return;
+
+                _logger.LogInformation("Fanning out post {PostId} to local timelines.", postId);
+                await timelineBatch.ExecuteAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fan-out post {PostId} to local timelines.", post.SK);
+            }
+        }
+
+        private async Task FanoutPostToPublicTimelineAsync(Post post)
+        {
+            try
+            {
+                var invertedTicks = DateTime.MaxValue.Ticks - post.CreatedAt.Ticks;
+
+                var timelineItem = new TimelineItemEntity
+                {
+                    PK = "TIMELINE#PUBLIC",
+                    // The SK format includes a timestamp to ensure chronological order
+                    SK = $"NOTE#{post.CreatedAt:o}#{post.SK.Replace("POST#", "")}",
+                    AuthorUsername = post.AuthorUsername,
+                    PostContent = post.Content,
+                    AttachmentUrls = post.Attachments,
+                    CreatedAt = post.CreatedAt
+                };
+
+                // Note: This requires injecting IDynamoDBContext into PostService
+                await _dbContext.SaveAsync(timelineItem);
+                _logger.LogInformation("Added post {PostId} to the public timeline.", post.SK);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add post {PostId} to the public timeline.", post.SK);
+            }
         }
 
 
         private string BuildCreateNoteActivityJson(string authorActorUrl, string postUrl, string content, List<string>? attachmentUrls)
         {
-
-            var apAttachments = (attachmentUrls ?? new List<string>())
-            .Select(url => new
+            var attachments = (attachmentUrls ?? new List<string>()).Select(url => new Dictionary<string, object>
             {
-                type = "Document", // Or "Image", "Video" if you detect the MIME type
-                mediaType = "image/jpeg",
-                url = url
+                ["type"] = "Document",
+                ["mediaType"] = GuessMediaType(url),
+                ["url"] = url
             }).ToList();
 
-            var activity = new
+            var note = new Dictionary<string, object>
             {
-                type = "Create",
-                actor = authorActorUrl,
-                to = new[] { "https://www.w3.org/ns/activitystreams#Public" },
-                cc = new[] { $"{authorActorUrl}/followers" },
-                @object = new
-                {
-                    id = postUrl,
-                    type = "Note",
-                    published = DateTime.UtcNow.ToString("o"),
-                    attributedTo = authorActorUrl,
-                    content = content,
-                    to = new[] { "https://www.w3.org/ns/activitystreams#Public" },
-                    cc = new[] { $"{authorActorUrl}/followers" },
-                    attachment = apAttachments
-                }
+                ["id"] = postUrl,
+                ["type"] = "Note",
+                ["published"] = DateTime.UtcNow.ToString("o"),
+                ["attributedTo"] = authorActorUrl,
+                ["content"] = content,
+                ["to"] = new[] { "https://www.w3.org/ns/activitystreams#Public" },
+                ["cc"] = new[] { $"{authorActorUrl}/followers" },
             };
 
-            // Serialize with an explicit context for the '@' symbol
-            var jsonObject = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(activity));
-            jsonObject["@context"] = "https://www.w3.org/ns/activitystreams";
+            if (attachments.Any())
+                note["attachment"] = attachments;
 
-            return JsonSerializer.Serialize(jsonObject);
+            var activity = new Dictionary<string, object>
+            {
+                ["@context"] = "https://www.w3.org/ns/activitystreams",
+                ["id"] = $"{postUrl}#create", // unique id for the activity itself
+                ["type"] = "Create",
+                ["actor"] = authorActorUrl,
+                ["to"] = new[] { "https://www.w3.org/ns/activitystreams#Public" },
+                ["cc"] = new[] { $"{authorActorUrl}/followers" },
+                ["object"] = note
+            };
+
+            // Use JsonSerializer with explicit options if you want stable ordering
+            return JsonSerializer.Serialize(activity);
         }
 
         public async Task<Comment?> AddCommentAsync(string postId, string authorUsername, string content)

@@ -21,14 +21,14 @@ public class OutboxController : ControllerBase
     [HttpGet("/users/{username}/outbox")]
     [AllowAnonymous]
     public async Task<IActionResult> GetOutbox(
-        string username,
-        [FromQuery] bool page = false,
-        [FromQuery] string? cursor = null)
+    string username,
+    [FromQuery] bool page = false,
+    [FromQuery] string? cursor = null)
     {
         var user = await _dbService.GetUserProfileByUsernameAsync(username);
         if (user == null)
         {
-            return NotFound($"User '{username}' not found.");
+            return NotFound();
         }
 
         var domain = _config["DomainName"];
@@ -39,58 +39,36 @@ public class OutboxController : ControllerBase
             int pageSize = 15;
             var (posts, nextToken) = await _dbService.GetPostsByUserAsync(username, pageSize, cursor);
 
-            var pageResponse = new OrderedCollectionPage
+            var pageResponse = new
             {
-                Id = $"{outboxUrl}?page=true" + (!string.IsNullOrEmpty(cursor) ? $"&cursor={cursor}" : ""),
-                PartOf = outboxUrl,
-                
-                OrderedItems = posts.Select(p => JsonSerializer.Deserialize<object>(p.ActivityJson)!).ToList()
+                @context = "https://www.w3.org/ns/activitystreams",
+                id = $"{outboxUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={cursor}"),
+                type = "OrderedCollectionPage",
+                partOf = outboxUrl,
+                orderedItems = posts.Select(p => JsonSerializer.Deserialize<object>(p.ActivityJson)!).ToList(),
+                next = string.IsNullOrEmpty(nextToken) ? null : $"{outboxUrl}?page=true&cursor={nextToken}"
             };
 
-            if (!string.IsNullOrEmpty(nextToken))
+            return new JsonResult(pageResponse)
             {
-                pageResponse.Next = $"{outboxUrl}?page=true&cursor={nextToken}";
-            }
-
-            return Ok(pageResponse);
+                ContentType = "application/activity+json"
+            };
         }
-
         else
         {
-            var collectionResponse = new OrderedCollection
+            var collectionResponse = new
             {
-                Id = outboxUrl,
-                TotalItems = user.PostCount,
-                First = $"{outboxUrl}?page=true"
+                @context = "https://www.w3.org/ns/activitystreams",
+                id = outboxUrl,
+                type = "OrderedCollection",
+                totalItems = user.PostCount,
+                first = $"{outboxUrl}?page=true"
             };
 
-            return Ok(collectionResponse);
+            return new JsonResult(collectionResponse)
+            {
+                ContentType = "application/activity+json"
+            };
         }
     }
-
-    // /// <summary>
-    // /// </summary>
-    // [HttpGet("/users/{username}/outbox", Condition = "Request.Query.ContainsKey(\"page\")")]
-    // public async Task<IActionResult> GetOutboxPage(string username, [FromQuery] string? cursor = null)
-    // {
-    //     var domain = _config["DomainName"];
-    //     var outboxUrl = $"https://{domain}/users/{username}/outbox";
-    //     int pageSize = 10;
-
-    //     var (posts, nextToken) = await _dbService.GetPostsByUserAsync(username, pageSize, cursor);
-
-    //     var page = new OrderedCollectionPage
-    //     {
-    //         Id = $"{outboxUrl}?page=true" + (cursor != null ? $"&cursor={cursor}" : ""),
-    //         PartOf = outboxUrl,
-    //         OrderedItems = posts.Select(p => JsonSerializer.Deserialize<object>(p.ActivityJson)!).ToList()
-    //     };
-
-    //     if (!string.IsNullOrEmpty(nextToken))
-    //     {
-    //         page.Next = $"{outboxUrl}?page=true&cursor={nextToken}";
-    //     }
-
-    //     return Ok(page);
-    // }
 }
