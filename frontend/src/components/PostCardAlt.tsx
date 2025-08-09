@@ -146,6 +146,11 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
           <img src={post.attachments[0]} alt="Post attachment" className="post-image" />
         </div>
       )}
+      <LikeButton
+        postId={post.postId}
+        isLiked={isLiked}
+        likeCount={likeCount}
+        onLikeChange={handleLikeChange} />
     </div>
   </div>
 };
