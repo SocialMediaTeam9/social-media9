@@ -146,7 +146,7 @@ public class OutboxController : ControllerBase
         }
         else
         {
-            var collectionResponse = new
+            var collectionResponse = new ActivityPubCollection
             {
                 Context = _contextUrls,
                 Id = outboxUrl,
