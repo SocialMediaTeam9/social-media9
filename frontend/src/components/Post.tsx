@@ -30,7 +30,7 @@ const Post: React.FC<PostProps> = ({ post }) => {
 
   return (
     <div className="border-b border-gray-700 p-4 flex gap-4 transition-colors hover:bg-gray-800">
-     
+
       <div className="w-12 h-12 bg-gray-600 rounded-full flex-shrink-0"></div>
       <div className="flex-1">
 
@@ -45,7 +45,7 @@ const Post: React.FC<PostProps> = ({ post }) => {
         </div>
         <p className="text-gray-300 mt-1 whitespace-pre-wrap break-words">{post.postContent}</p>
 
-      
+
         {post.attachmentUrls?.length > 0 && (
           <div className="mt-4 rounded-lg overflow-hidden border border-gray-600">
             <img src={post.attachmentUrls[0]} alt="Post attachment" className="w-full h-auto object-cover" />
@@ -53,12 +53,12 @@ const Post: React.FC<PostProps> = ({ post }) => {
         )}
 
         <div className="flex items-center justify-between mt-4 max-w-md">
-          <LikeButton
+          {/* <LikeButton
             postId={post.postId}
             isLiked={isLiked}
             likeCount={likeCount}
             onLikeChange={handleLikeChange}
-          />
+          /> */}
         </div>
 
         <p className="text-xs text-gray-500 mt-2">{new Date(post.createdAt).toLocaleString()}</p>

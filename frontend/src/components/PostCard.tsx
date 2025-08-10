@@ -160,12 +160,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
 
                 {/* New interaction section with like button */}
                 <div className="flex items-center justify-between mt-4 max-w-md">
-                    <LikeButton
+                    {/* <LikeButton
                         postId={post.postId}
                         isLiked={isLiked}
                         likeCount={likeCount}
                         onLikeChange={handleLikeChange}
-                    />
+                    /> */}
                 </div>
 
                 <p className="text-xs text-gray-500 mt-2">{new Date(post.createdAt).toLocaleString()}</p>
