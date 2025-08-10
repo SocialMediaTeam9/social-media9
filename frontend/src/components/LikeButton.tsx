@@ -6,7 +6,7 @@ interface LikeButtonProps {
     postId: string;
     isLiked: boolean;
     likeCount: number;
-    onLikeChange: (isLiked: boolean, newLikeCount: number) => void;
+    onLikeChange: (isLiked: boolean, countDelta: number) => void; // now passes delta instead of full count
     className?: string;
 }
 
@@ -22,7 +22,8 @@ const LikeButton: React.FC<LikeButtonProps> = ({
 
     const onClick = () => {
         handleLikeToggle(postId, isLiked, (newLikedState, countDelta) => {
-            onLikeChange(newLikedState, likeCount + countDelta);
+            // only send the delta change
+            onLikeChange(newLikedState, countDelta);
         });
     };
 
@@ -46,7 +47,7 @@ const LikeButton: React.FC<LikeButtonProps> = ({
                         }`}
                 />
             </div>
-            <span className="text-sm font-medium">{likeCount}</span>
+            <span className="text-sm font-medium">{likeCount ?? 0}</span>
         </button>
     );
 };
