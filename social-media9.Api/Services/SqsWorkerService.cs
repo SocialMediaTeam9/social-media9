@@ -107,8 +107,7 @@ public class SqsWorkerService : BackgroundService
                 break;
 
             case "Follow":
-                string followTargetUrl = null;
-
+                string? followTargetUrl = null;
                 if (activity.TryGetProperty("object", out var objProp))
                 {
                     if (objProp.ValueKind == JsonValueKind.String)
@@ -132,19 +131,42 @@ public class SqsWorkerService : BackgroundService
                 var followedUsername = ExtractUsernameFromActorUrl(followTargetUrl);
                 var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
 
-                // Already following? Skip
+                // 2️⃣ Skip if already following
                 if (await dbService.IsFollowingAsync(followerUsername, followedUsername))
+                {
+                    _logger.LogInformation("Already following {FollowedUsername}, skipping Accept send.", followedUsername);
                     break;
+                }
 
-                // Record follow in DB
+                // 3️⃣ Store follow in DB
                 if (!await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername))
+                {
+                    _logger.LogWarning("Failed to process follow in DB for {Follower} -> {Followed}", followerUsername, followedUsername);
                     break;
+                }
 
+                // 4️⃣ Get local followed user entity and validate
                 var followedUserEntity = await dbService.GetUserProfileByUsernameAsync(followedUsername);
-                if (followedUserEntity == null || string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
+                if (followedUserEntity == null)
+                {
+                    _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' not found", followedUsername);
                     break;
+                }
+                if (string.IsNullOrEmpty(followedUserEntity.ActorUrl))
+                {
+                    _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' has no ActorUrl", followedUsername);
+                    break;
+                }
+                if (string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
+                {
+                    _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' has no PrivateKeyPem", followedUsername);
+                    break;
+                }
 
-                // Resolve inbox safely
+                var localActorUrl = followedUserEntity.ActorUrl;
+                var localPrivateKey = followedUserEntity.PrivateKeyPem;
+
+                // 5️⃣ Resolve remote inbox
                 var targetInbox = await ResolveInboxUrlAsync(actorUrl, httpClientFactory);
                 if (string.IsNullOrEmpty(targetInbox))
                 {
@@ -152,27 +174,25 @@ public class SqsWorkerService : BackgroundService
                     break;
                 }
 
-
+                // 6️⃣ Build Accept activity
                 var acceptActivity = new
                 {
                     @context = "https://www.w3.org/ns/activitystreams",
                     id = $"https://{_config["DomainName"]}/activities/{Ulid.NewUlid()}",
                     type = "Accept",
-                    actor = followedUserEntity.ActorUrl,
+                    actor = localActorUrl,
                     @object = activity,
                     to = new[] { actorUrl }
                 };
 
                 var activityDocu = JsonDocument.Parse(JsonSerializer.Serialize(acceptActivity));
 
-                // Deliver signed Accept
+                // 7️⃣ Deliver signed Accept
                 var httpClient = httpClientFactory.CreateClient("FederationClient");
-
-                var deliveryService = new ActivityPubService(httpClient, followedUserEntity.ActorUrl, followedUserEntity.PrivateKeyPem, _config);
-                
+                var deliveryService = new ActivityPubService(httpClient, localActorUrl, localPrivateKey, _config);
                 await deliveryService.DeliverActivityAsync(targetInbox, activityDocu);
 
-                // 4️⃣ OPTIONAL — Push recent posts to new follower's inbox
+                // 8️⃣ OPTIONAL — Push recent posts to new follower
                 var (recentPosts, _) = await dbService.GetPostsByUserAsync(followedUsername, 5, null);
                 foreach (var post in recentPosts)
                 {
