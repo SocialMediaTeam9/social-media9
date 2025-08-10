@@ -107,7 +107,20 @@ public class SqsWorkerService : BackgroundService
                 break;
 
             case "Follow":
-                var followTargetUrl = activity.TryGetProperty("object", out var obj) ? obj.GetString() : null;
+                string? followTargetUrl = null;
+
+                if (activity.TryGetProperty("object", out var obj))
+                {
+                    if (obj.ValueKind == JsonValueKind.String)
+                    {
+                        followTargetUrl = obj.GetString();
+                    }
+                    else if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+                    {
+                        followTargetUrl = idProp.GetString();
+                    }
+                }
+
                 if (string.IsNullOrEmpty(followTargetUrl))
                     break;
 
