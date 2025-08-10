@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using social_media9.Api.Models.ActivityPub;
 using social_media9.Api.Services.DynamoDB;
 
 [ApiController]

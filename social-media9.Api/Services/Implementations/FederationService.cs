@@ -7,6 +7,7 @@ using social_media9.Api.Services.Interfaces;
 using System;
 using System.Linq;
 using System.Net.Http.Headers;
+using social_media9.Api.Models.ActivityPub;
 
 namespace social_media9.Api.Services.Implementations
 {
