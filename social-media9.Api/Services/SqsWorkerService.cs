@@ -107,31 +107,36 @@ public class SqsWorkerService : BackgroundService
                 break;
 
             case "Follow":
-                string? followTargetUrl = null;
+                string followTargetUrl = null;
 
-                if (activity.TryGetProperty("object", out var obj))
+                if (activity.TryGetProperty("object", out var objProp))
                 {
-                    if (obj.ValueKind == JsonValueKind.String)
+                    if (objProp.ValueKind == JsonValueKind.String)
                     {
-                        followTargetUrl = obj.GetString();
+                        followTargetUrl = objProp.GetString();
                     }
-                    else if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+                    else if (objProp.ValueKind == JsonValueKind.Object &&
+                             objProp.TryGetProperty("id", out var idProp) &&
+                             idProp.ValueKind == JsonValueKind.String)
                     {
                         followTargetUrl = idProp.GetString();
                     }
                 }
 
                 if (string.IsNullOrEmpty(followTargetUrl))
+                {
+                    _logger.LogWarning("Follow activity missing target URL. Actor: {ActorUrl}", actorUrl);
                     break;
+                }
 
                 var followedUsername = ExtractUsernameFromActorUrl(followTargetUrl);
                 var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
 
-                // Already following? Ignore
+                // Already following? Skip
                 if (await dbService.IsFollowingAsync(followerUsername, followedUsername))
                     break;
 
-                // Save relationship
+                // Record follow in DB
                 if (!await dbService.ProcessFollowActivityAsync(actorUrl, followedUsername))
                     break;
 
@@ -139,38 +144,29 @@ public class SqsWorkerService : BackgroundService
                 if (followedUserEntity == null || string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
                     break;
 
-                // 1️⃣ Discover follower inbox
-                var targetInbox = await ResolveInboxFromActorAsync(actorUrl, httpClientFactory);
+                // Resolve inbox safely
+                var targetInbox = await ResolveInboxUrlAsync(actorUrl, httpClientFactory);
                 if (string.IsNullOrEmpty(targetInbox))
                     break;
 
-                var activityObj = JsonSerializer.Deserialize<object>(message.Body);
-
-
-                // 2️⃣ Build Accept activity
+                // Build Accept activity (no assumption about object type)
                 var acceptActivity = new
                 {
                     @context = "https://www.w3.org/ns/activitystreams",
                     id = $"https://{_config["DomainName"]}/activities/{Ulid.NewUlid()}",
                     type = "Accept",
                     actor = followedUserEntity.ActorUrl,
-                    @object = activityObj, // The original Follow activity
+                    @object = activity, // Keep original object structure
                     to = new[] { actorUrl }
                 };
 
                 var acceptJson = JsonSerializer.Serialize(acceptActivity);
-                var acceptDoc = JsonDocument.Parse(acceptJson);
+                var activityDocu = JsonDocument.Parse(acceptJson);
 
+                // Deliver signed Accept
                 var httpClient = httpClientFactory.CreateClient("FederationClient");
-                var deliveryService = new ActivityPubService(
-                    httpClient,
-                    followedUserEntity.ActorUrl,
-                    followedUserEntity.PrivateKeyPem,
-                    _config
-                );
-
-                // 3️⃣ Deliver signed Accept
-                await deliveryService.DeliverActivityAsync(targetInbox, acceptDoc);
+                var deliveryService = new ActivityPubService(httpClient, followedUserEntity.ActorUrl, followedUserEntity.PrivateKeyPem, _config);
+                await deliveryService.DeliverActivityAsync(targetInbox, activityDocu);
 
                 // 4️⃣ OPTIONAL — Push recent posts to new follower's inbox
                 var (recentPosts, _) = await dbService.GetPostsByUserAsync(followedUsername, 5, null);

@@ -34,6 +34,7 @@ namespace social_media9.Api.Services.Implementations
                 var httpClient = _httpClientFactory.CreateClient("FederationClient");
                 var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
+                // --- 1) Fetch actor profile ---
                 var actorRequest = new HttpRequestMessage(HttpMethod.Get, actorUrl);
                 actorRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/activity+json"));
                 var actorHttpResponse = await httpClient.SendAsync(actorRequest);
@@ -46,30 +47,68 @@ namespace social_media9.Api.Services.Implementations
                     return new List<PostResponse>();
                 }
 
+                // --- 2) Fetch outbox root ---
                 var outboxCollection = await httpClient.GetFromJsonAsync<OrderedCollection>(actorData.Outbox, jsonOptions);
-                if (string.IsNullOrEmpty(outboxCollection?.First)) return new List<PostResponse>();
-
-                var outboxPage = await httpClient.GetFromJsonAsync<OrderedCollectionPage>(outboxCollection.First, jsonOptions);
-                if (outboxPage?.OrderedItems == null) return new List<PostResponse>();
-
-                var posts = new List<PostResponse>();
-                foreach (var item in outboxPage.OrderedItems)
+                if (string.IsNullOrEmpty(outboxCollection?.First))
                 {
-                    var activity = JsonDocument.Parse(JsonSerializer.Serialize(item)).RootElement;
-                    if (activity.TryGetProperty("type", out var type) && type.GetString() == "Create" &&
-                        activity.TryGetProperty("object", out var postObject))
-                    {
-                        posts.Add(ParseNoteObjectToPostResponse(postObject));
-                    }
+                    _logger.LogInformation("Remote outbox for {ActorUrl} has no first page.", actorUrl);
+                    return new List<PostResponse>();
                 }
+
+                // --- 3) Follow pages ---
+                var posts = new List<PostResponse>();
+                string nextPageUrl = outboxCollection.First;
+
+                while (!string.IsNullOrEmpty(nextPageUrl))
+                {
+                    var outboxPage = await httpClient.GetFromJsonAsync<OrderedCollectionPage>(nextPageUrl, jsonOptions);
+                    if (outboxPage?.OrderedItems == null || outboxPage.OrderedItems.Count == 0)
+                        break;
+
+                    foreach (var item in outboxPage.OrderedItems)
+                    {
+                        try
+                        {
+                            if (item.TryGetProperty("type", out var typeProp) &&
+                                typeProp.ValueKind == JsonValueKind.String &&
+                                typeProp.GetString() == "Create" &&
+                                item.TryGetProperty("object", out var postObject))
+                            {
+                                // Handle if "object" is a string (URL) or object
+                                if (postObject.ValueKind == JsonValueKind.String)
+                                {
+                                    // If it's a string URL, try to fetch it
+                                    var noteUrl = postObject.GetString();
+                                    if (!string.IsNullOrEmpty(noteUrl))
+                                    {
+                                        var noteDoc = await httpClient.GetFromJsonAsync<JsonElement>(noteUrl, jsonOptions);
+                                        posts.Add(ParseNoteObjectToPostResponse(noteDoc));
+                                    }
+                                }
+                                else if (postObject.ValueKind == JsonValueKind.Object)
+                                {
+                                    posts.Add(ParseNoteObjectToPostResponse(postObject));
+                                }
+                            }
+                        }
+                        catch (Exception innerEx)
+                        {
+                            _logger.LogWarning(innerEx, "Failed to parse post in remote outbox for {ActorUrl}", actorUrl);
+                        }
+                    }
+
+                    nextPageUrl = outboxPage.Next;
+                }
+
                 return posts;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to fetch remote outbox for actor {ActorUrl}", actorUrl);
-                throw new ApplicationException("Could not retrieve posts from the remote server.");
+                return new List<PostResponse>();
             }
         }
+
 
         private PostResponse ParseNoteObjectToPostResponse(JsonElement postObject)
         {

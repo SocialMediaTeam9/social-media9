@@ -24,7 +24,7 @@ public record ActorPublicKey(
 
 // Model for the Actor JSON response
 public record ActorResponse(
-    [property: JsonPropertyName("@context")] JsonElement Context,
+    // [property: JsonPropertyName("@context")] JsonElement Context,
     [property: JsonPropertyName("id")] string? Id,
     [property: JsonPropertyName("type")] string? Type,
     [property: JsonPropertyName("preferredUsername")] string? PreferredUsername,
@@ -40,8 +40,8 @@ public record ActorResponse(
 
 public record OrderedCollectionPage
 {
-    [JsonPropertyName("@context")]
-    public JsonElement Context { get; set; }
+    // [JsonPropertyName("@context")]
+    // public JsonElement Context { get; set; }
 
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
@@ -57,14 +57,14 @@ public record OrderedCollectionPage
     public string PartOf { get; set; } = string.Empty;
 
     [JsonPropertyName("orderedItems")]
-    public List<object> OrderedItems { get; set; } = new();
+    public List<JsonElement> OrderedItems { get; set; } = new();
 }
 
 // Represents the top-level collection resource
 public record OrderedCollection
 {
-    [JsonPropertyName("@context")]
-    public JsonElement Context { get; set; }
+    // [JsonPropertyName("@context")]
+    // public JsonElement Context { get; set; }
 
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
