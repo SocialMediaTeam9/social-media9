@@ -12,10 +12,10 @@ export const useLikes = () => {
 
         try {
             if (isLiked) {
-                await fetch(`/api/posts/${postId}/like`, { method: "DELETE" });
+                await fetch(`/api/posts/${postId}/like`, { method: "DELETE", credentials: "include" });
                 onChange(false, -1);
             } else {
-                await fetch(`/api/posts/${postId}/like`, { method: "POST" });
+                await fetch(`/api/posts/${postId}/like`, { method: "POST", credentials: "include" });
                 onChange(true, +1);
             }
         } catch (error) {
