@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using social_media9.Api.Models;
 using social_media9.Api.Services.DynamoDB;
 using social_media9.Api.Services.Implementations;
+using social_media9.Api.Services.Interfaces;
 
 namespace social_media9.Api.Controllers;
 
@@ -12,11 +13,11 @@ public class FederationController : ControllerBase
 {
     private readonly DynamoDbService _dbService;
 
-    private readonly FederationService _federationService;
+    private readonly IFederationService _federationService;
 
     private readonly ILogger<FederationController> _logger;
 
-    public FederationController(DynamoDbService dbService, ILogger<FederationController> logger, FederationService federationService)
+    public FederationController(DynamoDbService dbService, ILogger<FederationController> logger, IFederationService federationService)
     {
         _dbService = dbService;
         _logger = logger;

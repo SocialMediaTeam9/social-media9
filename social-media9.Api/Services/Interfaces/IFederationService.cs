@@ -14,5 +14,7 @@ namespace social_media9.Api.Services.Interfaces
         Task<User?> DiscoverAndCacheUserAsync(string userHandle);
 
         Task<string?> ResolveInboxUrlAsync(string actorUrl);
+
+        Task<List<PostResponse>> GetRemoteUserOutboxAsync(string actorUrl);
     }
 }
