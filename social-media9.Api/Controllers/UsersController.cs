@@ -30,6 +30,7 @@ namespace social_media9.Api.Controllers
         private readonly DynamoDbService _dbService;
         private readonly ICryptoService _cryptoService;
 
+
         public UsersController(
             IMediator mediator,
             IUserRepository userRepository,
@@ -107,6 +108,7 @@ namespace social_media9.Api.Controllers
                     PublicKeyPem = publicKey,
                     PrivateKeyPem = privateKey,
                     CreatedAt = DateTime.UtcNow,
+                    ActorUrl = $"https://{_config["DomainName"]}/users/{username}"
                 };
                 await _dbService.CreateUserAsync(user);
             }

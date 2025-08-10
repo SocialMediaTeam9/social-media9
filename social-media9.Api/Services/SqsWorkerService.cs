@@ -154,8 +154,10 @@ public class SqsWorkerService : BackgroundService
                 }
                 if (string.IsNullOrEmpty(followedUserEntity.ActorUrl))
                 {
+                    followedUserEntity.ActorUrl = $"https://{_config["DomainName"]}/users/{followedUserEntity.Username}";
+                    // await dbService.UpdateUserActorUrlAsync(followedUserEntity.Username, followedUserEntity.ActorUrl);
                     _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' has no ActorUrl", followedUsername);
-                    break;
+                    // break;
                 }
                 if (string.IsNullOrEmpty(followedUserEntity.PrivateKeyPem))
                 {
