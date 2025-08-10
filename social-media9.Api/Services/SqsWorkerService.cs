@@ -147,7 +147,6 @@ public class SqsWorkerService : BackgroundService
 
                 // 4️⃣ Get local followed user entity and validate
                 var followedUserEntity = await dbService.GetUserProfileByUsernameAsync(followedUsername);
-                _logger.LogInformation(followedUserEntity);
                 if (followedUserEntity == null)
                 {
                     _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' not found", followedUsername);

@@ -36,7 +36,7 @@ public class FederationController : ControllerBase
 
         try
         {
-            var posts = await _federationService.GetRemoteUserOutboxAsync(actorUrl);
+            var posts = await _federationService.GetRemoteUserOutboxPageAsync(actorUrl);
             return Ok(posts);
         }
         catch (ApplicationException ex)

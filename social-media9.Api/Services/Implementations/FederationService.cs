@@ -27,87 +27,81 @@ namespace social_media9.Api.Services.Implementations
 
         private string ExtractUsernameFromActorUrl(string url) => url.Split('/').Last();
 
-        public async Task<List<PostResponse>> GetRemoteUserOutboxAsync(string actorUrl)
+        public async Task<(List<PostResponse> Posts, string? NextPageUrl)> GetRemoteUserOutboxPageAsync(
+    string actorUrl,
+    string? pageUrl = null,
+    int maxItems = 20)
         {
             try
             {
                 var httpClient = _httpClientFactory.CreateClient("FederationClient");
                 var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-                // --- 1) Fetch actor profile ---
-                var actorRequest = new HttpRequestMessage(HttpMethod.Get, actorUrl);
-                actorRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/activity+json"));
-                var actorHttpResponse = await httpClient.SendAsync(actorRequest);
-                actorHttpResponse.EnsureSuccessStatusCode();
-
-                var actorData = await actorHttpResponse.Content.ReadFromJsonAsync<ActorResponse>(jsonOptions);
-                if (string.IsNullOrEmpty(actorData?.Outbox))
+                // 1️⃣ If no pageUrl provided, fetch actor → outbox → first page
+                if (string.IsNullOrEmpty(pageUrl))
                 {
-                    _logger.LogWarning("Remote actor {ActorUrl} does not have an outbox property.", actorUrl);
-                    return new List<PostResponse>();
+                    var actorRequest = new HttpRequestMessage(HttpMethod.Get, actorUrl);
+                    actorRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/activity+json"));
+                    var actorHttpResponse = await httpClient.SendAsync(actorRequest);
+                    actorHttpResponse.EnsureSuccessStatusCode();
+
+                    var actorData = await actorHttpResponse.Content.ReadFromJsonAsync<ActorResponse>(jsonOptions);
+                    if (string.IsNullOrEmpty(actorData?.Outbox))
+                        return (new List<PostResponse>(), null);
+
+                    var outboxCollection = await httpClient.GetFromJsonAsync<OrderedCollection>(actorData.Outbox, jsonOptions);
+                    pageUrl = outboxCollection?.First;
                 }
 
-                // --- 2) Fetch outbox root ---
-                var outboxCollection = await httpClient.GetFromJsonAsync<OrderedCollection>(actorData.Outbox, jsonOptions);
-                if (string.IsNullOrEmpty(outboxCollection?.First))
-                {
-                    _logger.LogInformation("Remote outbox for {ActorUrl} has no first page.", actorUrl);
-                    return new List<PostResponse>();
-                }
+                if (string.IsNullOrEmpty(pageUrl))
+                    return (new List<PostResponse>(), null);
 
-                // --- 3) Follow pages ---
+                // 2️⃣ Fetch single page
+                var outboxPage = await httpClient.GetFromJsonAsync<OrderedCollectionPage>(pageUrl, jsonOptions);
+                if (outboxPage?.OrderedItems == null || outboxPage.OrderedItems.Count == 0)
+                    return (new List<PostResponse>(), null);
+
                 var posts = new List<PostResponse>();
-                string nextPageUrl = outboxCollection.First;
 
-                while (!string.IsNullOrEmpty(nextPageUrl))
+                foreach (var item in outboxPage.OrderedItems.Take(maxItems))
                 {
-                    var outboxPage = await httpClient.GetFromJsonAsync<OrderedCollectionPage>(nextPageUrl, jsonOptions);
-                    if (outboxPage?.OrderedItems == null || outboxPage.OrderedItems.Count == 0)
-                        break;
-
-                    foreach (var item in outboxPage.OrderedItems)
+                    try
                     {
-                        try
+                        if (item.TryGetProperty("type", out var typeProp) &&
+                            typeProp.ValueKind == JsonValueKind.String &&
+                            typeProp.GetString() == "Create" &&
+                            item.TryGetProperty("object", out var postObject))
                         {
-                            if (item.TryGetProperty("type", out var typeProp) &&
-                                typeProp.ValueKind == JsonValueKind.String &&
-                                typeProp.GetString() == "Create" &&
-                                item.TryGetProperty("object", out var postObject))
+                            if (postObject.ValueKind == JsonValueKind.String)
                             {
-                                // Handle if "object" is a string (URL) or object
-                                if (postObject.ValueKind == JsonValueKind.String)
+                                var noteUrl = postObject.GetString();
+                                if (!string.IsNullOrEmpty(noteUrl))
                                 {
-                                    // If it's a string URL, try to fetch it
-                                    var noteUrl = postObject.GetString();
-                                    if (!string.IsNullOrEmpty(noteUrl))
-                                    {
-                                        var noteDoc = await httpClient.GetFromJsonAsync<JsonElement>(noteUrl, jsonOptions);
-                                        posts.Add(ParseNoteObjectToPostResponse(noteDoc));
-                                    }
-                                }
-                                else if (postObject.ValueKind == JsonValueKind.Object)
-                                {
-                                    posts.Add(ParseNoteObjectToPostResponse(postObject));
+                                    var noteDoc = await httpClient.GetFromJsonAsync<JsonElement>(noteUrl, jsonOptions);
+                                    posts.Add(ParseNoteObjectToPostResponse(noteDoc));
                                 }
                             }
-                        }
-                        catch (Exception innerEx)
-                        {
-                            _logger.LogWarning(innerEx, "Failed to parse post in remote outbox for {ActorUrl}", actorUrl);
+                            else if (postObject.ValueKind == JsonValueKind.Object)
+                            {
+                                posts.Add(ParseNoteObjectToPostResponse(postObject));
+                            }
                         }
                     }
-
-                    nextPageUrl = outboxPage.Next;
+                    catch (Exception innerEx)
+                    {
+                        _logger.LogWarning(innerEx, "Failed to parse post in remote outbox for {ActorUrl}", actorUrl);
+                    }
                 }
 
-                return posts;
+                return (posts, outboxPage.Next);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch remote outbox for actor {ActorUrl}", actorUrl);
-                return new List<PostResponse>();
+                _logger.LogError(ex, "Failed to fetch remote outbox page for actor {ActorUrl}", actorUrl);
+                return (new List<PostResponse>(), null);
             }
         }
+
 
 
         private PostResponse ParseNoteObjectToPostResponse(JsonElement postObject)

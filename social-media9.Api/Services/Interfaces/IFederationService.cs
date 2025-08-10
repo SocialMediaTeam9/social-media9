@@ -15,6 +15,9 @@ namespace social_media9.Api.Services.Interfaces
 
         Task<string?> ResolveInboxUrlAsync(string actorUrl);
 
-        Task<List<PostResponse>> GetRemoteUserOutboxAsync(string actorUrl);
+        Task<(List<PostResponse> Posts, string? NextPageUrl)> GetRemoteUserOutboxPageAsync(
+            string actorUrl,
+            string? pageUrl = null,
+            int maxItems = 20);
     }
 }
