@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using social_media9.Api.Services;
+using social_media9.Api.Services.Interfaces;
 using social_media9.Api.DTOs;
 using System.Security.Claims;
-using social_media9.Api.Services.Interfaces;
 
 namespace social_media9.Api.Controllers
 {
@@ -13,10 +12,12 @@ namespace social_media9.Api.Controllers
     public class LikesController : ControllerBase
     {
         private readonly ILikeService _likeService;
+        private readonly ILogger<LikesController> _logger;
 
-        public LikesController(ILikeService likeService)
+        public LikesController(ILikeService likeService, ILogger<LikesController> logger)
         {
             _likeService = likeService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -33,16 +34,21 @@ namespace social_media9.Api.Controllers
             try
             {
                 var result = await _likeService.LikePostAsync(request.PostId, userId, username);
+                if (string.IsNullOrEmpty(result.PostId))
+                {
+                    return BadRequest("Unable to like post.");
+                }
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error liking post: {ex.Message}");
+                _logger.LogError(ex, "Error liking post {PostId}", request.PostId);
+                return StatusCode(500, "An error occurred while liking the post.");
             }
         }
 
         [HttpDelete]
-        public async Task<ActionResult> UnlikePost([FromBody] UnlikePostRequest request)
+        public async Task<IActionResult> UnlikePost([FromBody] UnlikePostRequest request)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -56,13 +62,14 @@ namespace social_media9.Api.Controllers
                 var success = await _likeService.UnlikePostAsync(request.PostId, userId);
                 if (!success)
                 {
-                    return NotFound("Like not found");
+                    return NotFound("Like not found.");
                 }
                 return NoContent();
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error unliking post: {ex.Message}");
+                _logger.LogError(ex, "Error unliking post {PostId}", request.PostId);
+                return StatusCode(500, "An error occurred while unliking the post.");
             }
         }
 
@@ -78,7 +85,8 @@ namespace social_media9.Api.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error getting post likes: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving likes for post {PostId}", postId);
+                return StatusCode(500, "An error occurred while retrieving post likes.");
             }
         }
 
@@ -99,7 +107,8 @@ namespace social_media9.Api.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error getting posts liked status: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving liked status for multiple posts");
+                return StatusCode(500, "An error occurred while retrieving liked status.");
             }
         }
     }

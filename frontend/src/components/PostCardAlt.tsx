@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PostResponse } from '../types/types';
 import { fetcher } from '../utils/fetcher';
 import LikeButton from './LikeButton';
+import { useLikes } from '../hooks/useLikes';
 
 interface PostCardProps {
   post: PostResponse;
@@ -16,6 +17,8 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
   // Ensure defaults to 0 if undefined
   const [likeCount, setLikeCount] = useState<number>(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByUser);
+
+  const { handleLikeToggle, likingPosts } = useLikes();
 
   useEffect(() => {
     const checkFollowStatus = async () => {
@@ -40,6 +43,28 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
       checkFollowStatus();
     }
   }, [post.authorUsername, currentLoggedInUsername]);
+
+  // Fetch initial like status & count
+  useEffect(() => {
+    const fetchLikes = async () => {
+      try {
+        const res = await fetch(`/api/posts/${post.postId}/likes?userId=${currentLoggedInUsername}`);
+        const data = await res.json();
+        setLikeCount(data.likeCount ?? 0);
+        setIsLiked(data.isLikedByUser ?? false);
+      } catch (err) {
+        console.error("Failed to load likes", err);
+      }
+    };
+    fetchLikes();
+  }, [post.postId, currentLoggedInUsername]);
+
+  const toggleLike = () => {
+    handleLikeToggle(post.postId, isLiked, (newLiked, delta) => {
+      setIsLiked(newLiked);
+      setLikeCount(prev => prev + delta);
+    });
+  };
 
   const handleFollow = async () => {
     setIsActionLoading(true);
@@ -132,7 +157,8 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
           postId={post.postId}
           isLiked={isLiked}
           likeCount={likeCount}
-          onLikeChange={handleLikeChange}
+          onToggle={toggleLike}
+          disabled={likingPosts.has(post.postId)}
         />
       </div>
     </div>
