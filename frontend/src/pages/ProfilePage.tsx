@@ -40,7 +40,7 @@ const ProfilePage: React.FC = () => {
                 const profileData = await lookupProfile(usernameToFetch);
                 let userPosts: PostResponse[] = [];
                 if (usernameToFetch.includes('@')) {
-                    const encodedActorUrl = encodeURIComponent(usernameToFetch);
+                    const encodedActorUrl = encodeURIComponent(profileData.actorUrl);
                     userPosts = await getPostsByActorUrl(encodedActorUrl);
                 } else {
                     userPosts = (await getPostsByUsername(usernameToFetch)).items;

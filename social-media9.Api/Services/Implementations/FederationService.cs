@@ -189,7 +189,9 @@ namespace social_media9.Api.Services.Implementations
                     IsRemote = true,
                     ActorUrl = actorData.Id,
                     InboxUrl = actorData.Inbox,
-                    FollowersUrl = actorData.Followers
+                    FollowersUrl = actorData.Followers,
+                    OutboxUrl = actorData.Outbox,
+                    FollowingUrl = actorData.Following
                 };
 
                 await _userRepository.AddUserAsync(newUser);
