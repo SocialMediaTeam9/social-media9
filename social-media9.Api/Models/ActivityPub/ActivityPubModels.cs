@@ -24,7 +24,7 @@ public record ActorPublicKey(
 
 // Model for the Actor JSON response
 public record ActorResponse(
-    // [property: JsonPropertyName("@context")] JsonElement Context,
+    [property: JsonPropertyName("@context")] IEnumerable<object> Context,
     [property: JsonPropertyName("id")] string? Id,
     [property: JsonPropertyName("type")] string? Type,
     [property: JsonPropertyName("preferredUsername")] string? PreferredUsername,
@@ -33,7 +33,19 @@ public record ActorResponse(
     [property: JsonPropertyName("outbox")] string? Outbox,
     [property: JsonPropertyName("followers")] string? Followers,
     [property: JsonPropertyName("following")] string? Following,
-    [property: JsonPropertyName("publicKey")] ActorPublicKey PublicKey
+    [property: JsonPropertyName("publicKey")] ActorPublicKey PublicKey,
+    [property: JsonPropertyName("icon")] ActorImage? Icon,
+    [property: JsonPropertyName("image")] ActorImage? Image,
+    [property: JsonPropertyName("manuallyApprovesFollowers")] bool ManuallyApprovesFollowers,
+    [property: JsonPropertyName("summary")] string? Summary,
+    [property: JsonPropertyName("url")] string? Url,
+    [property: JsonPropertyName("discoverable")] bool Discoverable
+);
+
+public record ActorImage(
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("mediaType")] string MediaType,
+    [property: JsonPropertyName("url")] string Url
 );
 
 
