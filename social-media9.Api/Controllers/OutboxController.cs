@@ -69,7 +69,7 @@ public class OutboxController : ControllerBase
     private static readonly JsonSerializerOptions _jsonOpts = new JsonSerializerOptions
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNamingPolicy = null,
         WriteIndented = false
     };
 
