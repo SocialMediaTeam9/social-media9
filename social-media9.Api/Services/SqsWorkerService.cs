@@ -147,6 +147,7 @@ public class SqsWorkerService : BackgroundService
 
                 // 4️⃣ Get local followed user entity and validate
                 var followedUserEntity = await dbService.GetUserProfileByUsernameAsync(followedUsername);
+                _logger.LogInformation(followedUserEntity);
                 if (followedUserEntity == null)
                 {
                     _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' not found", followedUsername);
@@ -154,7 +155,7 @@ public class SqsWorkerService : BackgroundService
                 }
                 if (string.IsNullOrEmpty(followedUserEntity.ActorUrl))
                 {
-                    followedUserEntity.ActorUrl = $"https://{_config["DomainName"]}/users/{followedUserEntity.Username}";
+
                     // await dbService.UpdateUserActorUrlAsync(followedUserEntity.Username, followedUserEntity.ActorUrl);
                     _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' has no ActorUrl", followedUsername);
                     // break;
@@ -165,7 +166,7 @@ public class SqsWorkerService : BackgroundService
                     break;
                 }
 
-                var localActorUrl = followedUserEntity.ActorUrl;
+                var localActorUrl = string.IsNullOrEmpty(followedUserEntity.ActorUrl) ? $"https://{_config["DomainName"]}/users/{followedUsername}" : followedUserEntity.ActorUrl;
                 var localPrivateKey = followedUserEntity.PrivateKeyPem;
 
                 // 5️⃣ Resolve remote inbox
