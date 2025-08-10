@@ -78,6 +78,10 @@ export const getPostsByUsername = (username: string): Promise<PaginatedPostRespo
   return fetcher<PaginatedPostResponse>(`/api/posts/by/${username}`);
 };
 
+export const getPostsByActorUrl = (encodedActorUrl: string): Promise<PostResponse[]> => {
+  return fetcher<PostResponse[]>(`/api/federation/outbox?actorUrl=${encodedActorUrl}`);
+};
+
 export async function fetcher<T>(
     url: string,
     options?: FetcherOptions & { userId?: string } // userId is now less critical for follow/unfollow
