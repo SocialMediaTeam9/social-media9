@@ -103,8 +103,10 @@ public class ActivityPubController : ControllerBase
             Image: string.IsNullOrEmpty(user.ProfilePictureUrl)
             ? null
             : new ActorImage("Image", "image/jpeg", user.ProfilePictureUrl),
-            ManuallyApprovesFollowers: false, // From your user settings
+            Summary: user.Bio,
+            ManuallyApprovesFollowers: false,
             Discoverable: true
+
         );
 
         var json = JsonSerializer.Serialize(

@@ -38,7 +38,6 @@ public record ActorResponse(
     [property: JsonPropertyName("image")] ActorImage? Image,
     [property: JsonPropertyName("manuallyApprovesFollowers")] bool ManuallyApprovesFollowers,
     [property: JsonPropertyName("summary")] string? Summary,
-    [property: JsonPropertyName("url")] string? Url,
     [property: JsonPropertyName("discoverable")] bool Discoverable
 );
 
