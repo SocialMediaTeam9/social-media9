@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using System.Text.Json;
 
+namespace social_media9.Api.Models.ActivityPub;
+
 // Model for the WebFinger JSON response (JRD - JSON Resource Descriptor)
 public record WebFingerLink(
     [property: JsonPropertyName("rel")] string Rel,

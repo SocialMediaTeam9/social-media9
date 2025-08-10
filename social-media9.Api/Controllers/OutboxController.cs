@@ -6,6 +6,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using social_media9.Api.Models.ActivityPub;
 
 [ApiController]
 public class OutboxController : ControllerBase
@@ -33,27 +34,27 @@ public class OutboxController : ControllerBase
         {
             var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
 
-            var pageResponse = new
+            var pageResponse = new ActivityPubCollectionPage
             {
-                @context = _contextUrls,
-                id = $"{followersUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
-                type = "OrderedCollectionPage",
-                partOf = followersUrl,
-                orderedItems = followers.Select(f => (object)f.FollowerInfo.ActorUrl).ToList(),
-                next = string.IsNullOrEmpty(nextToken) ? null : $"{followersUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}"
+                Context  = _contextUrls,
+                Id = $"{followersUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
+                Type = "OrderedCollectionPage",
+                PartOf = followersUrl,
+                OrderedItems = followers.Select(f => (object)f.FollowerInfo.ActorUrl).ToList(),
+                Next = string.IsNullOrEmpty(nextToken) ? null : $"{followersUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}"
             };
 
             return Content(JsonSerializer.Serialize(pageResponse, _jsonOpts), "application/activity+json");
         }
         else
         {
-            var collectionResponse = new
+            var collectionResponse = new ActivityPubCollection
             {
-                @context = _contextUrls,
-                id = followersUrl,
-                type = "OrderedCollection",
-                totalItems = user.FollowersCount,
-                first = $"{followersUrl}?page=true"
+                Context = new[] { "https://www.w3.org/ns/activitystreams" },
+                Id  = followersUrl,
+                Type = "OrderedCollection",
+                TotalItems = user.FollowersCount,
+                First = $"{followersUrl}?page=true"
             };
 
             return Content(JsonSerializer.Serialize(collectionResponse, _jsonOpts), "application/activity+json");
@@ -86,14 +87,14 @@ public class OutboxController : ControllerBase
         {
             var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
 
-            var pageResponse = new
+            var pageResponse = new ActivityPubCollectionPage
             {
-                @context = _contextUrls,
-                id = $"{followingUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
-                type = "OrderedCollectionPage",
-                partOf = followingUrl,
-                orderedItems = following.Select(f => (object)f.FollowingInfo.ActorUrl).ToList(),
-                next = string.IsNullOrEmpty(nextToken) ? null : $"{followingUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}"
+                Context = _contextUrls,
+                Id = $"{followingUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
+                Type = "OrderedCollectionPage",
+                PartOf = followingUrl,
+                OrderedItems = following.Select(f => (object)f.FollowingInfo.ActorUrl).ToList(),
+                Next = string.IsNullOrEmpty(nextToken) ? null : $"{followingUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}"
             };
 
             return Content(JsonSerializer.Serialize(pageResponse, _jsonOpts), "application/activity+json");
@@ -102,11 +103,11 @@ public class OutboxController : ControllerBase
         {
             var collectionResponse = new
             {
-                @context = _contextUrls,
-                id = followingUrl,
-                type = "OrderedCollection",
-                totalItems = user.FollowingCount,
-                first = $"{followingUrl}?page=true"
+                Context = _contextUrls,
+                Id = followingUrl,
+                Type = "OrderedCollection",
+                TotalItems = user.FollowingCount,
+                First = $"{followingUrl}?page=true"
             };
 
             return Content(JsonSerializer.Serialize(collectionResponse, _jsonOpts), "application/activity+json");
@@ -131,14 +132,14 @@ public class OutboxController : ControllerBase
         {
             var (posts, nextToken) = await _dbService.GetPostsByUserAsync(username, 15, cursor);
 
-            var pageResponse = new
+            var pageResponse = new ActivityPubCollectionPage
             {
-                @context = _contextUrls,
-                id = $"{outboxUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
-                type = "OrderedCollectionPage",
-                partOf = outboxUrl,
-                orderedItems = posts.Select(p => JsonSerializer.Deserialize<object>(p.ActivityJson)!).ToList(),
-                next = string.IsNullOrEmpty(nextToken) ? null : $"{outboxUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}"
+                Context = _contextUrls,
+                Id = $"{outboxUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
+                Type = "OrderedCollectionPage",
+                PartOf = outboxUrl,
+                OrderedItems = posts.Select(p => JsonSerializer.Deserialize<object>(p.ActivityJson)!).ToList(),
+                Next = string.IsNullOrEmpty(nextToken) ? null : $"{outboxUrl}?page=true&cursor={WebUtility.UrlEncode(nextToken)}"
             };
 
             return Content(JsonSerializer.Serialize(pageResponse, _jsonOpts), "application/activity+json");
@@ -147,11 +148,11 @@ public class OutboxController : ControllerBase
         {
             var collectionResponse = new
             {
-                @context = _contextUrls,
-                id = outboxUrl,
-                type = "OrderedCollection",
-                totalItems = user.PostCount,
-                first = $"{outboxUrl}?page=true"
+                Context = _contextUrls,
+                Id = outboxUrl,
+                Type = "OrderedCollection",
+                TotalItems = user.PostCount,
+                First = $"{outboxUrl}?page=true"
             };
 
             return Content(JsonSerializer.Serialize(collectionResponse, _jsonOpts), "application/activity+json");
