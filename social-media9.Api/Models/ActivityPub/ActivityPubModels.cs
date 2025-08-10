@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using System.Collections.Generic;
+using System.Text.Json;
 
 // Model for the WebFinger JSON response (JRD - JSON Resource Descriptor)
 public record WebFingerLink(
@@ -23,7 +24,7 @@ public record ActorPublicKey(
 
 // Model for the Actor JSON response
 public record ActorResponse(
-    [property: JsonPropertyName("@context")] object Context,
+    [property: JsonPropertyName("@context")] JsonElement Context,
     [property: JsonPropertyName("id")] string? Id,
     [property: JsonPropertyName("type")] string? Type,
     [property: JsonPropertyName("preferredUsername")] string? PreferredUsername,
@@ -40,7 +41,7 @@ public record ActorResponse(
 public record OrderedCollectionPage
 {
     [JsonPropertyName("@context")]
-    public string Context { get; set; } = "https://www.w3.org/ns/activitystreams";
+    public JsonElement Context { get; set; }
 
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
@@ -63,7 +64,7 @@ public record OrderedCollectionPage
 public record OrderedCollection
 {
     [JsonPropertyName("@context")]
-    public string Context { get; set; } = "https://www.w3.org/ns/activitystreams";
+    public JsonElement Context { get; set; }
 
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
