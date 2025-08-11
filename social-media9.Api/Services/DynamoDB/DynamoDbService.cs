@@ -85,6 +85,24 @@ public class DynamoDbService
         return await _dbContext.LoadAsync<User>($"USER#{username}", "METADATA");
     }
 
+    // public async Task<bool> UpdateUserActorUrlAsync(string username, string domain, string actorUrl)
+    // {
+    //     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(actorUrl))
+    //         throw new ArgumentException("Username, domain, and actorUrl are required.");
+
+    //     var user = await _dbContext.Users
+    //         .FirstOrDefaultAsync(u => u.Username == username && u.Domain == domain);
+
+    //     if (user == null)
+    //         return false;
+
+    //     user.ActorUrl = actorUrl;
+
+    //     _dbContext.Users.Update(user);
+    //     await _dbContext.SaveChangesAsync();
+    //     return true;
+    // }
+
     /// <summary>
     /// Retrieves a lightweight summary of a user, useful for denormalization.
     /// </summary>
@@ -461,13 +479,13 @@ public class DynamoDbService
         return await _dbContext.LoadAsync<Post>($"POST#{postId}", $"POST#{postId}");
     }
 
-    
+
     public async Task<bool> LikePostAsync(string postId, UserSummary liker)
     {
         var likeEntity = new LikeEntity
         {
             PK = $"POST#{postId}",
-            SK = $"LIKE#{liker.ActorUrl}", // Use ActorUrl for global uniqueness
+            SK = $"LIKE#{liker.ActorUrl}",
             GSI1PK = $"USER#{liker.Username}",
             GSI1SK = $"LIKE#{postId}",
             LikerUsername = liker.Username,
@@ -495,6 +513,72 @@ public class DynamoDbService
             return false;
         }
     }
+
+    public async Task<bool> UnlikePostAsync(string postId, string userId)
+    {
+        // Try to load the like
+        var existingLike = await this.GetLikeAsync(postId, userId);
+        if (existingLike == null)
+        {
+            return false;
+        }
+
+        // Delete it
+        await this.DeleteLikeAsync(postId, userId);
+        return true;
+    }
+
+    // Get a single like
+    public async Task<Like?> GetLikeAsync(string postId, string userId)
+    {
+        return await _dbContext.LoadAsync<Like>(postId, userId);
+    }
+
+    // Delete a like
+    public async Task DeleteLikeAsync(string postId, string userId)
+    {
+        await _dbContext.DeleteAsync<Like>(postId, userId);
+    }
+
+    // Get likes for a post
+    public async Task<List<Like>> GetPostLikesAsync(string postId)
+    {
+        var queryConfig = new QueryOperationConfig
+        {
+            KeyExpression = new Expression
+            {
+                ExpressionStatement = "PostId = :postId",
+                ExpressionAttributeValues = { [":postId"] = postId }
+            }
+        };
+
+        var search = _dbContext.FromQueryAsync<Like>(queryConfig);
+        return await search.GetRemainingAsync();
+    }
+
+    // Check if a post is liked by a user
+    public async Task<bool> IsPostLikedByUserAsync(string postId, string userId)
+    {
+        var like = await GetLikeAsync(postId, userId);
+        return like != null;
+    }
+
+    // Get all liked posts by a user
+    public async Task<List<string>> GetLikedPostsByUserAsync(string userId)
+    {
+        var scanConfig = new ScanOperationConfig
+        {
+            Filter = new ScanFilter(),
+            Select = SelectValues.SpecificAttributes,
+            AttributesToGet = new List<string> { "PostId" }
+        };
+        scanConfig.Filter.AddCondition("UserId", ScanOperator.Equal, userId);
+
+        var search = _dbContext.FromScanAsync<Like>(scanConfig);
+        var likes = await search.GetRemainingAsync();
+        return likes.Select(l => l.PostId).ToList();
+    }
+
 
     public async Task<bool> CreateCommentAsync(Comment comment)
     {
@@ -544,7 +628,7 @@ public class DynamoDbService
     {
         if (!followerUsernames.Any()) return;
 
-        var batch = _dbContext.CreateBatchWrite<BaseEntity>();
+        var batch = _dbContext.CreateBatchWrite<TimelineItemEntity>();
         foreach (var username in followerUsernames)
         {
             var timelineItem = new TimelineItemEntity

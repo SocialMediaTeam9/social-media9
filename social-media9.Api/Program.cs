@@ -125,6 +125,8 @@ builder.Services.AddSingleton<IGremlinClient>(sp =>
          Gremlin.Net.Structure.IO.SerializationTokens.GraphSON3MimeType
     );
 });
+builder.Services.AddSingleton<RecommendationService>();
+
 
 builder.Services.AddHostedService<SqsWorkerService>();
 

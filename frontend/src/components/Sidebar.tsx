@@ -71,6 +71,16 @@ const Sidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         <span className="font-semibold">Search</span>
       </Link>
 
+      <Link
+        to="/dashboard/recommendations"
+        className={`flex items-center space-x-4 p-3 rounded-full ${
+          isActive('/dashboard/recommendations') ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'
+        }`}
+      >
+        {icons.search}
+        <span className="font-semibold">Recommendations</span>
+      </Link>
+
       <div className="mt-auto">
         <button
           onClick={onLogout}

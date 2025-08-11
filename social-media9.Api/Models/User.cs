@@ -68,7 +68,7 @@ namespace social_media9.Api.Models
 
         [DynamoDBProperty("PostCount")]
         public int PostCount { get; set; } = 0;
-        
+
         [DynamoDBProperty("IsRemote")]
         public bool IsRemote { get; set; } = false;
 
@@ -77,6 +77,12 @@ namespace social_media9.Api.Models
 
         [DynamoDBProperty("InboxUrl")]
         public string? InboxUrl { get; set; }
+
+        [DynamoDBProperty("OutboxUrl")]
+        public string? OutboxUrl { get; set; }
+
+        [DynamoDBProperty("FollowingUrl")]
+        public string? FollowingUrl { get; set; }
 
         [DynamoDBProperty("FollowersUrl")]
         public string? FollowersUrl { get; set; }

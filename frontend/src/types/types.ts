@@ -33,6 +33,7 @@ export interface UserProfile {
   createdAt: string;
   googleId: string;
   isFollowing: boolean;
+  actorUrl: string
 }
 
 export interface UpdateProfileResponse {

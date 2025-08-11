@@ -2,23 +2,48 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using social_media9.Api.Models;
 using social_media9.Api.Services.DynamoDB;
+using social_media9.Api.Services.Implementations;
+using social_media9.Api.Services.Interfaces;
 
 namespace social_media9.Api.Controllers;
 
 [ApiController]
-[Route("/internal/v1")]
-[Authorize(Policy = "InternalApi")]
+[Route("/api/federation")]
 public class FederationController : ControllerBase
 {
     private readonly DynamoDbService _dbService;
+
+    private readonly IFederationService _federationService;
+
     private readonly ILogger<FederationController> _logger;
 
-    public FederationController(DynamoDbService dbService, ILogger<FederationController> logger)
+    public FederationController(DynamoDbService dbService, ILogger<FederationController> logger, IFederationService federationService)
     {
         _dbService = dbService;
         _logger = logger;
+        _federationService = federationService;
+
     }
 
+    [HttpGet("outbox")]
+    [Authorize] // Only logged-in users can use our server as a proxy
+    public async Task<IActionResult> GetRemoteUserOutbox([FromQuery] string actorUrl)
+    {
+        if (string.IsNullOrWhiteSpace(actorUrl) || !Uri.IsWellFormedUriString(actorUrl, UriKind.Absolute))
+        {
+            return BadRequest("A valid 'actorUrl' query parameter is required.");
+        }
+
+        try
+        {
+            var posts = await _federationService.GetRemoteUserOutboxPageAsync(actorUrl);
+            return Ok(posts);
+        }
+        catch (ApplicationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 
 
     [HttpPost("user")]

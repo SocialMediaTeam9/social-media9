@@ -69,7 +69,8 @@ public class ProfilesController : ControllerBase
             FollowersCount = user.FollowersCount,
             FollowingCount = user.FollowingCount,
             CreatedAt = user.CreatedAt,
-            IsFollowing = isFollowing
+            IsFollowing = isFollowing,
+            ActorUrl = user.ActorUrl ?? ""
         };
 
         return Ok(userProfileDto);
