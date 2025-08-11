@@ -69,7 +69,7 @@ const ProfilePage: React.FC = () => {
         setProfile(p => p ? { ...p, isFollowing: !isCurrentlyFollowing, followersCount: newFollowerCount } : null);
         try {
             const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
-            await fetcher(`/api/users/${usernameToFetch}/follow`, { method });
+            await fetcher(`/api/users/follow`, { method });
         } catch (err) {
             setProfile(p => p ? { ...p, isFollowing: isCurrentlyFollowing, followersCount: profile.followersCount } : null);
             alert(`Failed to ${isCurrentlyFollowing ? 'unfollow' : 'follow'} user.`);
