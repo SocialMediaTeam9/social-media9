@@ -30,6 +30,7 @@ using Gremlin.Net.Structure.IO.GraphSON;
 using Nest;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
 using Amazon.Runtime;
+using Neo4j.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -108,22 +109,21 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
-//builder.Services.AddScoped<ActivityPubService>(); removing this for now just to be able to test locally
+builder.Services.AddScoped<ActivityPubService>();
 builder.Services.AddScoped<NeptuneFollowRepository>();
-builder.Services.AddSingleton<IGremlinClient>(sp =>
+builder.Services.AddSingleton<IDriver>(sp =>
 {
-    var gremlinServer = new GremlinServer(
-        hostname: "localhost", // this should be the Neptune endpoint
-        port: 8182,
-        enableSsl: false // to be set to true in production
-    );
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var uri = configuration["Neo4j:Uri"];
+    var user = configuration["Neo4j:Username"];
+    var password = configuration["Neo4j:Password"];
 
-    return new GremlinClient(
-        gremlinServer,
-        new GraphSON3Reader(),
-        new GraphSON3Writer(),
-         Gremlin.Net.Structure.IO.SerializationTokens.GraphSON3MimeType
-    );
+    if (string.IsNullOrEmpty(uri) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password))
+    {
+        throw new InvalidOperationException("Neo4j connection settings are not configured.");
+    }
+
+    return GraphDatabase.Driver(uri, AuthTokens.Basic(user, password));
 });
 builder.Services.AddSingleton<RecommendationService>();
 
