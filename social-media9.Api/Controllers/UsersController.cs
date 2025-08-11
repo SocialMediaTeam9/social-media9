@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using social_media9.Api.Services.DynamoDB;
 using System.Net;
+using social_media9.Api.Dtos;
 
 namespace social_media9.Api.Controllers
 {
@@ -239,7 +240,7 @@ namespace social_media9.Api.Controllers
 
         [HttpPost("{username}/follow")]
         [Authorize]
-        public async Task<IActionResult> FollowUser(string username)
+        public async Task<IActionResult> FollowUser(string username,  [FromBody] FollowRequestDto request)
         {
             try
             {
@@ -256,6 +257,7 @@ namespace social_media9.Api.Controllers
                 };
 
                 await _mediator.Send(command);
+                await _followRepository.FollowAsync(GetCurrentUserId(), request.UserId, currentUserUsername, username);
                 return Ok(new { message = "Successfully followed user." });
             }
             catch (ApplicationException ex)
