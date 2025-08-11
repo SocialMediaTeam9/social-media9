@@ -16,17 +16,22 @@ public class NeptuneFollowRepository : IFollowRepository
 
     public async Task FollowAsync(string followerId, string followingId)
     {
-        var query = $@"
-        g.V().has('user', 'id', '{followerId}')
-          .as('follower')
-          .V().has('user', 'id', '{followingId}')
-          .coalesce(
-              inE('follows').where(outV().as('follower')),
-              addE('follows').from('follower').property('createdAt', '{DateTime.UtcNow:o}')
-          )
-    ";
+        await AddUserAsync(followerId, followerId); //this has to be changed to the actual username!!!!!
+        await AddUserAsync(followingId, followingId);
 
-        await _client.SubmitAsync<dynamic>(query);
+        var query = @"g.V().has('user', 'id', p_followerId).as('follower')
+                       .V().has('user', 'id', p_followingId).as('following')
+                       .coalesce(__.inE('follows').where(outV().as('follower')),
+                                 addE('follows').from('follower').to('following').property('createdAt', p_createdAt))";
+
+        var bindings = new Dictionary<string, object>
+        {
+            { "p_followerId", followerId },
+            { "p_followingId", followingId },
+            { "p_createdAt", DateTime.UtcNow }
+        };
+
+        await _client.SubmitAsync<dynamic>(query, bindings);
     }
 
     public Task<IEnumerable<Follow>> GetFollowersAsync(string userId)
