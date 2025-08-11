@@ -1,9 +1,19 @@
-
+using Gremlin.Net.Driver;
+using Gremlin.Net.Structure;
+using Gremlin.Net.Structure.IO.GraphSON;
+using Gremlin.Net.Process.Traversal;
 using social_media9.Api.Models;
 using social_media9.Api.Repositories.Interfaces;
 
 public class NeptuneFollowRepository : IFollowRepository
 {
+    private readonly IGremlinClient _client;
+
+    public NeptuneFollowRepository(IGremlinClient gremlinClient)
+    {
+        _client = gremlinClient ?? throw new ArgumentNullException(nameof(gremlinClient));
+    }
+
     public Task FollowAsync(string followerId, string followingId)
     {
         throw new NotImplementedException();
