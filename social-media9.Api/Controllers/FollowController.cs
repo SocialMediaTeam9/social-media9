@@ -14,12 +14,12 @@ public class FollowController : ControllerBase
         _followRepository = followRepository;
     }
 
-    [HttpPost("{followerId}/follow/{followingId}")]
+    /*[HttpPost("{followerId}/follow/{followingId}")]
     public async Task<IActionResult> Follow(string followerId, string followingId)
     {
         await _followRepository.FollowAsync(followerId, followingId);
         return Ok(new { message = "Followed successfully" });
-    }
+    }*/
 
     [HttpDelete("{followerId}/unfollow/{followingId}")]
     public async Task<IActionResult> Unfollow(string followerId, string followingId)

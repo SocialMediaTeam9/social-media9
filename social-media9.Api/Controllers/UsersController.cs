@@ -29,11 +29,13 @@ namespace social_media9.Api.Controllers
         private readonly ILogger<FederationController> _logger;
         private readonly DynamoDbService _dbService;
         private readonly ICryptoService _cryptoService;
+        private readonly IFollowRepository _followRepository;
 
 
         public UsersController(
             IMediator mediator,
             IUserRepository userRepository,
+            IFollowRepository followRepository,
             IJwtGenerator jwtGenerator,
             IConfiguration config,
             IS3StorageService s3StorageService,
@@ -41,6 +43,7 @@ namespace social_media9.Api.Controllers
         {
             _mediator = mediator;
             _userRepository = userRepository;
+            _followRepository = followRepository;
             _jwtGenerator = jwtGenerator;
             _config = config;
             _s3StorageService = s3StorageService;
