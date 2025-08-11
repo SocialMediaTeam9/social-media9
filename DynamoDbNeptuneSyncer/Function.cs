@@ -65,29 +65,18 @@ public class Function : IAsyncDisposable
             switch (itemTypeAttr.S)
             {
                 case "UserProfile":
-                    string userPk;
-
-                    if (newImage.ContainsKey("ActorUrl") && !string.IsNullOrEmpty(newImage["ActorUrl"].S))
-                    {
-                        // Remote
-                        userPk = $"ACTOR#{newImage["ActorUrl"].S}";
-                    }
-                    else
-                    {
-                        // Local — composite
-                        var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "yourdomain.com";
-                        userPk = $"USER#{newImage["Username"].S}@{localDomain}";
-                    }
+                    var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "peerspace.online";
+                    var username = newImage["Username"].S;
+                    var userHandle = username.Contains("@") ? username : $"{username}@{localDomain}";
 
                     cypherQuery = @"
-        MERGE (u:User { pk: $pk })
-        ON CREATE SET u.createdAt = timestamp()
-        SET u.username = $username,
-            u.actorUrl = $actorUrl
-    ";
-                    parameters.Add("pk", userPk);
-                    parameters.Add("username", newImage["Username"].S);
-                    parameters.Add("actorUrl", newImage.ContainsKey("ActorUrl") ? newImage["ActorUrl"].S : null);
+                        MERGE (u:User { handle: $handle })
+                        ON CREATE SET u.createdAt = timestamp()
+                        SET u.displayName = $displayName";
+
+                    parameters.Add("handle", userHandle);
+                    parameters.Add("displayName", newImage["DisplayName"].S);
+
                     break;
                 case "Follow":
                     var followingValue = sk.Replace("FOLLOWS#", "");
