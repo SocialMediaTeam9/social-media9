@@ -51,7 +51,27 @@ public class NeptuneFollowRepository : IFollowRepository
 
     public Task<bool> UnfollowAsync(string followerId, string followingId)
     {
-        throw new NotImplementedException();
+         var checkQuery = $@"
+            g.V().has('user','id','{followerId}')
+            .outE('follows')
+            .where(inV().has('user','id','{followingId}'))
+            .count()
+        ";
+        var countResult = await _client.SubmitAsync<long>(checkQuery);
+        var exists = countResult.FirstOrDefault() > 0;
+
+        if (exists)
+        {
+            var dropQuery = $@"
+                g.V().has('user','id','{followerId}')
+                .outE('follows')
+                .where(inV().has('user','id','{followingId}'))
+                .drop()
+            ";
+            await _client.SubmitAsync<dynamic>(dropQuery);
+        }
+
+        return exists;
     }
     
     public async Task AddUserAsync(string userId, string username)
