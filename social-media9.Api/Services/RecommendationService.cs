@@ -20,11 +20,12 @@ public class RecommendationService : IAsyncDisposable
         await using var session = _driver.AsyncSession();
 
         var currentUserHandle = $"{username}@{"peerspace.online"}";
-        var currentUserPk = $"USER#{username}";
+        var currentUserPk = $"USER#{username}@peerspace.online";
+        var currentUserPkWithoutHandle = $"USER#{username}";
 
         var query = @"
             MATCH (me:User)
-            WHERE me.handle = $currentUserHandle OR me.pk = $currentUserPk OR me.username = $username
+            WHERE me.handle = $currentUserHandle OR me.pk = $currentUserPk or me.pk = $currentUserPkWithoutHandle OR me.username = $username
             
             MATCH (me)-[:FOLLOWS]->(friend:User)-[:FOLLOWS]->(recommendation:User)
             
@@ -40,6 +41,7 @@ public class RecommendationService : IAsyncDisposable
             {
                 currentUserHandle,
                 currentUserPk,
+                currentUserPkWithoutHandle,
                 username
             };
 
