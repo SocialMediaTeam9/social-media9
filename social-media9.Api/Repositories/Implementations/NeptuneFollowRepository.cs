@@ -16,7 +16,7 @@ public class NeptuneFollowRepository : IFollowRepository
 
     public async Task FollowAsync(string followerId, string followingId)
     {
-         var query = $@"
+        var query = $@"
         g.V().has('user', 'id', '{followerId}')
           .as('follower')
           .V().has('user', 'id', '{followingId}')
@@ -26,7 +26,7 @@ public class NeptuneFollowRepository : IFollowRepository
           )
     ";
 
-    await _client.SubmitAsync<dynamic>(query);
+        await _client.SubmitAsync<dynamic>(query);
     }
 
     public Task<IEnumerable<Follow>> GetFollowersAsync(string userId)
@@ -47,5 +47,20 @@ public class NeptuneFollowRepository : IFollowRepository
     public Task<bool> UnfollowAsync(string followerId, string followingId)
     {
         throw new NotImplementedException();
+    }
+    
+    public async Task AddUserAsync(string userId, string username)
+    {
+        var query = @"g.V().has('user', 'id', p_userId).fold()
+                       .coalesce(unfold(),
+                                 addV('user').property('id', p_userId).property('username', p_username))";
+
+        var bindings = new Dictionary<string, object>
+        {
+            { "p_userId", userId },
+            { "p_username", username }
+        };
+
+        await _client.SubmitAsync<dynamic>(query, bindings);
     }
 }
