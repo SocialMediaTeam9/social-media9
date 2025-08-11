@@ -14,9 +14,19 @@ public class NeptuneFollowRepository : IFollowRepository
         _client = gremlinClient ?? throw new ArgumentNullException(nameof(gremlinClient));
     }
 
-    public Task FollowAsync(string followerId, string followingId)
+    public async Task FollowAsync(string followerId, string followingId)
     {
-        throw new NotImplementedException();
+         var query = $@"
+        g.V().has('user', 'id', '{followerId}')
+          .as('follower')
+          .V().has('user', 'id', '{followingId}')
+          .coalesce(
+              inE('follows').where(outV().as('follower')),
+              addE('follows').from('follower').property('createdAt', '{DateTime.UtcNow:o}')
+          )
+    ";
+
+    await _client.SubmitAsync<dynamic>(query);
     }
 
     public Task<IEnumerable<Follow>> GetFollowersAsync(string userId)
