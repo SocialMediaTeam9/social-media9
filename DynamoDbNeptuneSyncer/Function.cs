@@ -43,6 +43,14 @@ public class Function : IAsyncDisposable
 
         foreach (var record in dynamoEvent.Records)
         {
+
+            context.Logger.LogInformation($"--- Processing Record ---");
+            context.Logger.LogInformation($"Event Name: {record.EventName}");
+            context.Logger.LogInformation($"PK: {record.Dynamodb.Keys["PK"].S}");
+            context.Logger.LogInformation($"SK: {record.Dynamodb.Keys["SK"].S}");
+            // Log the entire new image as JSON to see all its attributes
+            context.Logger.LogInformation($"New Image JSON: {JsonSerializer.Serialize(record.Dynamodb.NewImage)}");
+
             if (record.EventName != "INSERT" && record.EventName != "MODIFY") continue;
 
             var newImage = record.Dynamodb.NewImage;
