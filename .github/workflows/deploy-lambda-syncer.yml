@@ -2,7 +2,9 @@ name: Deploy DynamoDB-to-Neo4j Sync Lambda
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - single-table-design
     paths: [ 'DynamoDbNeptuneSyncer/**', '.github/workflows/deploy-neo4j-syncer.yml' ]
   workflow_dispatch:
 
