@@ -68,17 +68,20 @@ public class Function : IAsyncDisposable
                     var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "peerspace.online";
                     var username = newImage["Username"].S;
                     var userHandle = username.Contains("@") ? username : $"{username}@{localDomain}";
+                    var displayName = newImage.TryGetValue("DisplayName", out var dn) ? dn.S : username;
 
                     cypherQuery = @"
-                        MERGE (u:User { pk: $pk })
-                        ON CREATE SET u.createdAt = timestamp()
-                        SET u.displayName = $displayName, u.username = $username,";
+                    MERGE (u:User { pk: $pk })
+                    ON CREATE SET u.createdAt = timestamp()
+                    SET u.username = $username,
+                        u.handle = $handle
+                ";
 
                     parameters.Add("pk", pk);
-                    parameters.Add("handle", userHandle);
                     parameters.Add("username", username);
-
+                    parameters.Add("handle", userHandle);
                     break;
+
                 case "Follow":
                     var followingValue = sk.Replace("FOLLOWS#", "");
 
@@ -106,6 +109,8 @@ public class Function : IAsyncDisposable
 
                     context.Logger.LogInformation($"Creating follow relationship: {followerPk} -> {followingPk}");
 
+
+
                     cypherQuery = @"
         MERGE (follower:User { pk: $followerPk })
         ON CREATE SET follower.createdAt = timestamp()
@@ -122,7 +127,10 @@ public class Function : IAsyncDisposable
             {
                 try
                 {
-                    await session.ExecuteWriteAsync(async tx => await tx.RunAsync(cypherQuery, parameters));
+                    context.Logger.LogInformation($"Cypher: {cypherQuery}");
+                    context.Logger.LogInformation($"Params: {JsonSerializer.Serialize(parameters)}");
+
+                    await session.ExecuteWriteAsync(tx => tx.RunAsync(cypherQuery, parameters));
                     context.Logger.LogInformation($"Successfully executed Cypher for {itemTypeAttr.S}");
                 }
                 catch (Exception ex)
@@ -131,6 +139,15 @@ public class Function : IAsyncDisposable
                 }
             }
         }
+    }
+
+    private static string NormalizePk(string pk)
+    {
+        if (pk.StartsWith("USER#"))
+            return pk;
+        if (pk.Contains("@"))
+            return $"USER#{pk}";
+        return $"USER#{pk}@{Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "peerspace.online"}";
     }
 
     private static string ConvertActorUrlToUserId(string actorUrl)
