@@ -96,7 +96,7 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           localUsername: currentLoggedInUsername,
-          unfollowedActorUrl: `https://your-domain.com/users/${post.authorUsername}`,
+          unfollowedActorUrl: post.authorUsername,
         }),
       });
       if (response) setIsFollowing(false);
