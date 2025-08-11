@@ -38,7 +38,7 @@ public class ProfilesController : ControllerBase
         User? user;
         handle = handle.TrimStart('@');
 
-        if (handle.Contains('@'))
+        if (handle.Contains('@') && handle.Contains("@peerspace.online"))
         {
             user = await _federationService.DiscoverAndCacheUserAsync(handle);
         }

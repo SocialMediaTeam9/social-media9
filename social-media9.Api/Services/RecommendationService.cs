@@ -48,7 +48,7 @@ public class RecommendationService : IAsyncDisposable
             var cursor = await tx.RunAsync(query, parameters);
 
             // 4. The result will be a list of the best available identifiers for the recommended users.
-            return await cursor.ToListAsync(record => record["recommendedIdentifier"].As<string>());
+            return await cursor.ToListAsync(record => record["recommendedIdentifier"].As<string>().Replace("USER#", ""));
         });
 
         return result;
