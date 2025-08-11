@@ -36,39 +36,30 @@ public class NeptuneFollowRepository : IFollowRepository
 
     public async Task<IEnumerable<Follow>> GetFollowersAsync(string userId)
     {
-                var query = $@"
-            g.V().has('user','id','{userId}')
-                 .inE('follows').as('edge')
-                 .outV().as('follower')
-                 .select('follower','edge')
-        ";
+        var query = @"g.V().has('user', 'id', p_userId)
+                         .inE('follows').as('edge')
+                         .outV().as('follower')
+                         .project('follower', 'edge')
+                         .by(valueMap(true))
+                         .by(valueMap(true))";
 
-        var results = await _client.SubmitAsync<dynamic>(query);
+        var bindings = new Dictionary<string, object> { { "p_userId", userId } };
 
+        var results = await _client.SubmitAsync<dynamic>(query, bindings);
+
+        if (results == null) return Enumerable.Empty<Follow>();
+
+        // Create a strongly-typed list to hold the results.
         var follows = new List<Follow>();
-        foreach (var r in results)
+
+        // Iterate through the dynamic results and manually map them.
+        foreach (var result in results)
         {
-            var followerProps = r["follower"];
-            var edgeProps = r["edge"];
-
-            var followerSummary = new UserSummary
+            var follow = MapToFollow(result, isFollower: true, subjectUserId: userId);
+            if (follow != null)
             {
-                UserId = followerProps["id"]?.ToString() ?? string.Empty,
-                Username = followerProps["username"]?.ToString() ?? string.Empty
-            };
-
-            var followingSummary = new UserSummary
-            {
-                UserId = userId,
-                Username = "" // You could hydrate this from a user repo if needed
-            };
-
-            follows.Add(new Follow
-            {
-                FollowerInfo = followerSummary,
-                FollowingInfo = followingSummary,
-                CreatedAt = DateTime.TryParse(edgeProps["createdAt"]?.ToString(), out var dt) ? dt : DateTime.UtcNow
-            });
+                follows.Add(follow);
+            }
         }
 
         return follows;
