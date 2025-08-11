@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
 import { PaginatedPostResponse, Post, PostResponse, UserProfile } from '../types/types';
-import { fetcher, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
+import { fetcher, getPostsByActorUrl, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
 import PostCardAlt from '../components/PostCardAlt';
 
 const ProfilePage: React.FC = () => {
@@ -17,51 +17,55 @@ const ProfilePage: React.FC = () => {
     const loggedInUsername = useMemo(() => localStorage.getItem('username'), []);
     const isOwnProfile = profile?.username === loggedInUsername;
 
-    const usernameToFetch = handle || loggedInUsername; 
+    const usernameToFetch = handle || loggedInUsername;
 
     const navigate = useNavigate();
 
     useEffect(() => {
-    const fetchProfileData = async () => {
-      
-      if (!usernameToFetch) {
-        setError("No user to display. Please log in or specify a user in the URL.");
-        setIsLoading(false);
-        if (!loggedInUsername) {
-            navigate('/');
-        }
-        return;
-      }
+        const fetchProfileData = async () => {
 
-      setIsLoading(true);
-      setError(null);
-      try {
+            if (!usernameToFetch) {
+                setError("No user to display. Please log in or specify a user in the URL.");
+                setIsLoading(false);
+                if (!loggedInUsername) {
+                    navigate('/');
+                }
+                return;
+            }
 
-        const profilePromise = lookupProfile(usernameToFetch);
-        
-        let postsPromise: Promise<PaginatedPostResponse> = getPostsByUsername(usernameToFetch);
-       
-        const [profileData, postsData] = await Promise.all([profilePromise, postsPromise]);
+            setIsLoading(true);
+            setError(null);
+            try {
 
-        setProfile(profileData);
-        setPosts(postsData.items);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load profile.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+                const profileData = await lookupProfile(usernameToFetch);
+                let userPosts: PostResponse[] = [];
+                if (usernameToFetch.includes('@')) {
+                    const encodedActorUrl = encodeURIComponent(profileData.actorUrl);
+                    userPosts = await getPostsByActorUrl(encodedActorUrl);
+                } else {
+                    userPosts = (await getPostsByUsername(usernameToFetch)).items;
+                }
 
-    fetchProfileData();
 
-    }, [usernameToFetch, loggedInUsername, navigate]); 
+                setProfile(profileData);
+                setPosts(userPosts);
+            } catch (err: any) {
+                setError(err.message || 'Failed to load profile.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfileData();
+
+    }, [usernameToFetch, loggedInUsername, navigate]);
 
     const handleFollowToggle = async () => {
         if (!profile || isFollowLoading || isOwnProfile) return;
         setIsFollowLoading(true);
         const isCurrentlyFollowing = profile.isFollowing;
         const newFollowerCount = isCurrentlyFollowing ? profile.followersCount - 1 : profile.followersCount + 1;
-        
+
         setProfile(p => p ? { ...p, isFollowing: !isCurrentlyFollowing, followersCount: newFollowerCount } : null);
         try {
             const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
@@ -73,7 +77,7 @@ const ProfilePage: React.FC = () => {
             setIsFollowLoading(false);
         }
     };
-    
+
     const handleSaveProfile = (updatedProfile: UserProfile) => {
         setProfile(updatedProfile);
         setIsEditing(false);
@@ -88,16 +92,16 @@ const ProfilePage: React.FC = () => {
             {isEditing && isOwnProfile ? (
                 <>
                     <div className="page-header">Edit Profile</div>
-                    <EditProfileForm 
-                        initialProfile={profile} 
+                    <EditProfileForm
+                        initialProfile={profile}
                         onCancel={() => setIsEditing(false)}
                         onSave={handleSaveProfile}
                     />
                 </>
-             ) : (
+            ) : (
                 <>
                     <div className="page-header">{profile.fullName}</div>
-                    <ProfileHeader 
+                    <ProfileHeader
                         profile={profile}
                         isOwnProfile={isOwnProfile}
                         onEditClick={() => setIsEditing(true)}
@@ -105,14 +109,14 @@ const ProfilePage: React.FC = () => {
                         isFollowLoading={isFollowLoading}
                     />
                 </>
-             )}
-            
+            )}
+
             <div className="profile-posts-feed">
                 <h3 className="feed-title">Posts</h3>
                 {posts.length > 0 ? (
                     posts.map(post => <PostCardAlt key={post.postId} post={post} currentLoggedInUsername={loggedInUsername ?? ''} />)
                 ) : (
-                   <p className="p-4 text-gray-400">{!handle?.includes('@') ? "This user hasn't posted anything yet." : "Viewing posts from remote users is not yet supported."}</p>
+                    <p className="p-4 text-gray-400"> This user hasn't posted anything yet.</p>
                 )}
             </div>
         </div>
@@ -128,10 +132,10 @@ const ProfileHeader: React.FC<{
     isFollowLoading: boolean;
 }> = ({ profile, isOwnProfile, onEditClick, onFollowToggle, isFollowLoading }) => (
     <div className="profile-header">
-        <img 
-            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${profile.fullName || profile.username}&background=334155&color=e2e8f0&size=128`} 
-            alt={profile.username} 
-            className="profile-avatar" 
+        <img
+            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${profile.fullName || profile.username}&background=334155&color=e2e8f0&size=128`}
+            alt={profile.username}
+            className="profile-avatar"
         />
         <div className="profile-actions">
             {isOwnProfile ? (
@@ -171,17 +175,17 @@ const EditProfileForm: React.FC<{
         e.preventDefault();
         setIsSaving(true);
         setError(null);
-        
+
         try {
             let profilePictureUrl = initialProfile.profilePictureUrl;
             if (selectedFile) {
                 const { uploadUrl, finalUrl } = await getUploadUrl({
-                  fileName: selectedFile.name, contentType: selectedFile.type
+                    fileName: selectedFile.name, contentType: selectedFile.type
                 });
                 await uploadFileToS3(uploadUrl, selectedFile);
                 profilePictureUrl = finalUrl;
             }
-            
+
             const updatedProfile = await fetcher<UserProfile>(`/api/v1/profiles/me`, {
                 method: 'PUT',
                 body: { fullName, bio, profilePictureUrl },

@@ -7,6 +7,7 @@ using social_media9.Api.Services.Interfaces;
 using System;
 using System.Linq;
 using System.Net.Http.Headers;
+using social_media9.Api.Models.ActivityPub;
 
 namespace social_media9.Api.Services.Implementations
 {
@@ -26,6 +27,108 @@ namespace social_media9.Api.Services.Implementations
         }
 
         private string ExtractUsernameFromActorUrl(string url) => url.Split('/').Last();
+
+        public async Task<(List<PostResponse> Posts, string? NextPageUrl)> GetRemoteUserOutboxPageAsync(
+    string actorUrl,
+    string? pageUrl = null,
+    int maxItems = 20)
+        {
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient("FederationClient");
+                var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+                // 1️⃣ If no pageUrl provided, fetch actor → outbox → first page
+                if (string.IsNullOrEmpty(pageUrl))
+                {
+                    var actorRequest = new HttpRequestMessage(HttpMethod.Get, actorUrl);
+                    actorRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/activity+json"));
+                    var actorHttpResponse = await httpClient.SendAsync(actorRequest);
+                    actorHttpResponse.EnsureSuccessStatusCode();
+
+                    var actorData = await actorHttpResponse.Content.ReadFromJsonAsync<ActorResponse>(jsonOptions);
+                    if (string.IsNullOrEmpty(actorData?.Outbox))
+                        return (new List<PostResponse>(), null);
+
+                    var outboxCollection = await httpClient.GetFromJsonAsync<OrderedCollection>(actorData.Outbox, jsonOptions);
+                    pageUrl = outboxCollection?.First;
+                }
+
+                if (string.IsNullOrEmpty(pageUrl))
+                    return (new List<PostResponse>(), null);
+
+                // 2️⃣ Fetch single page
+                var outboxPage = await httpClient.GetFromJsonAsync<OrderedCollectionPage>(pageUrl, jsonOptions);
+                if (outboxPage?.OrderedItems == null || outboxPage.OrderedItems.Count == 0)
+                    return (new List<PostResponse>(), null);
+
+                var posts = new List<PostResponse>();
+
+                foreach (var item in outboxPage.OrderedItems.Take(maxItems))
+                {
+                    try
+                    {
+                        if (item.TryGetProperty("type", out var typeProp) &&
+                            typeProp.ValueKind == JsonValueKind.String &&
+                            typeProp.GetString() == "Create" &&
+                            item.TryGetProperty("object", out var postObject))
+                        {
+                            if (postObject.ValueKind == JsonValueKind.String)
+                            {
+                                var noteUrl = postObject.GetString();
+                                if (!string.IsNullOrEmpty(noteUrl))
+                                {
+                                    var noteDoc = await httpClient.GetFromJsonAsync<JsonElement>(noteUrl, jsonOptions);
+                                    posts.Add(ParseNoteObjectToPostResponse(noteDoc));
+                                }
+                            }
+                            else if (postObject.ValueKind == JsonValueKind.Object)
+                            {
+                                posts.Add(ParseNoteObjectToPostResponse(postObject));
+                            }
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        _logger.LogWarning(innerEx, "Failed to parse post in remote outbox for {ActorUrl}", actorUrl);
+                    }
+                }
+
+                return (posts, outboxPage.Next);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch remote outbox page for actor {ActorUrl}", actorUrl);
+                return (new List<PostResponse>(), null);
+            }
+        }
+
+
+
+        private PostResponse ParseNoteObjectToPostResponse(JsonElement postObject)
+        {
+            string postId = postObject.TryGetProperty("id", out var id) ? id.GetString() ?? "" : "";
+            string authorUsername = postObject.TryGetProperty("attributedTo", out var author) ? author.GetString()?.Split('/').Last() ?? "" : "";
+            string content = postObject.TryGetProperty("content", out var c) ? c.GetString() ?? "" : "";
+            string createdAtStr = postObject.TryGetProperty("published", out var p) ? p.GetString() ?? "" : "";
+
+            var attachments = new List<string>();
+            if (postObject.TryGetProperty("attachment", out var atts) && atts.ValueKind == JsonValueKind.Array)
+            {
+                attachments.AddRange(atts.EnumerateArray()
+                    .Select(a => a.TryGetProperty("url", out var url) ? url.GetString() : null)
+                    .Where(u => u != null)!);
+            }
+
+            return new PostResponse(
+                PostId: postId,
+                AuthorUsername: authorUsername,
+                Content: content,
+                CreatedAt: DateTime.TryParse(createdAtStr, out var dt) ? dt : DateTime.UtcNow,
+                CommentCount: 0, // We don't fetch remote comment counts in this simple lookup
+                Attachments: attachments
+            );
+        }
 
         private async Task<string?> ResolveInboxUrlAsync(string actorUrl)
         {
@@ -120,7 +223,9 @@ namespace social_media9.Api.Services.Implementations
                     IsRemote = true,
                     ActorUrl = actorData.Id,
                     InboxUrl = actorData.Inbox,
-                    FollowersUrl = actorData.Followers
+                    FollowersUrl = actorData.Followers,
+                    OutboxUrl = actorData.Outbox,
+                    FollowingUrl = actorData.Following
                 };
 
                 await _userRepository.AddUserAsync(newUser);

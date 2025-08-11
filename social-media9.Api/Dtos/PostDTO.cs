@@ -24,8 +24,8 @@ namespace social_media9.Api.Dtos
         public Guid UserId { get; set; }
         public DateTime CreatedAt { get; set; }
     }
-    
-     public class UserProfileDto
+
+    public class UserProfileDto
     {
         public string UserId { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
@@ -37,5 +37,7 @@ namespace social_media9.Api.Dtos
         public DateTime CreatedAt { get; set; }
 
         public bool IsFollowing { get; set; }
+        
+        public string ActorUrl { get; set; } = string.Empty;
     }
 }

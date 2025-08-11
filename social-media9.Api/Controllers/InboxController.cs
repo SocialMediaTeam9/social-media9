@@ -32,6 +32,8 @@ public class InboxController : ControllerBase
                 MessageBody = JsonSerializer.Serialize(activity)
             });
 
+            _logger.LogInformation("Successfully queued activity for user inbox: {Username}", activity);
+
             _logger.LogInformation("Successfully queued activity for user inbox: {Username}", username);
 
             // Return 202 Accepted to the remote server immediately.

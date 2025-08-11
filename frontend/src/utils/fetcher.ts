@@ -70,12 +70,36 @@ export const uploadFileToS3 = async (uploadUrl: string, file: File) => {
 };
 
 export const lookupProfile = (handle: string): Promise<UserProfile> => {
-  const encodedHandle = encodeURIComponent(handle);
-  return fetcher<UserProfile>(`/api/profiles/lookup?handle=${encodedHandle}`);
+    const encodedHandle = encodeURIComponent(handle);
+    return fetcher<UserProfile>(`/api/profiles/lookup?handle=${encodedHandle}`);
 };
 
 export const getPostsByUsername = (username: string): Promise<PaginatedPostResponse> => {
-  return fetcher<PaginatedPostResponse>(`/api/posts/by/${username}`);
+    return fetcher<PaginatedPostResponse>(`/api/posts/by/${username}`);
+};
+
+export const getPostsByActorUrl = (encodedActorUrl: string): Promise<PostResponse[]> => {
+    return fetcher<PostResponse[]>(`/api/federation/outbox?actorUrl=${encodedActorUrl}`);
+};
+
+export const getRecommendedUsers = async (): Promise<UserProfile[]> => {
+    // 1. Get the list of recommended usernames from the graph DB endpoint.
+    const recommendedUsernames = await fetcher<string[]>('/api/recommendations/people-you-may-know');
+
+    if (!recommendedUsernames || recommendedUsernames.length === 0) {
+        return [];
+    }
+
+    // 2. For each username, look up their full profile summary.
+    // We can do this in parallel for great performance.
+    const profilePromises = recommendedUsernames.map(username =>
+        fetcher<UserProfile>(`/api/v1/profiles/lookup?handle=${username}`)
+    );
+
+    const profiles = await Promise.all(profilePromises);
+
+    // Filter out any null results in case a profile lookup failed
+    return profiles.filter(p => p != null) as UserProfile[];
 };
 
 export async function fetcher<T>(
@@ -85,7 +109,7 @@ export async function fetcher<T>(
     try {
         const userId = options?.userId;
         const [baseUrlPart, queryString] = url.split('?');
-        
+
         // Use the direct mapping if available, otherwise fallback to original URL part
         let mappedEndpoint = endpointMapping[baseUrlPart] || baseUrlPart;
 

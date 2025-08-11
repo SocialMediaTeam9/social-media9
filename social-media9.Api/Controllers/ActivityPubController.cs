@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using social_media9.Api.Models.ActivityPub;
 using social_media9.Api.Services.DynamoDB;
 
 [ApiController]
@@ -22,14 +23,14 @@ public class ActivityPubController : ControllerBase
     [HttpGet("/.well-known/webfinger")]
     public async Task<IActionResult> WebFinger([FromQuery] string resource)
     {
-         if (string.IsNullOrEmpty(resource) || !resource.StartsWith("acct:"))
+        if (string.IsNullOrEmpty(resource) || !resource.StartsWith("acct:"))
         {
             return BadRequest("Invalid resource format.");
         }
 
         var parts = resource.Replace("acct:", "").Split('@');
         if (parts.Length != 2) return BadRequest("Invalid resource format.");
-        
+
         var username = parts[0];
         var domain = parts[1];
 
@@ -72,9 +73,17 @@ public class ActivityPubController : ControllerBase
         }
 
         var actorUrl = $"https://{_domainName}/users/{username}";
-        
+
         var actorResponse = new ActorResponse(
-            Context: new List<string> { "https://www.w3.org/ns/activitystreams", "https://w3id.org/security/v1" },
+            Context: new object[]
+                {
+            "https://www.w3.org/ns/activitystreams",
+            new Dictionary<string, object>
+            {
+                ["@language"] = "en"
+            },
+            "https://w3id.org/security/v1"
+        },
             Id: actorUrl,
             Type: "Person",
             PreferredUsername: user.Username,
@@ -83,14 +92,30 @@ public class ActivityPubController : ControllerBase
             Outbox: $"{actorUrl}/outbox",
             Followers: $"{actorUrl}/followers",
             Following: $"{actorUrl}/following",
-            
+
             PublicKey: new ActorPublicKey(
                 Id: $"{actorUrl}#main-key",
                 Owner: actorUrl,
                 PublicKeyPem: user.PublicKeyPem
-            )
+            ),
+            Image: string.IsNullOrEmpty(user.ProfilePictureUrl)
+            ? null
+            : new ActorImage("Image", "image/jpeg", user.ProfilePictureUrl),
+            Summary: user.Bio,
+            ManuallyApprovesFollowers: false,
+            Discoverable: true
+
         );
 
-        return Content(JsonSerializer.Serialize(actorResponse), "application/activity+json");
+        var json = JsonSerializer.Serialize(
+        actorResponse,
+        new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        }
+    );
+
+        return Content(json, "application/activity+json");
     }
 }

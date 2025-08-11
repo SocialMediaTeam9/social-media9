@@ -54,6 +54,9 @@ resource "aws_dynamodb_table" "main" {
 
     projection_type = "ALL"
   }
+
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
 }
 
 resource "aws_elasticache_subnet_group" "redis" {
