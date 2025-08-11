@@ -93,9 +93,18 @@ public class NeptuneFollowRepository : IFollowRepository
         return follows;
     }
 
-    public Task<bool> IsFollowingAsync(string followerId, string followingId)
+    public async Task<bool> IsFollowingAsync(string followerId, string followingId)
     {
-        throw new NotImplementedException();
+        var query = @"g.V().has('user','id', p_followerId).out('follows').has('user','id', p_followingId).hasNext()";
+        
+        var bindings = new Dictionary<string, object>
+        {
+            { "p_followerId", followerId },
+            { "p_followingId", followingId }
+        };
+
+        var result = await _client.SubmitAsync<bool>(query, bindings);
+        return result.FirstOrDefault();
     }
 
     public async Task<bool> UnfollowAsync(string followerId, string followingId)
