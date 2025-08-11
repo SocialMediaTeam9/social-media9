@@ -76,7 +76,7 @@ const ProfilePage: React.FC = () => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      localUsername: currentLoggedInUsername,
+                      localUsername: loggedInUsername,
                       targetUsername: profile.username,
                     }),
                   });
