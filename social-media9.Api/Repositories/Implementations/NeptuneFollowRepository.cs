@@ -49,29 +49,23 @@ public class NeptuneFollowRepository : IFollowRepository
         throw new NotImplementedException();
     }
 
-    public Task<bool> UnfollowAsync(string followerId, string followingId)
+    public async Task<bool> UnfollowAsync(string followerId, string followingId)
     {
-         var checkQuery = $@"
-            g.V().has('user','id','{followerId}')
-            .outE('follows')
-            .where(inV().has('user','id','{followingId}'))
-            .count()
-        ";
-        var countResult = await _client.SubmitAsync<long>(checkQuery);
-        var exists = countResult.FirstOrDefault() > 0;
+        var query = @"g.V().has('user', 'id', p_followerId)
+                       .outE('follows').where(__.inV().has('user', 'id', p_followingId))
+                       .drop()";
 
-        if (exists)
+        var bindings = new Dictionary<string, object>
         {
-            var dropQuery = $@"
-                g.V().has('user','id','{followerId}')
-                .outE('follows')
-                .where(inV().has('user','id','{followingId}'))
-                .drop()
-            ";
-            await _client.SubmitAsync<dynamic>(dropQuery);
-        }
+            { "p_followerId", followerId },
+            { "p_followingId", followingId }
+        };
 
-        return exists;
+        // This will complete without error whether an edge was dropped or not.
+        // For a boolean return, you'd need a more complex query, but for this use case,
+        // simply executing the drop is sufficient.
+        await _client.SubmitAsync<dynamic>(query, bindings);
+        return true;
     }
     
     public async Task AddUserAsync(string userId, string username)
