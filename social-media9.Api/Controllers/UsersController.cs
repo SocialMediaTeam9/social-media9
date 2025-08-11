@@ -234,9 +234,9 @@ namespace social_media9.Api.Controllers
 
         // === FOLLOWING ===
 
-        [HttpPost("{username}/follow")]
+        [HttpPost("follow")]
         [Authorize]
-        public async Task<IActionResult> FollowUser(string username)
+        public async Task<IActionResult> FollowUser([FromBody] FollowDTO followDTO)
         {
             try
             {
@@ -249,7 +249,7 @@ namespace social_media9.Api.Controllers
                 var command = new FollowUserCommand
                 {
                     FollowerUsername = currentUserUsername,
-                    FollowingUsername = username
+                    FollowingUsername = followDTO.targetUsername
                 };
 
                 await _mediator.Send(command);
@@ -269,7 +269,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        [HttpDelete("{userId}/unfollow")]
+        [HttpDelete("unfollow")]
         [Authorize]
         public async Task<IActionResult> UnfollowUser([FromBody] UnfollowUserRequest request)
         {

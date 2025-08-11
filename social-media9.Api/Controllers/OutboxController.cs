@@ -36,7 +36,7 @@ public class OutboxController : ControllerBase
         {
             var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
 
-             if (followers.Count == 0)
+            if (followers.Count == 0)
                 return NotFound();
 
             var pageResponse = new ActivityPubCollectionPage
@@ -95,7 +95,7 @@ public class OutboxController : ControllerBase
         {
             var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
 
-             if (following.Count == 0)
+            if (following.Count == 0)
                 return NotFound();
 
             var pageResponse = new ActivityPubCollectionPage
@@ -162,19 +162,28 @@ public class OutboxController : ControllerBase
         }
         else
         {
-            var collectionResponse = new ActivityPubCollection
+            var (firstPosts, firstNextToken) = await _dbService.GetPostsByUserAsync(username, 15, null);
+
+            var outboxWithItems = new
             {
-                Context = _contextUrls,
-                Id = outboxUrl,
-                Type = "OrderedCollection",
-                TotalItems = user.PostCount,
-                First = $"{outboxUrl}?page=true"
+                @context = _contextUrls,
+                id = outboxUrl,
+                type = "OrderedCollection",
+                totalItems = user.PostCount,
+                first = new
+                {
+                    id = $"{outboxUrl}?page=true",
+                    type = "OrderedCollectionPage",
+                    partOf = outboxUrl,
+                    orderedItems = firstPosts.Select(p => JsonSerializer.Deserialize<object>(p.ActivityJson)!).ToList(),
+                    next = string.IsNullOrEmpty(firstNextToken) ? null : $"{outboxUrl}?page=true&cursor={WebUtility.UrlEncode(firstNextToken)}"
+                }
             };
 
-            return Content(JsonSerializer.Serialize(collectionResponse, _jsonOpts), "application/activity+json");
+            return Content(JsonSerializer.Serialize(outboxWithItems, _jsonOpts), "application/activity+json");
         }
     }
-    
+
     private void ForceActivityJson()
     {
         if (Request.Headers.Accept.Any(a => a.Contains("application/activity+json")))

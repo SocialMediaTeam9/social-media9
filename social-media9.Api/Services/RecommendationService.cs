@@ -18,16 +18,37 @@ public class RecommendationService : IAsyncDisposable
     public async Task<List<string>> GetPeopleYouMayKnowAsync(string username)
     {
         await using var session = _driver.AsyncSession();
+
+        var currentUserHandle = $"{username}@{"peerspace.online"}";
+        var currentUserPk = $"USER#{username}";
+
         var query = @"
-            MATCH (currentUser:User { username: $username })-[:FOLLOWS]->(followed:User)
-            MATCH (followed)-[:FOLLOWS]->(recommendation:User)
-            WHERE NOT (currentUser)-[:FOLLOWS]->(recommendation) AND currentUser <> recommendation
-            RETURN recommendation.username AS recommendedUsername
+            MATCH (me:User)
+            WHERE me.handle = $currentUserHandle OR me.pk = $currentUserPk OR me.username = $username
+            
+            MATCH (me)-[:FOLLOWS]->(friend:User)-[:FOLLOWS]->(recommendation:User)
+            
+            WHERE me <> recommendation AND NOT (me)-[:FOLLOWS]->(recommendation)
+
+            
+            RETURN DISTINCT COALESCE(recommendation.handle, recommendation.username, recommendation.pk) AS recommendedIdentifier
             LIMIT 10";
-        var result = await session.ExecuteReadAsync(async tx => {
-            var cursor = await tx.RunAsync(query, new { username });
-            return await cursor.ToListAsync(record => record["recommendedUsername"].As<string>());
+        var result = await session.ExecuteReadAsync(async tx =>
+        {
+            // 3. Pass all possible identifiers as parameters to the query.
+            var parameters = new
+            {
+                currentUserHandle,
+                currentUserPk,
+                username
+            };
+
+            var cursor = await tx.RunAsync(query, parameters);
+
+            // 4. The result will be a list of the best available identifiers for the recommended users.
+            return await cursor.ToListAsync(record => record["recommendedIdentifier"].As<string>());
         });
+
         return result;
     }
 

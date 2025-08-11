@@ -18,6 +18,8 @@ public class FollowService
 
     private readonly IHttpClientFactory _httpClientFactory;
 
+    private readonly Neo4jService _neo4jService;
+
     public FollowService(
         DynamoDbService dbService,
         IHttpClientFactory httpClientFactory,
@@ -25,7 +27,8 @@ public class FollowService
         IAmazonSQS sqsClient,
         IConfiguration config,
         IFederationService federationService,
-        IHttpClientFactory httpClient
+        IHttpClientFactory httpClient,
+        Neo4jService neo4jService
         )
     {
         _dbService = dbService;
@@ -35,6 +38,7 @@ public class FollowService
         _config = config;
         _federationService = federationService;
         _httpClientFactory = httpClient;
+        _neo4jService = neo4jService;
 
     }
 
@@ -68,10 +72,14 @@ public class FollowService
         
         var dbSuccess = await _dbService.ProcessLocalUserFollowAsync(localFollowerSummary, targetUserSummary);
 
+        _ = _neo4jService.CreateFollowRelationshipAsync(localFollowerSummary, targetUserSummary);
+
         if (!dbSuccess)
         {
             throw new ApplicationException("You are already following this user.");
         }
+        
+        
 
        
         if (targetUser.IsRemote)
@@ -82,7 +90,7 @@ public class FollowService
 
             var deliveryService = new ActivityPubService(httpClient, localFollower.ActorUrl, localFollower.PrivateKeyPem, _config);
 
-           await deliveryService.DeliverActivityAsync(targetUser.InboxUrl, activityDoc);
+            await deliveryService.DeliverActivityAsync(targetUser.InboxUrl, activityDoc);
         }
 
         return true;

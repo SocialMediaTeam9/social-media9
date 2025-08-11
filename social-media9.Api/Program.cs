@@ -107,6 +107,8 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
 builder.Services.AddScoped<ActivityPubService>();
+
+builder.Services.AddSingleton<Neo4jService>();
 builder.Services.AddSingleton<RecommendationService>();
 
 
