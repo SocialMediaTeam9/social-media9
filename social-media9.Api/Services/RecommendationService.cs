@@ -24,7 +24,7 @@ public class RecommendationService : IAsyncDisposable
 
         var query = @"
             MATCH (me:User)
-            WHERE me.handle = $currentUserHandle OR me.pk = $currentUserPk OR me.username = $localUsername
+            WHERE me.handle = $currentUserHandle OR me.pk = $currentUserPk OR me.username = $username
             
             MATCH (me)-[:FOLLOWS]->(friend:User)-[:FOLLOWS]->(recommendation:User)
             
