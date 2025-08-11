@@ -131,7 +131,6 @@ public class NeptuneFollowRepository : IFollowRepository
             following = MapToUserSummary(vertexProps);
         }
 
-        // FIX 3: Use TryGetValue for safety and the correct "createdAt" string key.
         DateTime createdAt = DateTime.MinValue;
         if (edgeProps != null && edgeProps.TryGetValue("createdAt", out var createdAtValue))
         {

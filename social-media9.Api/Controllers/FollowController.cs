@@ -33,4 +33,11 @@ public class FollowController : ControllerBase
         var followers = await _followRepository.GetFollowersAsync(userId);
         return Ok(followers);
     }
+
+    [HttpGet("{userId}/following")]
+    public async Task<IActionResult> GetFollowing(string userId)
+    {
+        var following = await _followRepository.GetFollowingAsync(userId);
+        return Ok(following);
+    }
 }
