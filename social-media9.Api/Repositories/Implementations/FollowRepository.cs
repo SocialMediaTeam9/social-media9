@@ -12,7 +12,7 @@ using social_media9.Api.Services.DynamoDB;
 
 namespace social_media9.Api.Repositories.Implementations
 {
-    public class FollowRepository : IFollowRepository
+    /*public class FollowRepository : IFollowRepository
     {
         private readonly IDynamoDBContext _context;
         private readonly IAmazonDynamoDB _dynamoDbClient;
@@ -156,5 +156,5 @@ namespace social_media9.Api.Repositories.Implementations
             };
             await _dynamoDbClient.UpdateItemAsync(request);
         }
-    }
+    }*/
 }
