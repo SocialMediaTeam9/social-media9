@@ -90,7 +90,7 @@ public class NeptuneFollowRepository : IFollowRepository
         await _client.SubmitAsync<dynamic>(query, bindings);
         return true;
     }
-    
+
     public async Task AddUserAsync(string userId, string username)
     {
         var query = @"g.V().has('user', 'id', p_userId).fold()
@@ -104,5 +104,45 @@ public class NeptuneFollowRepository : IFollowRepository
         };
 
         await _client.SubmitAsync<dynamic>(query, bindings);
+    }
+    
+    private Follow MapToFollow(dynamic result, bool isFollower, string subjectUserId)
+    {
+        var dict = (IDictionary<object, object>)result;
+
+        if (!dict.TryGetValue("edge", out var edgeObj) || !dict.TryGetValue(isFollower ? "follower" : "following", out var vertexObj))
+        {
+            return null;
+        }
+
+        var edgeProps = GetPropertyMap(edgeObj);
+        var vertexProps = GetPropertyMap(vertexObj);
+        
+        UserSummary follower, following;
+        
+        if (isFollower)
+        {
+            follower = MapToUserSummary(vertexProps);
+            following = new UserSummary { UserId = subjectUserId, Username = subjectUserId };
+        }
+        else
+        {
+            follower = new UserSummary { UserId = subjectUserId, Username = subjectUserId };
+            following = MapToUserSummary(vertexProps);
+        }
+        
+        // FIX 3: Use TryGetValue for safety and the correct "createdAt" string key.
+        DateTime createdAt = DateTime.MinValue;
+        if (edgeProps != null && edgeProps.TryGetValue("createdAt", out var createdAtValue))
+        {
+            DateTime.TryParse(GetScalarValue(createdAtValue), out createdAt);
+        }
+
+        return new Follow
+        {
+            FollowerInfo = follower,
+            FollowingInfo = following,
+            CreatedAt = createdAt.ToUniversalTime()
+        };
     }
 }
