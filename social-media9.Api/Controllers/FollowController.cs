@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Peerspace.Api.Queries; // Import the new query
 using social_media9.Api.Queries;
 using System.Threading.Tasks;
 

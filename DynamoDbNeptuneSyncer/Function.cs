@@ -77,7 +77,6 @@ public class Function : IAsyncDisposable
                     parameters.Add("pk", pk);
                     parameters.Add("handle", userHandle);
                     parameters.Add("username", username);
-                    parameters.Add("displayName", newImage["DisplayName"].S);
 
                     break;
                 case "Follow":
