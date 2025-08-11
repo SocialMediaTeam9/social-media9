@@ -132,7 +132,7 @@ public class SqsWorkerService : BackgroundService
                 var followerUsername = ExtractUsernameFromActorUrl(actorUrl);
 
                 // 2️⃣ Skip if already following
-                if (await dbService.IsFollowingAsync(followerUsername, followedUsername))
+                if (await dbService.IsFollowingAsync(followerUsername, actorUrl))
                 {
                     _logger.LogInformation("Already following {FollowedUsername}, skipping Accept send.", followedUsername);
                     break;
@@ -155,7 +155,7 @@ public class SqsWorkerService : BackgroundService
                 if (string.IsNullOrEmpty(followedUserEntity.ActorUrl))
                 {
 
-                    // await dbService.UpdateUserActorUrlAsync(followedUserEntity.Username, followedUserEntity.ActorUrl);
+                    await dbService.UpdateUserActorUrlAsync(followedUserEntity.Username, followedUserEntity.ActorUrl);
                     _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' has no ActorUrl", followedUsername);
                     // break;
                 }

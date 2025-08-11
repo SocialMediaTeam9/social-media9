@@ -36,9 +36,9 @@ namespace social_media9.Api.Models
             return new Follow
             {
                 PK = followerPk,
-                SK = $"FOLLOWS#{following.Username}",
+                SK = $"FOLLOWS#{following.ActorUrl}",
                 GSI1PK = followingPk,
-                GSI1SK = $"FOLLOWED_BY#{follower.Username}",
+                GSI1SK = $"FOLLOWED_BY#{follower.ActorUrl}",
                 FollowerInfo = follower,
                 FollowingInfo = following
             };

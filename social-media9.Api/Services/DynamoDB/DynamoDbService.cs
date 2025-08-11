@@ -85,6 +85,24 @@ public class DynamoDbService
         return await _dbContext.LoadAsync<User>($"USER#{username}", "METADATA");
     }
 
+    // public async Task<bool> UpdateUserActorUrlAsync(string username, string domain, string actorUrl)
+    // {
+    //     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(actorUrl))
+    //         throw new ArgumentException("Username, domain, and actorUrl are required.");
+
+    //     var user = await _dbContext.Users
+    //         .FirstOrDefaultAsync(u => u.Username == username && u.Domain == domain);
+
+    //     if (user == null)
+    //         return false;
+
+    //     user.ActorUrl = actorUrl;
+
+    //     _dbContext.Users.Update(user);
+    //     await _dbContext.SaveChangesAsync();
+    //     return true;
+    // }
+
     /// <summary>
     /// Retrieves a lightweight summary of a user, useful for denormalization.
     /// </summary>
@@ -461,13 +479,13 @@ public class DynamoDbService
         return await _dbContext.LoadAsync<Post>($"POST#{postId}", $"POST#{postId}");
     }
 
-    
+
     public async Task<bool> LikePostAsync(string postId, UserSummary liker)
     {
         var likeEntity = new LikeEntity
         {
             PK = $"POST#{postId}",
-            SK = $"LIKE#{liker.ActorUrl}", // Use ActorUrl for global uniqueness
+            SK = $"LIKE#{liker.ActorUrl}",
             GSI1PK = $"USER#{liker.Username}",
             GSI1SK = $"LIKE#{postId}",
             LikerUsername = liker.Username,
@@ -510,7 +528,7 @@ public class DynamoDbService
         return true;
     }
 
-     // Get a single like
+    // Get a single like
     public async Task<Like?> GetLikeAsync(string postId, string userId)
     {
         return await _dbContext.LoadAsync<Like>(postId, userId);

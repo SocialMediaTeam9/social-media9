@@ -1,32 +1,42 @@
-using Gremlin.Net.Driver;
-using Gremlin.Net.Structure.IO.GraphSON;
+using Neo4j.Driver;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-public class RecommendationService
+public class RecommendationService : IAsyncDisposable
 {
-    private readonly GremlinClient _gremlinClient;
-    private readonly ILogger<RecommendationService> _logger;
+    private readonly IDriver _driver;
 
-
-    public RecommendationService(IConfiguration config, ILogger<RecommendationService> logger)
+    public RecommendationService(IConfiguration config)
     {
-
-        _logger = logger;
-        var endpoint = config["Neptune:Endpoint"] ?? throw new InvalidOperationException("Neptune:Endpoint not configured.");
-        var port = int.Parse(config["Neptune:Port"] ?? "8182");
-
-        var gremlinServer = new GremlinServer(endpoint, port, enableSsl: true);
-
-        _gremlinClient = new GremlinClient(gremlinServer, new GraphSON2Reader(), new GraphSON2Writer());
+        var uri = config["Neo4j:Uri"]!;
+        var user = config["Neo4j:Username"]!;
+        var password = config["Neo4j:Password"]!;
+        _driver = GraphDatabase.Driver(uri, AuthTokens.Basic(user, password));
     }
 
     public async Task<List<string>> GetPeopleYouMayKnowAsync(string username)
     {
-        var userPk = $"USER#{username}";
+        await using var session = _driver.AsyncSession();
+        var query = @"
+            MATCH (currentUser:User { username: $username })-[:FOLLOWS]->(followed:User)
+            MATCH (followed)-[:FOLLOWS]->(recommendation:User)
+            WHERE NOT (currentUser)-[:FOLLOWS]->(recommendation) AND currentUser <> recommendation
+            RETURN recommendation.username AS recommendedUsername
+            LIMIT 10";
+        var result = await session.ExecuteReadAsync(async tx => {
+            var cursor = await tx.RunAsync(query, new { username });
+            return await cursor.ToListAsync(record => record["recommendedUsername"].As<string>());
+        });
+        return result;
+    }
 
-
-        var query = $"g.V('{userPk}').out('FOLLOWS').as('followed').out('FOLLOWS').where(neq('followed')).where(values('username')).dedup().limit(10).values('username')";
-
-        var result = await _gremlinClient.SubmitAsync<string>(query);
-        return result.ToList();
+    public async ValueTask DisposeAsync()
+    {
+        if (_driver != null)
+        {
+            await _driver.DisposeAsync();
+        }
+        GC.SuppressFinalize(this);
     }
 }

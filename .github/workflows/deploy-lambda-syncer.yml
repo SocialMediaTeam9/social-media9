@@ -1,0 +1,48 @@
+name: Deploy DynamoDB-to-Neo4j Sync Lambda
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'DynamoDbNeptuneSyncer/**', '.github/workflows/deploy-neo4j-syncer.yml' ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  LAMBDA_PROJECT_PATH: 'DynamoDbNeptuneSyncer/DynamoDbNeptuneSyncer.csproj'
+  FUNCTION_NAME: 'nexusphere-mvp-dynamodb-to-neo4j-syncer'
+  S3_BUCKET_NAME: ${{ secrets.LAMBDA_DEPLOY_BUCKET }}
+  S3_KEY: 'dynamodb-neo4j-syncer.zip'
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build and Publish Lambda
+        run: dotnet publish ${{ env.LAMBDA_PROJECT_PATH }} -c Release -o ./publish
+      - name: Zip Lambda Package
+        run: |
+          cd ./publish
+          zip -r ../deployment.zip .
+      - name: Upload to S3
+        run: aws s3 cp deployment.zip s3://${{ env.S3_BUCKET_NAME }}/${{ env.S3_KEY }}
+      - name: Deploy to AWS Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --s3-bucket ${{ env.S3_BUCKET_NAME }} \
+            --s3-key ${{ env.S3_KEY }}
