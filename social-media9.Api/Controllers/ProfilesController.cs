@@ -46,7 +46,7 @@ public class ProfilesController : ControllerBase
         {
 
             var usernna = handle.Contains('@') ? handle.Split("@")[0] : handle;
-            user = await _dbService.GetUserProfileByUsernameAsync(handle);
+            user = await _dbService.GetUserProfileByUsernameAsync(usernna);
         }
 
         if (user == null)
