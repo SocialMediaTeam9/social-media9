@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Peerspace.Api.Controllers
 {
     [ApiController]
-    [Route("/api/v1/follow")] // The base route for this controller
+    [Route("/api/follow")] // The base route for this controller
     [Authorize] // All actions related to following require a logged-in user
     public class FollowController : ControllerBase
     {
