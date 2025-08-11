@@ -66,39 +66,28 @@ public class NeptuneFollowRepository : IFollowRepository
 
     public async Task<IEnumerable<Follow>> GetFollowingAsync(string userId)
     {
-        var query = $@"
-            g.V().has('user','id','{userId}')
-                 .outE('follows').as('edge')
-                 .inV().as('following')
-                 .select('following','edge')
-        ";
+        var query = @"g.V().has('user', 'id', p_userId)
+                         .outE('follows').as('edge')
+                         .inV().as('following')
+                         .project('following', 'edge')
+                         .by(valueMap(true))
+                         .by(valueMap(true))";
 
-        var results = await _client.SubmitAsync<dynamic>(query);
+        var bindings = new Dictionary<string, object> { { "p_userId", userId } };
+
+        var results = await _client.SubmitAsync<dynamic>(query, bindings);
+
+        if (results == null) return Enumerable.Empty<Follow>();
 
         var follows = new List<Follow>();
-        foreach (var r in results)
+
+        foreach (var result in results)
         {
-            var followingProps = r["following"];
-            var edgeProps = r["edge"];
-
-            var followerSummary = new UserSummary
+            var follow = MapToFollow(result, isFollower: false, subjectUserId: userId);
+            if (follow != null)
             {
-                UserId = userId,
-                Username = "" // You could hydrate this from a user repo if needed
-            };
-
-            var followingSummary = new UserSummary
-            {
-                UserId = followingProps["id"]?.ToString() ?? string.Empty,
-                Username = followingProps["username"]?.ToString() ?? string.Empty
-            };
-
-            follows.Add(new Follow
-            {
-                FollowerInfo = followerSummary,
-                FollowingInfo = followingSummary,
-                CreatedAt = DateTime.TryParse(edgeProps["createdAt"]?.ToString(), out var dt) ? dt : DateTime.UtcNow
-            });
+                follows.Add(follow);
+            }
         }
 
         return follows;
