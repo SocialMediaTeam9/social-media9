@@ -20,16 +20,16 @@ interface PostCardProps {
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) => {
-    // Existing follow-related state
+
     const [isFollowing, setIsFollowing] = useState<boolean>(false);
     const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
     const [actionError, setActionError] = useState<string | null>(null);
 
-    // New like-related state
+   
     const [likeCount, setLikeCount] = useState(post.likeCount);
     const [isLiked, setIsLiked] = useState(post.isLikedByUser);
 
-    // Existing follow logic (unchanged)
+   
     useEffect(() => {
         const checkFollowStatus = async () => {
             if (currentLoggedInUsername === post.authorUsername) {
@@ -56,7 +56,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
         }
     }, [post.authorUsername, currentLoggedInUsername]);
 
-    // Existing follow handlers (unchanged)
+    
     const handleFollow = async () => {
         setIsActionLoading(true);
         setActionError(null);
@@ -107,7 +107,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, currentLoggedInUsername }) =>
         }
     };
 
-    // New like handler
+
     const handleLikeChange = (newIsLiked: boolean, newLikeCount: number) => {
         setIsLiked(newIsLiked);
         setLikeCount(newLikeCount);

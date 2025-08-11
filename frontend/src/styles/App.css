@@ -15,6 +15,7 @@ button {
 .min-h-screen {
   min-height: 100vh;
 }
+
 .login-container {
   background-color: #0f172a;
   display: flex;
@@ -77,26 +78,31 @@ button {
   font-weight: 500;
 }
 
-/* --- Dashboard Layout --- */
 .flex {
   display: flex;
 }
+
 .flex-1 {
   flex: 1 1 0%;
 }
+
 .h-screen {
   height: 100vh;
 }
+
 .sticky {
   position: sticky;
   top: 0;
 }
+
 .border-r {
   border-right: 1px solid #374151;
 }
+
 .border-b {
   border-bottom: 1px solid #374151;
 }
+
 .p-6 {
   padding: 1.5rem;
 }
@@ -118,7 +124,6 @@ button {
   border-left: 1px solid #374151;
 }
 
-/* --- Sidebar --- */
 .sidebar {
   background-color: #111827;
   padding: 1.5rem;
@@ -166,7 +171,6 @@ button {
   color: white;
 }
 
-/* --- Page Header --- */
 .page-header {
   font-size: 1.5rem;
   font-weight: 700;
@@ -178,7 +182,6 @@ button {
   z-index: 10;
 }
 
-/* --- Post Card --- */
 .post-card {
   border-bottom: 1px solid #374151;
   padding: 1rem;
@@ -224,7 +227,6 @@ button {
   line-height: 1.5;
 }
 
-/* --- Right Sidebar --- */
 .right-sidebar {
   width: 20rem;
   padding: 1.5rem;
@@ -237,7 +239,6 @@ button {
   color: #e5e7eb;
 }
 
-/* --- Responsive --- */
 @media (max-width: 1024px) {
   .right-sidebar {
     display: none;
@@ -249,12 +250,18 @@ button {
 
 @media (max-width: 768px) {
   .sidebar {
-    position: static;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
     flex-direction: row;
     justify-content: space-around;
-    padding: 1rem 0.5rem;
+    padding: 0.5rem 0;
     height: auto;
-    width: 100%;
+    border-top: 1px solid #374151;
+    border-right: none;
+    background-color: #111827;
+    z-index: 50;
   }
   .sidebar h2 {
     display: none;
@@ -264,6 +271,9 @@ button {
   }
   .sidebar button svg {
     margin-right: 0;
+  }
+  .main-content {
+    padding-bottom: 4rem;
   }
   .right-sidebar {
     display: none;
@@ -294,7 +304,7 @@ button {
   align-items: center;
   padding: 0.75rem 1rem;
   border-top: 1px solid #374151;
-   display: flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
 }
@@ -302,6 +312,7 @@ button {
 .char-counter {
   color: #9ca3af;
 }
+
 .char-counter.over-limit {
   color: #f87171;
 }
@@ -311,7 +322,6 @@ button {
   color: white;
   padding: 0.5rem 1.25rem;
   border-radius: 9999px;
-  /* ... etc ... */
 }
 
 .footer-right {
@@ -325,7 +335,6 @@ button {
   padding-left: 1rem;
   color: #f87171;
 }
-
 
 .image-preview-container {
   position: relative;
@@ -347,7 +356,7 @@ button {
   padding: 0.5rem;
   border-radius: 50%;
   transition: background-color 0.2s ease;
-  color: #2563eb; /* Blue icon color */
+  color: #2563eb;
 }
 
 .icon-button:hover {
@@ -405,7 +414,6 @@ button {
   color: #f3f4f6;
 }
 
-
 .profile-page .page-header {
   font-size: 1.25rem;
   font-weight: 800;
@@ -420,11 +428,11 @@ button {
 
 .profile-avatar {
   position: absolute;
-  top: -48px; 
+  top: -48px;
   left: 1.5rem;
   width: 128px;
   height: 128px;
-  border-radius: 9999px; 
+  border-radius: 9999px;
   border: 4px solid #0f172a;
   background-color: #334155;
   object-fit: cover;
@@ -492,12 +500,6 @@ button {
   display: flex;
   gap: 1.5rem;
   color: #94a3b8;
-}
-
-.stat-link {
-  text-decoration: none;
-  color: inherit;
-  transition: color 0.2s ease;
 }
 
 .stat-link:hover {
@@ -603,7 +605,7 @@ button {
 
 .recommendations-list .user-list-card {
   padding: 0.75rem;
-  border-bottom: none; 
+  border-bottom: none;
   border-radius: 0.5rem;
 }
 
@@ -611,7 +613,6 @@ button {
   width: 40px;
   height: 40px;
 }
-
 
 .user-list-card-link {
   display: block;
@@ -628,7 +629,7 @@ button {
 }
 
 .user-list-card:hover {
-  background-color: #334155; 
+  background-color: #334155;
 }
 
 .user-list-avatar {
@@ -637,14 +638,13 @@ button {
   border-radius: 50%;
   margin-right: 0.75rem;
   background-color: #4b5563;
-  object-fit: cover; 
-  flex-shrink: 0; 
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .user-list-info {
-  flex-grow: 1; 
-  
-  min-width: 0; 
+  flex-grow: 1;
+  min-width: 0;
 }
 
 .user-list-fullname {

@@ -3,11 +3,11 @@ import { fetcher } from '../utils/fetcher';
 import PostCardAlt from '../components/PostCardAlt';
 import { PaginatedPostResponse, PostResponse } from '../types/types';
 
-// --- These types match your C# DTOs from TimelineService ---
+
 
 
 const ExplorePage: React.FC = () => {
-    // --- State management for the dynamic feed ---
+    
     const [posts, setPosts] = useState<PostResponse[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ const ExplorePage: React.FC = () => {
 
     const observer = useRef<IntersectionObserver | null>(null);
 
-    // --- Infinite scroll logic ---
+
     const lastPostElementRef = useCallback((node: HTMLDivElement) => {
         if (isLoading) return;
         if (observer.current) observer.current.disconnect();
@@ -32,14 +32,14 @@ const ExplorePage: React.FC = () => {
         if (node) observer.current.observe(node);
     }, [isLoading, hasMore]);
 
-    // --- API call logic ---
+
     const loadMorePosts = useCallback(async () => {
         if (isLoading || !hasMore) return;
         setIsLoading(true);
         setError(null);
 
         try {
-            // This endpoint calls your TimelineController
+         
             let endpoint = '/api/timeline/public?limit=20';
             if (cursor) {
                 endpoint += `&cursor=${encodeURIComponent(cursor)}`;
@@ -58,12 +58,12 @@ const ExplorePage: React.FC = () => {
         }
     }, [cursor, isLoading, hasMore]);
 
-    // --- Initial data load ---
+
     useEffect(() => {
         loadMorePosts();
     }, []);
 
-    // --- Dynamic rendering logic ---
+  
     return (
         <div className="page-content" style={{ padding: '0 1rem' }}>
             <h1 className="text-2xl font-bold mb-4 text-white sticky top-0 bg-gray-900 bg-opacity-80 backdrop-blur-sm p-4 z-10">

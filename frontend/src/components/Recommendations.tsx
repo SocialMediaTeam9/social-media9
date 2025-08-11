@@ -24,7 +24,7 @@ const Recommendations: React.FC = () => {
     };
 
     fetchRecommendations();
-  }, []); // Empty array means this runs only once when the component mounts.
+  }, []); 
 
   const renderContent = () => {
     if (isLoading) {

@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import PostCard from '../components/PostCard';
-import { PaginatedPostResponse, Post, PostResponse, UserProfile } from '../types/types';
-import { fetcher, getPostsByActorUrl, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
 import PostCardAlt from '../components/PostCardAlt';
+import { PaginatedPostResponse, PostResponse, UserProfile } from '../types/types';
+import { fetcher, getPostsByActorUrl, getPostsByUsername, getUploadUrl, lookupProfile, uploadFileToS3 } from '../utils/fetcher';
+import { useGoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 
 const ProfilePage: React.FC = () => {
     const { handle } = useParams<{ handle: string }>();
@@ -16,14 +17,32 @@ const ProfilePage: React.FC = () => {
 
     const loggedInUsername = useMemo(() => localStorage.getItem('username'), []);
     const isOwnProfile = profile?.username === loggedInUsername;
-
     const usernameToFetch = handle || loggedInUsername;
-
     const navigate = useNavigate();
+
+    // Google Login
+    const login = useGoogleLogin({
+        onSuccess: async tokenResponse => {
+            try {
+                const res = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: {
+                        Authorization: `Bearer ${tokenResponse.access_token}`,
+                    },
+                });
+
+                const { name, picture, email } = res.data;
+                localStorage.setItem('profilePictureUrl', picture);
+                localStorage.setItem('fullName', name);
+                localStorage.setItem('email', email);
+            } catch (err) {
+                console.error('Failed to fetch Google profile:', err);
+            }
+        },
+        onError: error => console.error('Google Login Failed:', error),
+    });
 
     useEffect(() => {
         const fetchProfileData = async () => {
-
             if (!usernameToFetch) {
                 setError("No user to display. Please log in or specify a user in the URL.");
                 setIsLoading(false);
@@ -36,9 +55,9 @@ const ProfilePage: React.FC = () => {
             setIsLoading(true);
             setError(null);
             try {
-
                 const profileData = await lookupProfile(usernameToFetch);
                 let userPosts: PostResponse[] = [];
+
                 if (usernameToFetch.includes('@')) {
                     const encodedActorUrl = encodeURIComponent(profileData.actorUrl);
                     userPosts = await getPostsByActorUrl(encodedActorUrl);
@@ -46,6 +65,11 @@ const ProfilePage: React.FC = () => {
                     userPosts = (await getPostsByUsername(usernameToFetch)).items;
                 }
 
+                // Override profile picture with Google one if available
+                const googlePic = localStorage.getItem('profilePictureUrl');
+                if (googlePic && isOwnProfile) {
+                    profileData.profilePictureUrl = googlePic;
+                }
 
                 setProfile(profileData);
                 setPosts(userPosts);
@@ -57,8 +81,7 @@ const ProfilePage: React.FC = () => {
         };
 
         fetchProfileData();
-
-    }, [usernameToFetch, loggedInUsername, navigate]);
+    }, [usernameToFetch, loggedInUsername, navigate, isOwnProfile]);
 
     const handleFollowToggle = async () => {
         if (!profile || isFollowLoading || isOwnProfile) return;
@@ -123,7 +146,6 @@ const ProfilePage: React.FC = () => {
     );
 };
 
-
 const ProfileHeader: React.FC<{
     profile: UserProfile;
     isOwnProfile: boolean;
@@ -133,7 +155,11 @@ const ProfileHeader: React.FC<{
 }> = ({ profile, isOwnProfile, onEditClick, onFollowToggle, isFollowLoading }) => (
     <div className="profile-header">
         <img
-            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${profile.fullName || profile.username}&background=334155&color=e2e8f0&size=128`}
+            src={
+                profile.profilePictureUrl ||
+                localStorage.getItem('profilePictureUrl') ||
+                `https://ui-avatars.com/api/?name=${profile.fullName || profile.username}&background=334155&color=e2e8f0&size=128`
+            }
             alt={profile.username}
             className="profile-avatar"
         />
@@ -158,7 +184,6 @@ const ProfileHeader: React.FC<{
     </div>
 );
 
-
 const EditProfileForm: React.FC<{
     initialProfile: UserProfile,
     onCancel: () => void,
@@ -177,19 +202,24 @@ const EditProfileForm: React.FC<{
         setError(null);
 
         try {
-            let profilePictureUrl = initialProfile.profilePictureUrl;
+            let profilePictureUrl = initialProfile.profilePictureUrl || localStorage.getItem('profilePictureUrl');
             if (selectedFile) {
                 const { uploadUrl, finalUrl } = await getUploadUrl({
                     fileName: selectedFile.name, contentType: selectedFile.type
                 });
                 await uploadFileToS3(uploadUrl, selectedFile);
-                profilePictureUrl = finalUrl;
-            }
+                profilePictureUrl = finalUrl;            }
 
             const updatedProfile = await fetcher<UserProfile>(`/api/v1/profiles/me`, {
                 method: 'PUT',
                 body: { fullName, bio, profilePictureUrl },
             });
+
+       
+            if (profilePictureUrl) {
+                localStorage.setItem('profilePictureUrl', profilePictureUrl);
+            }
+
             onSave(updatedProfile);
         } catch (err: any) {
             setError(err.message || "Failed to save profile.");
@@ -203,20 +233,40 @@ const EditProfileForm: React.FC<{
             <form onSubmit={handleSave} className="edit-profile-form space-y-4">
                 <div>
                     <label className="block text-gray-400 text-sm font-bold mb-2">Profile Picture</label>
-                    <input type="file" ref={fileInputRef} onChange={e => setSelectedFile(e.target.files?.[0] || null)} accept="image/*" />
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={e => setSelectedFile(e.target.files?.[0] || null)}
+                        accept="image/*"
+                        className="text-white"
+                    />
                 </div>
                 <div>
                     <label className="block text-gray-400 text-sm font-bold mb-2">Full Name</label>
-                    <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full bg-gray-700 text-white rounded p-2" />
+                    <input
+                        type="text"
+                        value={fullName}
+                        onChange={e => setFullName(e.target.value)}
+                        className="w-full bg-gray-700 text-white rounded p-2"
+                    />
                 </div>
                 <div>
                     <label className="block text-gray-400 text-sm font-bold mb-2">Bio</label>
-                    <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full bg-gray-700 text-white rounded p-2" rows={4} />
+                    <textarea
+                        value={bio}
+                        onChange={e => setBio(e.target.value)}
+                        className="w-full bg-gray-700 text-white rounded p-2"
+                        rows={4}
+                    />
                 </div>
 
                 <div className="flex space-x-4">
-                    <button type="submit" disabled={isSaving} className="profile-button-primary">{isSaving ? 'Saving...' : 'Save Changes'}</button>
-                    <button type="button" onClick={onCancel} className="profile-button-secondary">Cancel</button>
+                    <button type="submit" disabled={isSaving} className="profile-button-primary">
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button type="button" onClick={onCancel} className="profile-button-secondary">
+                        Cancel
+                    </button>
                 </div>
                 {error && <p className="text-red-500 mt-2">{error}</p>}
             </form>
@@ -229,3 +279,4 @@ export default ProfilePage;
 function fetchProfileData() {
     throw new Error('Function not implemented.');
 }
+

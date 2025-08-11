@@ -14,7 +14,7 @@ const PostCardAlt: React.FC<PostCardProps> = ({ post, currentLoggedInUsername })
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Ensure defaults to 0 if undefined
+ 
   const [likeCount, setLikeCount] = useState<number>(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByUser);
 

@@ -118,7 +118,7 @@ const CreatePostPage: React.FC = () => {
                 />
                 <button 
                   type="button" 
-                  // This onClick handler programmatically clicks the hidden input.
+                
                   onClick={() => fileInputRef.current?.click()} 
                   className="icon-button" 
                   disabled={isUploading || isSubmitting}
