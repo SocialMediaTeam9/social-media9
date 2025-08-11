@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
-namespace DynamoDbNeo4jSyncer;
+namespace DynamoDbNeptuneSyncer;
 
 public class Function : IAsyncDisposable
 {
