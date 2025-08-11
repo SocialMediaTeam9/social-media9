@@ -42,10 +42,17 @@ public class FollowController : ControllerBase
         return Ok(followers);
     }
 
-    [HttpGet("{userId}/following")]
+    /*[HttpGet("{userId}/following")]
     public async Task<IActionResult> GetFollowing(string userId)
     {
         var following = await _followRepository.GetFollowingAsync(userId);
+        return Ok(following);
+    }*/
+    [HttpGet("{userId}/following")]
+    [ProducesResponseType(typeof(IEnumerable<UserSummaryDto>), 200)]
+    public async Task<IActionResult> GetFollowing(string userId)
+    {
+        var following = await _followRepository.GetFollowingAsUserSummariesAsync(userId);
         return Ok(following);
     }
 }

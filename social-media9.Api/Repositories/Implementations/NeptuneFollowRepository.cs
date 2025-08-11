@@ -240,5 +240,34 @@ public class NeptuneFollowRepository : IFollowRepository
         return userSummaries;
     }
     
+    public async Task<IEnumerable<UserSummaryDto>> GetFollowingAsUserSummariesAsync(string userId)
+    {
+        // The only change from the followers query is using .out() instead of .in()
+        var query = @"g.V().has('user', 'id', p_userId)
+                         .out('follows')
+                         .valueMap('id', 'username', 'profilePictureUrl')";
 
+        var bindings = new Dictionary<string, object> { { "p_userId", userId } };
+
+        var results = await _client.SubmitAsync<dynamic>(query, bindings);
+
+        if (results == null) return Enumerable.Empty<UserSummaryDto>();
+
+        var userSummaries = new List<UserSummaryDto>();
+
+        foreach (var propertyMap in results)
+        {
+            var dict = (IDictionary<object, object>)propertyMap;
+            userSummaries.Add(new UserSummaryDto
+            {
+                UserId = GetScalarValue(dict["id"]),
+                Username = GetScalarValue(dict["username"]),
+                ProfilePictureUrl = dict.ContainsKey("profilePictureUrl")
+                                    ? GetScalarValue(dict["profilePictureUrl"])
+                                    : null
+            });
+        }
+
+        return userSummaries;
+    }
 }

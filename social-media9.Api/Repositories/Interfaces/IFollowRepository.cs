@@ -20,7 +20,7 @@ namespace social_media9.Api.Repositories.Interfaces
         Task<bool> IsFollowingAsync(string followerId, string followingId);
 
         Task<IEnumerable<UserSummaryDto>> GetFollowersAsUserSummariesAsync(string userId);
-        
+        Task<IEnumerable<UserSummaryDto>> GetFollowingAsUserSummariesAsync(string userId);
     }
 
 }
