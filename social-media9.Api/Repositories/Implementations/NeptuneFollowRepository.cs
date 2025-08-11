@@ -4,6 +4,8 @@ using Gremlin.Net.Structure.IO.GraphSON;
 using Gremlin.Net.Process.Traversal;
 using social_media9.Api.Models;
 using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Dtos;
+
 
 public class NeptuneFollowRepository : IFollowRepository
 {
@@ -49,7 +51,7 @@ public class NeptuneFollowRepository : IFollowRepository
 
         if (results == null) return Enumerable.Empty<Follow>();
 
-        
+
         var follows = new List<Follow>();
 
         foreach (var result in results)
@@ -96,7 +98,7 @@ public class NeptuneFollowRepository : IFollowRepository
     public async Task<bool> IsFollowingAsync(string followerId, string followingId)
     {
         var query = @"g.V().has('user','id', p_followerId).out('follows').has('user','id', p_followingId).hasNext()";
-        
+
         var bindings = new Dictionary<string, object>
         {
             { "p_followerId", followerId },
@@ -187,7 +189,7 @@ public class NeptuneFollowRepository : IFollowRepository
             Username = GetScalarValue(properties["username"])
         };
     }
-    
+
     private IDictionary<object, object> GetPropertyMap(object dynamicObject) => (IDictionary<object, object>)dynamicObject;
 
     private string GetScalarValue(object propertyValue)
@@ -196,7 +198,7 @@ public class NeptuneFollowRepository : IFollowRepository
         {
             return list[0]?.ToString();
         }
-        
+
         if (propertyValue is object[] array && array.Length > 0)
         {
             return array[0]?.ToString();
@@ -204,4 +206,39 @@ public class NeptuneFollowRepository : IFollowRepository
 
         return propertyValue?.ToString();
     }
+
+    public async Task<IEnumerable<UserSummaryDto>> GetFollowersAsUserSummariesAsync(string userId)
+    {
+        // This query finds the target user, traverses to their followers,
+        // and then returns only the specific properties we need.
+        var query = @"g.V().has('user', 'id', p_userId)
+                         .in('follows')
+                         .valueMap('id', 'username', 'profilePictureUrl')";
+
+        var bindings = new Dictionary<string, object> { { "p_userId", userId } };
+
+        var results = await _client.SubmitAsync<dynamic>(query, bindings);
+
+        if (results == null) return Enumerable.Empty<UserSummaryDto>();
+
+        var userSummaries = new List<UserSummaryDto>();
+        
+        foreach (var propertyMap in results)
+        {
+            var dict = (IDictionary<object, object>)propertyMap;
+            userSummaries.Add(new UserSummaryDto
+            {
+                // Use our robust GetScalarValue helper to extract the properties
+                UserId = GetScalarValue(dict["id"]),
+                Username = GetScalarValue(dict["username"]),
+                ProfilePictureUrl = dict.ContainsKey("profilePictureUrl")
+                                    ? GetScalarValue(dict["profilePictureUrl"])
+                                    : null
+            });
+        }
+
+        return userSummaries;
+    }
+    
+
 }
