@@ -25,7 +25,7 @@ public class OutboxController : ControllerBase
     public async Task<IActionResult> GetUserFollowers(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
     {
         ForceActivityJson();
-        
+
         var user = await _dbService.GetUserProfileByUsernameAsync(username);
         if (user == null) return NotFound();
 
@@ -35,6 +35,9 @@ public class OutboxController : ControllerBase
         if (page)
         {
             var (followers, nextToken) = await _dbService.GetFollowersAsync(username, 15, cursor);
+
+             if (followers.Count == 0)
+                return NotFound();
 
             var pageResponse = new ActivityPubCollectionPage
             {
@@ -92,6 +95,9 @@ public class OutboxController : ControllerBase
         {
             var (following, nextToken) = await _dbService.GetFollowingAsync(username, 15, cursor);
 
+             if (following.Count == 0)
+                return NotFound();
+
             var pageResponse = new ActivityPubCollectionPage
             {
                 Context = _contextUrls,
@@ -138,6 +144,9 @@ public class OutboxController : ControllerBase
         if (page)
         {
             var (posts, nextToken) = await _dbService.GetPostsByUserAsync(username, 15, cursor);
+
+            if (posts.Count == 0)
+                return NotFound();
 
             var pageResponse = new ActivityPubCollectionPage
             {
