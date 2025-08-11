@@ -9,13 +9,13 @@ public class RecommendationsController : ControllerBase
 {
     private readonly RecommendationService _recommendationService;
 
-public RecommendationsController(RecommendationService recommendationService)
+    public RecommendationsController(RecommendationService recommendationService)
     {
         _recommendationService = recommendationService;
     }
 
     [HttpGet("people-you-may-know")]
-public async Task<IActionResult> GetPeopleYouMayKnow()
+    public async Task<IActionResult> GetPeopleYouMayKnow()
     {
         var username = User.FindFirstValue(ClaimTypes.Name);
         if (username == null) return Unauthorized();

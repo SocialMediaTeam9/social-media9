@@ -6,6 +6,7 @@ import ExplorePage from './ExplorePage';
 import ProfilePage from './ProfilePage';
 import CreatePostPage from './CreatePostPage';
 import SearchPage from './SearchPage';
+import Recommendations from '../components/Recommendations';
 
 const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   return (
@@ -18,6 +19,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           <Route path="profile/:handle" element={<ProfilePage />} />
           <Route path="create" element={<CreatePostPage />} />
           <Route path="search" element={<SearchPage />} />
+          <Route path="recommendations" element={<Recommendations />} />
         </Routes>
       </main>
     </div>
