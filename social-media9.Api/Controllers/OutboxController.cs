@@ -24,6 +24,8 @@ public class OutboxController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetUserFollowers(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
     {
+        ForceActivityJson();
+        
         var user = await _dbService.GetUserProfileByUsernameAsync(username);
         if (user == null) return NotFound();
 
@@ -36,7 +38,7 @@ public class OutboxController : ControllerBase
 
             var pageResponse = new ActivityPubCollectionPage
             {
-                Context  = _contextUrls,
+                Context = _contextUrls,
                 Id = $"{followersUrl}?page=true" + (string.IsNullOrEmpty(cursor) ? "" : $"&cursor={WebUtility.UrlEncode(cursor)}"),
                 Type = "OrderedCollectionPage",
                 PartOf = followersUrl,
@@ -51,7 +53,7 @@ public class OutboxController : ControllerBase
             var collectionResponse = new ActivityPubCollection
             {
                 Context = new[] { "https://www.w3.org/ns/activitystreams" },
-                Id  = followersUrl,
+                Id = followersUrl,
                 Type = "OrderedCollection",
                 TotalItems = user.FollowersCount,
                 First = $"{followersUrl}?page=true"
@@ -77,6 +79,9 @@ public class OutboxController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetUserFollowing(string username, [FromQuery] bool page = false, [FromQuery] string? cursor = null)
     {
+
+        ForceActivityJson();
+
         var user = await _dbService.GetUserProfileByUsernameAsync(username);
         if (user == null) return NotFound();
 
@@ -122,6 +127,8 @@ public class OutboxController : ControllerBase
     [FromQuery] bool page = false,
     [FromQuery] string? cursor = null)
     {
+        ForceActivityJson();
+
         var user = await _dbService.GetUserProfileByUsernameAsync(username);
         if (user == null) return NotFound();
 
@@ -156,6 +163,14 @@ public class OutboxController : ControllerBase
             };
 
             return Content(JsonSerializer.Serialize(collectionResponse, _jsonOpts), "application/activity+json");
+        }
+    }
+    
+    private void ForceActivityJson()
+    {
+        if (Request.Headers.Accept.Any(a => a.Contains("application/activity+json")))
+        {
+            Response.ContentType = "application/activity+json";
         }
     }
 }
