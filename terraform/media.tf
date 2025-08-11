@@ -16,21 +16,21 @@ resource "aws_s3_bucket_public_access_block" "media" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_cors_configuration" "media" {
-  bucket = aws_s3_bucket.media.id
-
-  cors_rule {
-    allowed_origins = ["https://${var.domain_name}"]
-
-    allowed_methods = ["PUT", "POST"]
-
-    allowed_headers = ["*"]
-
-    expose_headers  = ["ETag"]
-
-    max_age_seconds = 3000
-  }
-}
+# resource "aws_s3_bucket_cors_configuration" "media" {
+#   bucket = aws_s3_bucket.media.id
+#
+#   cors_rule {
+#     allowed_origins = ["https://${var.domain_name}"]
+#
+#     allowed_methods = ["PUT", "POST"]
+#
+#     allowed_headers = ["*"]
+#
+#     expose_headers  = ["ETag"]
+#
+#     max_age_seconds = 3000
+#   }
+# }
 
 resource "aws_cloudfront_origin_access_control" "media" {
   name                              = "OAC for ${aws_s3_bucket.media.bucket}"
@@ -103,7 +103,7 @@ resource "aws_s3_bucket_cors_configuration" "media_cors_conf" {
 
     # PUT is required for pre-signed URL uploads.
     # GET is useful for some scenarios.
-    allowed_methods = ["PUT", "GET"]
+    allowed_methods = ["PUT", "GET", "PUT", "POST"]
 
     # The browser will send these headers. A wildcard is simplest.
     allowed_headers = ["*"]

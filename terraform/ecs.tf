@@ -126,6 +126,19 @@ resource "aws_ecs_task_definition" "app_service" {
           valueFrom = "${data.aws_secretsmanager_secret.jwt_secrets.arn}:jwt_secret::"
         },
 
+        {
+          "name" : "Neo4j__Uri",
+          valueFrom = "${aws_secretsmanager_secret.neo4j_credentials.arn}:uri::"
+        },
+        {
+          "name" : "Neo4j__Username",
+          valueFrom = "${aws_secretsmanager_secret.neo4j_credentials.arn}:username::"
+        },
+        {
+          "name" : "Neo4j__Password",
+          valueFrom = "${aws_secretsmanager_secret.neo4j_credentials.arn}:password::"
+        },
+
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -210,123 +223,123 @@ resource "aws_ecs_service" "app_service" {
 # }
 #
 
-resource "aws_ecs_task_definition" "gts_sidecar" {
-  family             = "${var.project_name}-gts-sidecar"
-  network_mode       = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                = "256"
-  memory             = "512"
-  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn      = aws_iam_role.gts_task_role.arn
-
-  container_definitions = jsonencode([
-    {
-      name = "gotosocial"
-      # Use the official GTS image
-      image = "superseriousbusiness/gotosocial:latest"
-      portMappings = [
-        {
-          containerPort = 8080
-          hostPort      = 8080
-        }
-      ]
-
-      # Configure GTS via environment variables, which reference secrets
-      environment = [
-        { name = "GTS_HOST", value = "fed.peerspace.online" },
-        { name = "GTS_USER_DOMAIN", value = "peerspace.online" }, // Note the different domains
-        { name = "GTS_DB_TYPE", value = "sqlite" },
-        { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
-
-        { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
-        { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
-        { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
-
-        # This tells GTS to listen on an SQS queue for outgoing posts from your C# app.
-        { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
-        { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
-        { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
-
-        # { name = "GTS_HOST", value = "fed.peerspace.online" },
-        # { name = "GTS_USER_DOMAIN", value = "fed.peerspace.online" },
-        #
-        { name = "GTS_PORT", value = "8080" },
-        { name = "GTS_DB_TYPE", value = "sqlite" },
-        # { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
-        #
-        # { name = "GTS_ACCOUNT_PROVIDER_HOOK_ENABLED", value = "true" },
-        # {
-        #   name  = "GTS_ACCOUNT_PROVIDER_HOOK_ENDPOINT",
-        #   value = "https://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
-        # },
-        #
-        # { name = "GTS_TRUSTED_PROXIES", value = "10.0.0.0/8" },
-        # { name = "GTS_USE_PROXY_HEADERS", value = "true" },
-        # { name = "GTS_SCHEME", value = "https" },
-        #
-        # { name = "GTS_REGISTRATION_OPEN", value = "true" },
-        #
-        # { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
-        # { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
-        # { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
-        { name = "AWS_REGION", value = var.aws_region },
-        #
-        # { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
-        # { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
-        # { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
-        #
-        # { name = "GTS_COLLECTIONS_HOOK_ENABLED", value = "true" },
-        # {
-        #   name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS",
-        #   value = "http://${aws_lb.main.dns_name}/internal/v1/followers"
-        # },
-        # {
-        #   name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING",
-        #   value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following"
-        # }
-      ]
-      secrets = [
-        # {
-        #   name      = "GTS_ACCOUNT_PROVIDER_HOOK_SECRET"
-        #   valueFrom = aws_secretsmanager_secret.gts_hook_secret.arn
-        # },
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.sidecar.name
-          awslogs-create-group  = "true"
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
-resource "aws_ecs_service" "gts_sidecar" {
-  name            = "${var.project_name}-gts-sidecar-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.gts_sidecar.arn
-  desired_count   = 0
-  launch_type     = "FARGATE"
-
-  health_check_grace_period_seconds = 30
-
-  enable_execute_command = true
-
-  network_configuration {
-    subnets = module.vpc.private_subnets
-    security_groups = [aws_security_group.ecs_sg.id]
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.gts_sidecar.arn
-    container_name   = "gotosocial"
-    container_port   = 8080
-  }
-}
+# resource "aws_ecs_task_definition" "gts_sidecar" {
+#   family             = "${var.project_name}-gts-sidecar"
+#   network_mode       = "awsvpc"
+#   requires_compatibilities = ["FARGATE"]
+#   cpu                = "256"
+#   memory             = "512"
+#   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+#   task_role_arn      = aws_iam_role.gts_task_role.arn
+#
+#   container_definitions = jsonencode([
+#     {
+#       name = "gotosocial"
+#       # Use the official GTS image
+#       image = "superseriousbusiness/gotosocial:latest"
+#       portMappings = [
+#         {
+#           containerPort = 8080
+#           hostPort      = 8080
+#         }
+#       ]
+#
+#       # Configure GTS via environment variables, which reference secrets
+#       environment = [
+#         { name = "GTS_HOST", value = "fed.peerspace.online" },
+#         { name = "GTS_USER_DOMAIN", value = "peerspace.online" }, // Note the different domains
+#         { name = "GTS_DB_TYPE", value = "sqlite" },
+#         { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
+#
+#         { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+#         { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+#         { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
+#
+#         # This tells GTS to listen on an SQS queue for outgoing posts from your C# app.
+#         { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+#         { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+#         { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
+#
+#         # { name = "GTS_HOST", value = "fed.peerspace.online" },
+#         # { name = "GTS_USER_DOMAIN", value = "fed.peerspace.online" },
+#         #
+#         { name = "GTS_PORT", value = "8080" },
+#         { name = "GTS_DB_TYPE", value = "sqlite" },
+#         # { name = "GTS_DB_ADDRESS", value = "/tmp/gts.db" },
+#         #
+#         # { name = "GTS_ACCOUNT_PROVIDER_HOOK_ENABLED", value = "true" },
+#         # {
+#         #   name  = "GTS_ACCOUNT_PROVIDER_HOOK_ENDPOINT",
+#         #   value = "https://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/user"
+#         # },
+#         #
+#         # { name = "GTS_TRUSTED_PROXIES", value = "10.0.0.0/8" },
+#         # { name = "GTS_USE_PROXY_HEADERS", value = "true" },
+#         # { name = "GTS_SCHEME", value = "https" },
+#         #
+#         # { name = "GTS_REGISTRATION_OPEN", value = "true" },
+#         #
+#         # { name = "GTS_INBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+#         # { name = "GTS_INBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+#         # { name = "GTS_INBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.inbound_queue.id },
+#         { name = "AWS_REGION", value = var.aws_region },
+#         #
+#         # { name = "GTS_OUTBOX_DELIVERY_HOOK_ENABLED", value = "true" },
+#         # { name = "GTS_OUTBOX_DELIVERY_HOOK_TYPE", value = "sqs" },
+#         # { name = "GTS_OUTBOX_DELIVERY_HOOK_SQS_QUEUE_URL", value = aws_sqs_queue.outbound_queue.id },
+#         #
+#         # { name = "GTS_COLLECTIONS_HOOK_ENABLED", value = "true" },
+#         # {
+#         #   name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWERS",
+#         #   value = "http://${aws_lb.main.dns_name}/internal/v1/followers"
+#         # },
+#         # {
+#         #   name  = "GTS_COLLECTIONS_HOOK_ENDPOINT_FOLLOWING",
+#         #   value = "http://${aws_lb.main.dns_name}:${var.internal_api_port}/internal/v1/following"
+#         # }
+#       ]
+#       secrets = [
+#         # {
+#         #   name      = "GTS_ACCOUNT_PROVIDER_HOOK_SECRET"
+#         #   valueFrom = aws_secretsmanager_secret.gts_hook_secret.arn
+#         # },
+#       ]
+#
+#       logConfiguration = {
+#         logDriver = "awslogs"
+#         options = {
+#           awslogs-group         = aws_cloudwatch_log_group.sidecar.name
+#           awslogs-create-group  = "true"
+#           awslogs-region        = var.aws_region
+#           awslogs-stream-prefix = "ecs"
+#         }
+#       }
+#     }
+#   ])
+# }
+#
+# resource "aws_ecs_service" "gts_sidecar" {
+#   name            = "${var.project_name}-gts-sidecar-service"
+#   cluster         = aws_ecs_cluster.main.id
+#   task_definition = aws_ecs_task_definition.gts_sidecar.arn
+#   desired_count   = 0
+#   launch_type     = "FARGATE"
+#
+#   health_check_grace_period_seconds = 30
+#
+#   enable_execute_command = true
+#
+#   network_configuration {
+#     subnets = module.vpc.private_subnets
+#     security_groups = [aws_security_group.ecs_sg.id]
+#   }
+#
+#   load_balancer {
+#     target_group_arn = aws_lb_target_group.gts_sidecar.arn
+#     container_name   = "gotosocial"
+#     container_port   = 8080
+#   }
+# }
 
 resource "random_string" "hook_secret" {
   length  = 32
