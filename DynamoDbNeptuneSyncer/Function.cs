@@ -90,39 +90,29 @@ public class Function : IAsyncDisposable
                     parameters.Add("actorUrl", newImage.ContainsKey("ActorUrl") ? newImage["ActorUrl"].S : null);
                     break;
                 case "Follow":
-                    string followingPk;
+                    var followingValue = sk.Replace("FOLLOWS#", "");
 
-                    if (sk.StartsWith("FOLLOWS#http", StringComparison.OrdinalIgnoreCase))
+                    string followingUserId;
+                    if (followingValue.Contains("@"))
                     {
-                        // Remote actor URL
-                        var actorUrl = sk.Replace("FOLLOWS#", "");
-                        followingPk = $"ACTOR#{actorUrl}";
+                        // Already username@domain
+                        followingUserId = followingValue;
+                    }
+                    else if (followingValue.StartsWith("http"))
+                    {
+                        // Convert actor URL to username@domain
+                        followingUserId = ConvertActorUrlToUserId(followingValue);
                     }
                     else
                     {
-                        // Local username — make composite ID
-                        var localUsername = sk.Replace("FOLLOWS#", "");
-                        var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "yourdomain.com";
-                        followingPk = $"USER#{localUsername}@{localDomain}";
+                        // Local user without domain
+                        followingUserId = $"{followingValue}@{Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "peerspace.online"}";
                     }
 
-                    // Composite PK for follower too
-                    string followerPk;
-                    if (pk.StartsWith("USER#"))
-                    {
-                        var usernameOnly = pk.Replace("USER#", "");
-                        var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "yourdomain.com";
-                        followerPk = $"USER#{usernameOnly}@{localDomain}";
-                    }
-                    else if (pk.StartsWith("ACTOR#"))
-                    {
-                        followerPk = pk; // already unique
-                    }
-                    else
-                    {
-                        // Assume it's remote
-                        followerPk = $"ACTOR#{pk}";
-                    }
+                    var followingPk = $"USER#{followingUserId}";
+
+                    // PK is already correct format in DynamoDB (USER#username@domain)
+                    var followerPk = pk;
 
                     context.Logger.LogInformation($"Creating follow relationship: {followerPk} -> {followingPk}");
 
@@ -150,6 +140,21 @@ public class Function : IAsyncDisposable
                     context.Logger.LogError($"Failed to execute Cypher for {itemTypeAttr.S} ({pk}). Exception: {ex}");
                 }
             }
+        }
+    }
+
+    private static string ConvertActorUrlToUserId(string actorUrl)
+    {
+        try
+        {
+            var uri = new Uri(actorUrl);
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            var username = segments.Last();
+            return $"{username}@{uri.Host}";
+        }
+        catch
+        {
+            return actorUrl; // fallback, probably local
         }
     }
 
