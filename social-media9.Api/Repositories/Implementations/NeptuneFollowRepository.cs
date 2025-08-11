@@ -60,10 +60,7 @@ public class NeptuneFollowRepository : IFollowRepository
             { "p_followerId", followerId },
             { "p_followingId", followingId }
         };
-
-        // This will complete without error whether an edge was dropped or not.
-        // For a boolean return, you'd need a more complex query, but for this use case,
-        // simply executing the drop is sufficient.
+        
         await _client.SubmitAsync<dynamic>(query, bindings);
         return true;
     }

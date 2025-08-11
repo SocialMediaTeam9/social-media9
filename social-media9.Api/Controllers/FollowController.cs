@@ -26,4 +26,11 @@ public class FollowController : ControllerBase
         bool result = await _followRepository.UnfollowAsync(followerId, followingId);
         return result ? Ok() : NotFound();
     }
+
+    [HttpGet("{userId}/followers")]
+    public async Task<IActionResult> GetFollowers(string userId)
+    {
+        var followers = await _followRepository.GetFollowersAsync(userId);
+        return Ok(followers);
+    }
 }
