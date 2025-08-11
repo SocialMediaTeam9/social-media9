@@ -155,7 +155,7 @@ public class SqsWorkerService : BackgroundService
                 if (string.IsNullOrEmpty(followedUserEntity.ActorUrl))
                 {
 
-                    await dbService.UpdateUserActorUrlAsync(followedUserEntity.Username, followedUserEntity.ActorUrl);
+                    // await dbService.UpdateUserActorUrlAsync(followedUserEntity.Username, followedUserEntity.ActorUrl);
                     _logger.LogError("Cannot send Accept: local user '{FollowedUsername}' has no ActorUrl", followedUsername);
                     // break;
                 }
