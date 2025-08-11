@@ -49,10 +49,9 @@ public class NeptuneFollowRepository : IFollowRepository
 
         if (results == null) return Enumerable.Empty<Follow>();
 
-        // Create a strongly-typed list to hold the results.
+        
         var follows = new List<Follow>();
 
-        // Iterate through the dynamic results and manually map them.
         foreach (var result in results)
         {
             var follow = MapToFollow(result, isFollower: true, subjectUserId: userId);
@@ -65,9 +64,44 @@ public class NeptuneFollowRepository : IFollowRepository
         return follows;
     }
 
-    public Task<IEnumerable<Follow>> GetFollowingAsync(string userId)
+    public async Task<IEnumerable<Follow>> GetFollowingAsync(string userId)
     {
-        throw new NotImplementedException();
+        var query = $@"
+            g.V().has('user','id','{userId}')
+                 .outE('follows').as('edge')
+                 .inV().as('following')
+                 .select('following','edge')
+        ";
+
+        var results = await _client.SubmitAsync<dynamic>(query);
+
+        var follows = new List<Follow>();
+        foreach (var r in results)
+        {
+            var followingProps = r["following"];
+            var edgeProps = r["edge"];
+
+            var followerSummary = new UserSummary
+            {
+                UserId = userId,
+                Username = "" // You could hydrate this from a user repo if needed
+            };
+
+            var followingSummary = new UserSummary
+            {
+                UserId = followingProps["id"]?.ToString() ?? string.Empty,
+                Username = followingProps["username"]?.ToString() ?? string.Empty
+            };
+
+            follows.Add(new Follow
+            {
+                FollowerInfo = followerSummary,
+                FollowingInfo = followingSummary,
+                CreatedAt = DateTime.TryParse(edgeProps["createdAt"]?.ToString(), out var dt) ? dt : DateTime.UtcNow
+            });
+        }
+
+        return follows;
     }
 
     public Task<bool> IsFollowingAsync(string followerId, string followingId)
