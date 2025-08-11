@@ -5,7 +5,9 @@ on:
     branches:
       - main
       - single-table-design
-    paths: [ 'DynamoDbNeptuneSyncer/**', '.github/workflows/deploy-neo4j-syncer.yml' ]
+    paths:
+      - 'DynamoDbNeptuneSyncer/**'
+      - '.github/workflows/deploy-neo4j-syncer.yml'
   workflow_dispatch:
 
 permissions:
