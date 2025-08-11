@@ -13,7 +13,7 @@ namespace social_media9.Api.Repositories.Interfaces
     /// </summary>
     public interface IFollowRepository
     {
-        Task FollowAsync(string followerId, string followingId);
+        Task FollowAsync(string followerId, string followingId,string followerUserName, string followingUserName);
         Task<bool> UnfollowAsync(string followerId, string followingId);
         Task<IEnumerable<Follow>> GetFollowersAsync(string userId);
         Task<IEnumerable<Follow>> GetFollowingAsync(string userId);
