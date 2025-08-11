@@ -109,6 +109,22 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
 //builder.Services.AddScoped<ActivityPubService>(); removing this for now just to be able to test locally
+builder.Services.AddScoped<NeptuneFollowRepository>();
+builder.Services.AddSingleton<IGremlinClient>(sp =>
+{
+    var gremlinServer = new GremlinServer(
+        hostname: "localhost", // this should be the Neptune endpoint
+        port: 8182,
+        enableSsl: false // to be set to true in production
+    );
+
+    return new GremlinClient(
+        gremlinServer,
+        new GraphSON3Reader(),
+        new GraphSON3Writer(),
+         Gremlin.Net.Structure.IO.SerializationTokens.GraphSON3MimeType
+    );
+});
 
 builder.Services.AddHostedService<SqsWorkerService>();
 
