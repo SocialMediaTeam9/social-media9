@@ -105,7 +105,7 @@ public class NeptuneFollowRepository : IFollowRepository
 
         await _client.SubmitAsync<dynamic>(query, bindings);
     }
-    
+
     private Follow MapToFollow(dynamic result, bool isFollower, string subjectUserId)
     {
         var dict = (IDictionary<object, object>)result;
@@ -117,9 +117,9 @@ public class NeptuneFollowRepository : IFollowRepository
 
         var edgeProps = GetPropertyMap(edgeObj);
         var vertexProps = GetPropertyMap(vertexObj);
-        
+
         UserSummary follower, following;
-        
+
         if (isFollower)
         {
             follower = MapToUserSummary(vertexProps);
@@ -130,7 +130,7 @@ public class NeptuneFollowRepository : IFollowRepository
             follower = new UserSummary { UserId = subjectUserId, Username = subjectUserId };
             following = MapToUserSummary(vertexProps);
         }
-        
+
         // FIX 3: Use TryGetValue for safety and the correct "createdAt" string key.
         DateTime createdAt = DateTime.MinValue;
         if (edgeProps != null && edgeProps.TryGetValue("createdAt", out var createdAtValue))
@@ -143,6 +143,17 @@ public class NeptuneFollowRepository : IFollowRepository
             FollowerInfo = follower,
             FollowingInfo = following,
             CreatedAt = createdAt.ToUniversalTime()
+        };
+    }
+
+    private UserSummary MapToUserSummary(IDictionary<object, object> properties)
+    {  
+        if (properties == null) return new UserSummary();
+
+        return new UserSummary
+        {
+            UserId = GetScalarValue(properties["id"]),
+            Username = GetScalarValue(properties["username"])
         };
     }
 }
