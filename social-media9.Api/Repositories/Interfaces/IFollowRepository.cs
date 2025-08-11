@@ -4,6 +4,7 @@ using MediatR;
 using social_media9.Api.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using social_media9.Api.Dtos;
 
 namespace social_media9.Api.Repositories.Interfaces
 {
@@ -17,6 +18,9 @@ namespace social_media9.Api.Repositories.Interfaces
         Task<IEnumerable<Follow>> GetFollowersAsync(string userId);
         Task<IEnumerable<Follow>> GetFollowingAsync(string userId);
         Task<bool> IsFollowingAsync(string followerId, string followingId);
+
+        Task<IEnumerable<UserSummaryDto>> GetFollowersAsUserSummariesAsync(string userId);
+        
     }
 
 }

@@ -1,5 +1,6 @@
 
 using Microsoft.AspNetCore.Mvc;
+using social_media9.Api.Dtos;
 using social_media9.Api.Repositories.Interfaces;
 
 [ApiController]
@@ -27,10 +28,17 @@ public class FollowController : ControllerBase
         return result ? Ok() : NotFound();
     }
 
-    [HttpGet("{userId}/followers")]
+    /*[HttpGet("{userId}/followers")]
     public async Task<IActionResult> GetFollowers(string userId)
     {
         var followers = await _followRepository.GetFollowersAsync(userId);
+        return Ok(followers);
+    }*/
+    [HttpGet("{userId}/followers")]
+    [ProducesResponseType(typeof(IEnumerable<UserSummaryDto>), 200)]
+    public async Task<IActionResult> GetFollowers(string userId)
+    {
+        var followers = await _followRepository.GetFollowersAsUserSummariesAsync(userId);
         return Ok(followers);
     }
 
