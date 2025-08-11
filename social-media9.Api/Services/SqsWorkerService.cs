@@ -13,12 +13,15 @@ public class SqsWorkerService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly string? _queueUrl;
     private readonly IConfiguration _config;
+    private readonly Neo4jService _neo4jService;
 
     public SqsWorkerService(
        ILogger<SqsWorkerService> logger,
        IAmazonSQS sqsClient,
        IConfiguration config,
-       IServiceScopeFactory scopeFactory)
+       IServiceScopeFactory scopeFactory, 
+       Neo4jService neo4jService
+       )
     {
         _logger = logger;
         _sqsClient = sqsClient;

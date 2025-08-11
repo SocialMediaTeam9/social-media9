@@ -1,58 +1,51 @@
-
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using social_media9.Api.Dtos;
-using social_media9.Api.Repositories.Interfaces;
+using social_media9.Api.Queries;
+using System.Threading.Tasks;
 
-[ApiController]
-[Route("api/[controller]")]
-public class FollowController : ControllerBase
+namespace Peerspace.Api.Controllers
 {
-    private readonly IFollowRepository _followRepository;
+    [ApiController]
+    [Route("/api/follow")] // The base route for this controller
+    [Authorize] // All actions related to following require a logged-in user
+    public class FollowController : ControllerBase
+    {
+        private readonly IMediator _mediator;
 
-    public FollowController(IFollowRepository followRepository)
-    {
-        _followRepository = followRepository;
-    }
+        public FollowController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
 
-    /*[HttpPost("{followerId}/follow/{followingId}")]
-    public async Task<IActionResult> Follow(string followerId, string followingId)
-    {
-        await _followRepository.FollowAsync(followerId, followingId);
-        return Ok(new { message = "Followed successfully" });
-    }*/
+        /// <summary>
+        /// Checks if a given user is following another user.
+        /// </summary>
+        /// <param name="localUsername">The username of the potential follower.</param>
+        /// <param name="targetUsername">The username of the user who is potentially being followed.</param>
+        /// <returns>A boolean indicating if the follow relationship exists.</returns>
+        [HttpGet("is-following")]
+        public async Task<IActionResult> IsFollowing(
+            [FromQuery] string localUsername, 
+            [FromQuery] string targetUsername)
+        {
+            if (string.IsNullOrWhiteSpace(localUsername) || string.IsNullOrWhiteSpace(targetUsername))
+            {
+                return BadRequest("Both 'localUsername' and 'targetUsername' query parameters are required.");
+            }
 
-    [HttpDelete("{followerId}/unfollow/{followingId}")]
-    public async Task<IActionResult> Unfollow(string followerId, string followingId)
-    {
-        bool result = await _followRepository.UnfollowAsync(followerId, followingId);
-        return result ? Ok() : NotFound();
-    }
+            try
+            {
+                var query = new IsFollowingQuery(localUsername, targetUsername);
+                bool isFollowing = await _mediator.Send(query);
 
-    /*[HttpGet("{userId}/followers")]
-    public async Task<IActionResult> GetFollowers(string userId)
-    {
-        var followers = await _followRepository.GetFollowersAsync(userId);
-        return Ok(followers);
-    }*/
-    [HttpGet("{userId}/followers")]
-    [ProducesResponseType(typeof(IEnumerable<UserSummaryDto>), 200)]
-    public async Task<IActionResult> GetFollowers(string userId)
-    {
-        var followers = await _followRepository.GetFollowersAsUserSummariesAsync(userId);
-        return Ok(followers);
-    }
-
-    /*[HttpGet("{userId}/following")]
-    public async Task<IActionResult> GetFollowing(string userId)
-    {
-        var following = await _followRepository.GetFollowingAsync(userId);
-        return Ok(following);
-    }*/
-    [HttpGet("{userId}/following")]
-    [ProducesResponseType(typeof(IEnumerable<UserSummaryDto>), 200)]
-    public async Task<IActionResult> GetFollowing(string userId)
-    {
-        var following = await _followRepository.GetFollowingAsUserSummariesAsync(userId);
-        return Ok(following);
+                return Ok(new { isFollowing });
+            }
+            catch (Exception ex)
+            {
+                // In a real app, you would log the exception
+                return StatusCode(500, new { message = "An error occurred while checking the follow status." });
+            }
+        }
     }
 }

@@ -70,12 +70,13 @@ public class Function : IAsyncDisposable
                     var userHandle = username.Contains("@") ? username : $"{username}@{localDomain}";
 
                     cypherQuery = @"
-                        MERGE (u:User { handle: $handle })
+                        MERGE (u:User { pk: $pk })
                         ON CREATE SET u.createdAt = timestamp()
-                        SET u.displayName = $displayName";
+                        SET u.displayName = $displayName, u.username = $username,";
 
+                    parameters.Add("pk", pk);
                     parameters.Add("handle", userHandle);
-                    parameters.Add("displayName", newImage["DisplayName"].S);
+                    parameters.Add("username", username);
 
                     break;
                 case "Follow":

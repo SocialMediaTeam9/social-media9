@@ -35,16 +35,15 @@ const endpointMapping: Record<string, string> = {
     '/user/unfollow': '/api/users',
     '/user/followers': '/api/users',
     '/user/following': '/api/users',
-    // New direct mappings for follow/unfollow and is-following status check
+
     '/api/follow/is-following': '/api/follow/is-following',
-    '/api/follow': '/api/follow',
-    '/api/unfollow': '/api/unfollow',
+    '/api/follow': '/api/users/follow',
+    '/api/unfollow': '/api/users/unfollow',
     '/search/users': '/api/search/users',
     '/search/posts': '/api/search/posts',
     '/search/hashtags': '/api/search/hashtags',
     '/posts/create': '/api/posts',
     '/media/upload-url': '/api/media/generate-upload-url',
-    // Assuming timeline endpoint is also directly mapped
     '/api/timeline/home': '/api/timeline/home',
 };
 

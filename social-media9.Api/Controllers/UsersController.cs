@@ -238,9 +238,9 @@ namespace social_media9.Api.Controllers
 
         // === FOLLOWING ===
 
-        [HttpPost("{username}/follow")]
+        [HttpPost("follow")]
         [Authorize]
-        public async Task<IActionResult> FollowUser(string username,  [FromBody] FollowRequestDto request)
+        public async Task<IActionResult> FollowUser([FromBody] FollowDTO followDTO)
         {
             try
             {
@@ -253,11 +253,11 @@ namespace social_media9.Api.Controllers
                 var command = new FollowUserCommand
                 {
                     FollowerUsername = currentUserUsername,
-                    FollowingUsername = username
+                    FollowingUsername = followDTO.targetUsername
                 };
 
                 await _mediator.Send(command);
-                await _followRepository.FollowAsync(GetCurrentUserId(), request.UserId, currentUserUsername, username);
+                //await _followRepository.FollowAsync(GetCurrentUserId(), request.UserId, currentUserUsername, username);
                 return Ok(new { message = "Successfully followed user." });
             }
             catch (ApplicationException ex)
@@ -274,7 +274,7 @@ namespace social_media9.Api.Controllers
             }
         }
 
-        [HttpDelete("{userId}/unfollow")]
+        [HttpDelete("unfollow")]
         [Authorize]
         public async Task<IActionResult> UnfollowUser([FromBody] UnfollowUserRequest request)
         {

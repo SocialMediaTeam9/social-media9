@@ -125,6 +125,8 @@ builder.Services.AddSingleton<IDriver>(sp =>
 
     return GraphDatabase.Driver(uri, AuthTokens.Basic(user, password));
 });
+
+builder.Services.AddSingleton<Neo4jService>();
 builder.Services.AddSingleton<RecommendationService>();
 
 
