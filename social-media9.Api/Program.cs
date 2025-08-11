@@ -24,6 +24,8 @@ using social_media9.Api.Services.Implementations;
 using social_media9.Api.Configurations;
 using social_media9.Api.Infrastructure.ActivityPub.Services;
 using social_media9.Api.Domain.ActivityPub.Entities;
+using Gremlin.Net.Driver;
+using Gremlin.Net.Structure.IO.GraphSON;
 
 using Nest;
 using DynamoDbSettings = social_media9.Api.Configurations.DynamoDbSettings;
