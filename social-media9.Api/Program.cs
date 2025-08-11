@@ -86,7 +86,7 @@ builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IFollowRepository, FollowRepository>();
+builder.Services.AddScoped<IFollowRepository, NeptuneFollowRepository >();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtGenerator, JwtGenerator>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
@@ -108,7 +108,7 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<DynamoDbService>();
 builder.Services.AddScoped<S3Service>();
-builder.Services.AddScoped<ActivityPubService>();
+//builder.Services.AddScoped<ActivityPubService>(); removing this for now just to be able to test locally
 
 builder.Services.AddHostedService<SqsWorkerService>();
 
