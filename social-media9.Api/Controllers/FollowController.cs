@@ -20,5 +20,10 @@ public class FollowController : ControllerBase
         return Ok(new { message = "Followed successfully" });
     }
 
-
+    [HttpDelete("{followerId}/unfollow/{followingId}")]
+    public async Task<IActionResult> Unfollow(string followerId, string followingId)
+    {
+        bool result = await _followRepository.UnfollowAsync(followerId, followingId);
+        return result ? Ok() : NotFound();
+    }
 }
