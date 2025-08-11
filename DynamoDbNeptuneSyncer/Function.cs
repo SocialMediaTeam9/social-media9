@@ -65,15 +65,75 @@ public class Function : IAsyncDisposable
             switch (itemTypeAttr.S)
             {
                 case "UserProfile":
-                    cypherQuery = @"MERGE (u:User { pk: $pk }) ON CREATE SET u.username = $username, u.createdAt = timestamp() ON MATCH SET u.username = $username";
-                    parameters.Add("pk", pk);
+                    string userPk;
+
+                    if (newImage.ContainsKey("ActorUrl") && !string.IsNullOrEmpty(newImage["ActorUrl"].S))
+                    {
+                        // Remote
+                        userPk = $"ACTOR#{newImage["ActorUrl"].S}";
+                    }
+                    else
+                    {
+                        // Local — composite
+                        var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "yourdomain.com";
+                        userPk = $"USER#{newImage["Username"].S}@{localDomain}";
+                    }
+
+                    cypherQuery = @"
+        MERGE (u:User { pk: $pk })
+        ON CREATE SET u.createdAt = timestamp()
+        SET u.username = $username,
+            u.actorUrl = $actorUrl
+    ";
+                    parameters.Add("pk", userPk);
                     parameters.Add("username", newImage["Username"].S);
+                    parameters.Add("actorUrl", newImage.ContainsKey("ActorUrl") ? newImage["ActorUrl"].S : null);
                     break;
                 case "Follow":
-                    var followingUsername = sk.Replace("FOLLOWS#", "");
-                    var followingPk = $"USER#{followingUsername}";
-                    cypherQuery = @"MATCH (follower:User { pk: $followerPk }) MATCH (following:User { pk: $followingPk }) MERGE (follower)-[:FOLLOWS]->(following)";
-                    parameters.Add("followerPk", pk);
+                    string followingPk;
+
+                    if (sk.StartsWith("FOLLOWS#http", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Remote actor URL
+                        var actorUrl = sk.Replace("FOLLOWS#", "");
+                        followingPk = $"ACTOR#{actorUrl}";
+                    }
+                    else
+                    {
+                        // Local username — make composite ID
+                        var localUsername = sk.Replace("FOLLOWS#", "");
+                        var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "yourdomain.com";
+                        followingPk = $"USER#{localUsername}@{localDomain}";
+                    }
+
+                    // Composite PK for follower too
+                    string followerPk;
+                    if (pk.StartsWith("USER#"))
+                    {
+                        var usernameOnly = pk.Replace("USER#", "");
+                        var localDomain = Environment.GetEnvironmentVariable("LOCAL_DOMAIN") ?? "yourdomain.com";
+                        followerPk = $"USER#{usernameOnly}@{localDomain}";
+                    }
+                    else if (pk.StartsWith("ACTOR#"))
+                    {
+                        followerPk = pk; // already unique
+                    }
+                    else
+                    {
+                        // Assume it's remote
+                        followerPk = $"ACTOR#{pk}";
+                    }
+
+                    context.Logger.LogInformation($"Creating follow relationship: {followerPk} -> {followingPk}");
+
+                    cypherQuery = @"
+        MERGE (follower:User { pk: $followerPk })
+        ON CREATE SET follower.createdAt = timestamp()
+        MERGE (following:User { pk: $followingPk })
+        ON CREATE SET following.createdAt = timestamp()
+        MERGE (follower)-[:FOLLOWS]->(following)
+    ";
+                    parameters.Add("followerPk", followerPk);
                     parameters.Add("followingPk", followingPk);
                     break;
             }

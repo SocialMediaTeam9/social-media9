@@ -31,8 +31,18 @@ namespace social_media9.Api.Models
 
         public static Follow Create(UserSummary follower, UserSummary following)
         {
-            var followerPk = $"USER#{follower.Username}";
-            var followingPk = $"USER#{following.Username}";
+
+            string localDomain = Environment.GetEnvironmentVariable("DomainName") ?? "peerspace.online";
+
+            string followerDomain = GetDomainFromActorUrl(follower.ActorUrl, localDomain);
+            string followingDomain = GetDomainFromActorUrl(following.ActorUrl, localDomain);
+
+            string followerId = $"{follower.Username}@{followerDomain}";
+            string followingId = $"{following.Username}@{followingDomain}";
+
+            var followerPk = $"USER#{followerId}";
+            var followingPk = $"USER#{followingId}";
+
             return new Follow
             {
                 PK = followerPk,
@@ -42,6 +52,22 @@ namespace social_media9.Api.Models
                 FollowerInfo = follower,
                 FollowingInfo = following
             };
+        }
+
+        private static string GetDomainFromActorUrl(string actorUrl, string localDomain)
+        {
+            if (string.IsNullOrEmpty(actorUrl))
+                return localDomain;
+
+            try
+            {
+                var uri = new Uri(actorUrl);
+                return uri.Host;
+            }
+            catch
+            {
+                return localDomain;
+            }
         }
     }
 }

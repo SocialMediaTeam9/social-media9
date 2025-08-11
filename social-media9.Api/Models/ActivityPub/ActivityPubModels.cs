@@ -36,7 +36,7 @@ public record ActorResponse(
     [property: JsonPropertyName("followers")] string? Followers,
     [property: JsonPropertyName("following")] string? Following,
     [property: JsonPropertyName("publicKey")] ActorPublicKey PublicKey,
-    [property: JsonPropertyName("icon")] ActorImage? Icon,
+    // [property: JsonPropertyName("icon")] ActorImage? Icon,
     [property: JsonPropertyName("image")] ActorImage? Image,
     [property: JsonPropertyName("manuallyApprovesFollowers")] bool ManuallyApprovesFollowers,
     [property: JsonPropertyName("summary")] string? Summary,

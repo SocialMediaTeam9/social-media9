@@ -98,9 +98,6 @@ public class ActivityPubController : ControllerBase
                 Owner: actorUrl,
                 PublicKeyPem: user.PublicKeyPem
             ),
-            Icon: string.IsNullOrEmpty(user.ProfilePictureUrl)
-            ? null
-            : new ActorImage("Image", "image/jpeg", user.ProfilePictureUrl),
             Image: string.IsNullOrEmpty(user.ProfilePictureUrl)
             ? null
             : new ActorImage("Image", "image/jpeg", user.ProfilePictureUrl),
