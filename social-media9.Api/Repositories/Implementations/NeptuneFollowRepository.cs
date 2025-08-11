@@ -147,7 +147,7 @@ public class NeptuneFollowRepository : IFollowRepository
     }
 
     private UserSummary MapToUserSummary(IDictionary<object, object> properties)
-    {  
+    {
         if (properties == null) return new UserSummary();
 
         return new UserSummary
@@ -155,5 +155,22 @@ public class NeptuneFollowRepository : IFollowRepository
             UserId = GetScalarValue(properties["id"]),
             Username = GetScalarValue(properties["username"])
         };
+    }
+    
+    private IDictionary<object, object> GetPropertyMap(object dynamicObject) => (IDictionary<object, object>)dynamicObject;
+
+    private string GetScalarValue(object propertyValue)
+    {
+        if (propertyValue is List<object> list && list.Count > 0)
+        {
+            return list[0]?.ToString();
+        }
+        
+        if (propertyValue is object[] array && array.Length > 0)
+        {
+            return array[0]?.ToString();
+        }
+
+        return propertyValue?.ToString();
     }
 }
