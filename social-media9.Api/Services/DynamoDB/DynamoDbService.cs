@@ -628,7 +628,7 @@ public class DynamoDbService
     {
         if (!followerUsernames.Any()) return;
 
-        var batch = _dbContext.CreateBatchWrite<BaseEntity>();
+        var batch = _dbContext.CreateBatchWrite<TimelineItemEntity>();
         foreach (var username in followerUsernames)
         {
             var timelineItem = new TimelineItemEntity
