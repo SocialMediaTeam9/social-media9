@@ -35,7 +35,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Build and Publish Lambda
-        run: dotnet publish ${{ env.LAMBDA_PROJECT_PATH }} -c Release -o ./publish
+        run: |
+          dotnet restore DynamoDbNeptuneSyncer/DynamoDbNeptuneSyncer.csproj
+          dotnet publish ${{ env.LAMBDA_PROJECT_PATH }} -c Release -o ./publish
       - name: Zip Lambda Package
         run: |
           cd ./publish
