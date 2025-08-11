@@ -37,7 +37,7 @@ jobs:
       - name: Build and Publish Lambda
         run: |
           dotnet restore DynamoDbNeptuneSyncer/DynamoDbNeptuneSyncer.csproj
-          dotnet publish DynamoDbNeptuneSyncer/DynamoDbNeptuneSyncer.csproj -c Release -o ./publish
+          dotnet publish DynamoDbNeptuneSyncer/DynamoDbNeptuneSyncer.csproj -c Release -o ./publish  /p:PublishReadyToRun=false
       - name: Zip Lambda Package
         run: |
           cd ./publish
