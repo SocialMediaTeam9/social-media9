@@ -17,11 +17,11 @@ public class NeptuneFollowRepository : IFollowRepository
         _client = driver ?? throw new ArgumentNullException(nameof(driver));
     }
 
-    public async Task FollowAsync(string followerId, string followingId)
+    public async Task FollowAsync(string followerId, string followingId, string followerUserName, string followingUserName)
     {
         // First, ensure the users exist. MERGE is efficient.
-        await AddUserAsync(followerId, followerId); // Placeholder for username, should be fetched from a user service
-        await AddUserAsync(followingId, followingId);
+        await AddUserAsync(followerId, followerUserName); // Placeholder for username, should be fetched from a user service
+        await AddUserAsync(followingId, followingUserName);
 
         // MERGE finds or creates the entire pattern (follower -> following).
         // It's the perfect Cypher equivalent of your coalesce query.
