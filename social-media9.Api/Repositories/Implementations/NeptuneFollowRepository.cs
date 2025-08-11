@@ -34,9 +34,44 @@ public class NeptuneFollowRepository : IFollowRepository
         await _client.SubmitAsync<dynamic>(query, bindings);
     }
 
-    public Task<IEnumerable<Follow>> GetFollowersAsync(string userId)
+    public async Task<IEnumerable<Follow>> GetFollowersAsync(string userId)
     {
-        throw new NotImplementedException();
+                var query = $@"
+            g.V().has('user','id','{userId}')
+                 .inE('follows').as('edge')
+                 .outV().as('follower')
+                 .select('follower','edge')
+        ";
+
+        var results = await _client.SubmitAsync<dynamic>(query);
+
+        var follows = new List<Follow>();
+        foreach (var r in results)
+        {
+            var followerProps = r["follower"];
+            var edgeProps = r["edge"];
+
+            var followerSummary = new UserSummary
+            {
+                UserId = followerProps["id"]?.ToString() ?? string.Empty,
+                Username = followerProps["username"]?.ToString() ?? string.Empty
+            };
+
+            var followingSummary = new UserSummary
+            {
+                UserId = userId,
+                Username = "" // You could hydrate this from a user repo if needed
+            };
+
+            follows.Add(new Follow
+            {
+                FollowerInfo = followerSummary,
+                FollowingInfo = followingSummary,
+                CreatedAt = DateTime.TryParse(edgeProps["createdAt"]?.ToString(), out var dt) ? dt : DateTime.UtcNow
+            });
+        }
+
+        return follows;
     }
 
     public Task<IEnumerable<Follow>> GetFollowingAsync(string userId)
@@ -60,7 +95,7 @@ public class NeptuneFollowRepository : IFollowRepository
             { "p_followerId", followerId },
             { "p_followingId", followingId }
         };
-        
+
         await _client.SubmitAsync<dynamic>(query, bindings);
         return true;
     }
